@@ -1,0 +1,17 @@
+<package>
+  <description brief="cram_uima">
+    
+    cram_uima
+    
+  </description>
+  <author>Jan Winkler</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/cram_uima</url>
+  
+  <depend package="roslisp" />
+  <depend package="actionlib" />
+  
+</package>
+
+
