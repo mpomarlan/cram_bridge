@@ -32,7 +32,7 @@
 
 (defun init-moveit-bridge ()
   "Sets up the basic action client communication handles for the
-MoveIt! framework and registers known conditions."
+  MoveIt! framework and registers known conditions."
   (register-known-moveit-errors)
   (setf *move-group-action-client*
         (actionlib:make-action-client
@@ -43,10 +43,11 @@ MoveIt! framework and registers known conditions."
 (defun move-link-pose (link-name planning-group pose-stamped
                        &key allowed-collision-objects)
   "Calls the MoveIt! MoveGroup action. The link identified by
-`link-name' is tried to be positioned in the pose given by
-`pose-stamped'. Returns multiply bound values denoting boolean
-success, and the numerical return value as defined in
-moveit_msgs/MoveItErrorCodes."
+  `link-name' is tried to be positioned in the pose given by
+  `pose-stamped'. Returns `T' on success and `nil' on failure, in
+  which case a failure condition is signalled, based on the error code
+  returned by the MoveIt! service (as defined in
+  moveit_msgs/MoveItErrorCodes)."
   (declare (ignore allowed-collision-objects)) ;; Implement this.
   (let ((mpreq (make-message
                 "moveit_msgs/MotionPlanRequest"
