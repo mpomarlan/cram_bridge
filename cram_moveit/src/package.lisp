@@ -43,4 +43,31 @@
   #:cljlo-utils
   #:roslisp
   #:cram-plan-failures)
-  (:export move-link-pose init-moveit-bridge))
+  (:export
+   ;; Functions
+   move-link-pose
+   init-moveit-bridge
+   ;; Conditions
+   moveit-failure
+   planning-failed
+   invalid-motion-plan
+   motion-plan-invalidated-by-environment-change
+   control-failed
+   unable-to-acquire-sensor-data
+   timed-out
+   preempted
+   start-state-in-collision
+   start-state-violates-path-constraints
+   goal-in-collision
+   goal-violates-path-constraints
+   goal-constraints-violated
+   invalid-group-name
+   invalid-goal-constraints
+   invalid-robot-state
+   invalid-link-name
+   invalid-object-name
+   frame-transform-failure
+   collision-checking-unavailable
+   robot-state-stale
+   sensor-info-stale
+   no-ik-solution))
