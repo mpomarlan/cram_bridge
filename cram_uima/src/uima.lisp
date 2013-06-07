@@ -27,9 +27,42 @@
 
 (in-package :cram-uima)
 
+(defvar *uima-client* nil)
+(defvar *uima-result-subscriber* nil)
+(defvar *uima-result-fluent* nil)
+(defvar *uima-result-msg* nil)
+
 (defun init-uima-bridge ()
   "Sets up the basic action client communication handles for the
 UIMA framework."
-  )
+  (setf *uima-result-subscriber*
+        (subscribe
+         "/uima/uima_result"
+         "iai_msgs/PerceiveResult"
+         #'uima-result-callback))
+  (setf *uima-result-fluent*
+        (cpl:pulsed (cpl:make-fluent
+                     :name 'uima-result
+                     :value nil
+                     :allow-tracing nil))))
 
 (register-ros-init-function init-uima-bridge)
+
+(defun uima-result-callback (msg)
+  (setf *uima-result-msg* msg)
+  (cpl:pulse *uima-result-fluent*))
+
+(defun trigger-uima ()
+  (let ((service "/uima/trigger_uima_pipeline")
+        (request-string "start"))
+    (roslisp:wait-for-service service)
+    (roslisp:call-service service
+                          'iai_msgs-srv:TriggerUIMAPipeline
+                          :str request-string)))
+
+(defun get-uima-result ()
+  (trigger-uima)
+  (when (cpl:wait-for *uima-result-fluent* :timeout 5.0)
+    (roslisp:with-fields (objects)
+        *uima-result-msg*
+      objects)))

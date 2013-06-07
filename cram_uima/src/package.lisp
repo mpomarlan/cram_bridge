@@ -43,4 +43,7 @@
   #:cljlo-utils
   #:roslisp
   #:cram-plan-failures)
-  (:export init-uima-bridge))
+  (:export
+   ;; Functions
+   init-uima-bridge
+   get-uima-result))

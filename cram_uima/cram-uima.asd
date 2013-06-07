@@ -42,7 +42,9 @@
                cljlo-utils
                actionlib
                std_msgs-msg
-               cram-plan-failures)
+               cram-plan-failures
+               iai_msgs-msg
+               iai_msgs-srv)
   :components
   ((:module "src"
     :components
