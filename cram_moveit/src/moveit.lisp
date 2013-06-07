@@ -32,7 +32,8 @@
 
 (defun init-moveit-bridge ()
   "Sets up the basic action client communication handles for the
-MoveIt! framework."
+MoveIt! framework and registers known conditions."
+  (register-known-moveit-errors)
   (setf *move-group-action-client*
         (actionlib:make-action-client
          "move_group" "moveit_msgs/MoveGroupAction")))
@@ -74,8 +75,9 @@ moveit_msgs/MoveItErrorCodes."
                      (vector
                       (make-message
                        "shape_msgs/SolidPrimitive"
-                       :type 1 ;; BOX, find out how to read symbol
-                       :dimensions (vector 0.01 0.01 0.01)))
+                       :type (roslisp-msg-protocol:symbol-code
+                              'shape_msgs-msg:solidprimitive :box)
+                       :dimensions (vector 0.001 0.001 0.001)))
                      :primitive_poses
                      (vector
                       (tf:pose->msg pose-stamped)))))
@@ -97,16 +99,20 @@ moveit_msgs/MoveItErrorCodes."
                      :y (tf:y (tf:orientation pose-stamped))
                      :z (tf:z (tf:orientation pose-stamped))
                      :w (tf:w (tf:orientation pose-stamped)))
-                    :absolute_x_axis_tolerance 0.01
-                    :absolute_y_axis_tolerance 0.01
-                    :absolute_z_axis_tolerance 0.01)))))))
-    (let ((result (actionlib:call-goal
-                   *move-group-action-client*
-                   (actionlib:make-action-goal *move-group-action-client*
-                     :request mpreq))))
-      (roslisp:with-fields (error_code) result
-        (roslisp:with-fields (val) error_code
-          (unless (eql val 1)
-            (roslisp:ros-warn
-             (moveit) "MoveGroup failed. Code: ~a~%" error_code))
-          (values (eql val 1) val))))))
+                    :absolute_x_axis_tolerance 0.001
+                    :absolute_y_axis_tolerance 0.001
+                    :absolute_z_axis_tolerance 0.001)))))))
+    (cond ((actionlib:connected-to-server *move-group-action-client*)
+           (let ((result (actionlib:call-goal
+                          *move-group-action-client*
+                          (actionlib:make-action-goal
+                              *move-group-action-client*
+                            :request mpreq))))
+             (roslisp:with-fields (error_code) result
+               (roslisp:with-fields (val) error_code
+                 (case val
+                   ((roslisp-msg-protocol:symbol-code
+                     'moveit_msgs-msg:moveiterrorcodes :success)
+                    t)
+                   (t (signal-moveit-error val)))))))
+          (t (error 'actionlib:server-lost)))))

@@ -43,10 +43,10 @@
                actionlib
                std_msgs-msg
                cram-plan-failures
-               moveit_msgs-msg
-	       moveit_msgs-srv)
+               moveit_msgs-msg)
   :components
   ((:module "src"
     :components
     ((:file "package")
-     (:file "moveit" :depends-on ("package"))))))
+     (:file "failures" :depends-on ("package"))
+     (:file "moveit" :depends-on ("package" "failures"))))))
