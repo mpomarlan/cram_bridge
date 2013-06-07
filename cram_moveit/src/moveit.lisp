@@ -104,16 +104,19 @@
                     :absolute_y_axis_tolerance 0.001
                     :absolute_z_axis_tolerance 0.001)))))))
     (cond ((actionlib:connected-to-server *move-group-action-client*)
-           (let ((result (actionlib:call-goal
-                          *move-group-action-client*
-                          (actionlib:make-action-goal
-                              *move-group-action-client*
-                            :request mpreq))))
-             (roslisp:with-fields (error_code) result
-               (roslisp:with-fields (val) error_code
-                 (case val
-                   ((roslisp-msg-protocol:symbol-code
-                     'moveit_msgs-msg:moveiterrorcodes :success)
-                    t)
-                   (t (signal-moveit-error val)))))))
-          (t (error 'actionlib:server-lost)))))
+           (cpl:with-failure-handling
+               ((actionlib:server-lost (f)
+                  (declare (ignore f))
+                  (error 'planning-failed)))
+             (let ((result (actionlib:call-goal
+                            *move-group-action-client*
+                            (actionlib:make-action-goal
+                                *move-group-action-client*
+                              :request mpreq))))
+               (roslisp:with-fields (error_code) result
+                 (roslisp:with-fields (val) error_code
+                   (unless (eql val (roslisp-msg-protocol:symbol-code
+                                     'moveit_msgs-msg:moveiterrorcodes
+                                     :success))
+                     (signal-moveit-error val)))))))
+           (t (error 'actionlib:server-lost)))))
