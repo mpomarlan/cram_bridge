@@ -46,7 +46,9 @@
   (:export
    ;; Functions
    move-link-pose
+   plan-link-movement
    init-moveit-bridge
+   pose-distance
    ;; Conditions
    moveit-failure
    planning-failed
