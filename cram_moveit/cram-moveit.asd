@@ -43,6 +43,7 @@
                actionlib
                std_msgs-msg
                cram-plan-failures
+               moveit_msgs-srv
                moveit_msgs-msg)
   :components
   ((:module "src"
