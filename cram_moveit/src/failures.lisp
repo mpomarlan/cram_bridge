@@ -27,7 +27,10 @@
 
 (in-package :cram-moveit)
 
+;; Generic failure conditions
 (define-condition moveit-failure (manipulation-failure) ())
+
+;; MoveIt! specific failure conditions
 (define-condition planning-failed (moveit-failure) ())
 (define-condition invalid-motion-plan (moveit-failure) ())
 (define-condition motion-plan-invalidated-by-environment-change
@@ -51,6 +54,9 @@
 (define-condition robot-state-stale (moveit-failure) ())
 (define-condition sensor-info-stale (moveit-failure) ())
 (define-condition no-ik-solution (moveit-failure) ())
+
+;; Specialized failure-conditions
+(define-condition no-collision-shapes-defined () ())
 
 (defvar *known-failures* nil
   "List of known failures and their respective error code as returned
