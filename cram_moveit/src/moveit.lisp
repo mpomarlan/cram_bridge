@@ -29,6 +29,10 @@
 
 (defvar *move-group-action-client* nil
   "Action client for the MoveGroup action.")
+(defvar *planning-scene-publisher* nil
+  "Publisher handle for the planning scene topic.")
+(defvar *attached-object-publisher* nil
+  "Publisher handle for attaching and detaching collicion objects through /attached_collision_object.")
 
 (defun init-moveit-bridge ()
   "Sets up the basic action client communication handles for the
@@ -36,7 +40,19 @@
   (register-known-moveit-errors)
   (setf *move-group-action-client*
         (actionlib:make-action-client
-         "move_group" "moveit_msgs/MoveGroupAction")))
+         "move_group" "moveit_msgs/MoveGroupAction"))
+  (setf *collision-object-publisher*
+        (roslisp:advertise
+         "/collision_object"
+         "moveit_msgs/CollisionObject" :latch t))
+  (setf *planning-scene-publisher*
+        (roslisp:advertise
+         "/planning_scene"
+         "moveit_msgs/PlanningScene" :latch t))
+  (setf *attached-object-publisher*
+        (roslisp:advertise
+         "/attached_collision_object"
+         "moveit_msgs/AttachedCollisionObject" :latch t)))
 
 (register-ros-init-function init-moveit-bridge)
 
@@ -178,3 +194,131 @@
                                         :target-frame link-frame)))
     (tf:v-dist (tf:make-identity-vector) (tf:origin
                                           transformed-pose-stamped))))
+
+(defun create-collision-object-message (name pose-stamped 
+                                        &key
+                                          primitive-shapes
+                                          mesh-shapes
+                                          plane-shapes)
+  (unless (or primitive-shapes mesh-shapes plane-shapes)
+    (cpl:fail 'no-collision-shapes-defined))
+  (flet* ((resolve-pose (pose-msg)
+            (or pose-msg (tf:pose->msg pose-stamped)))
+          (pose-present (object)
+            (and (listp object) (cdr object)))
+          (resolve-object (obj)
+            (or (and (listp obj) (car obj)) obj))
+          (prepare-shapes (shapes)
+            (map 'vector 'identity (mapcar #'resolve-object shapes)))
+          (prepare-poses (poses)
+            (map 'vector #'resolve-pose (mapcar #'pose-present poses))))
+    (let* ((obj-msg (roslisp:make-msg
+                     "moveit_msgs/CollisionObject"
+                     (stamp header) (tf:stamp pose-stamped)
+                     (frame_id header) (tf:frame-id pose-stamped)
+                     id name
+                     operation (roslisp-msg-protocol:symbol-code
+                                'moveit_msgs-msg:collisionobject
+                                :add)
+                     primitives (prepare-shapes primitive-shapes)
+                     primitive_poses (prepare-poses primitive-shapes)
+                     meshes (prepare-shapes mesh-shapes)
+                     mesh_poses (prepare-poses mesh-shapes)
+                     planes (prepare-shapes plane-shapes)
+                     plane_poses (prepare-poses plane-shapes))))
+      obj-msg)))
+
+(defun add-collision-object (name pose-stamped
+                             &key
+                               primitive-shapes
+                               mesh-shapes
+                               plane-shapes)
+  (let* ((obj-msg (roslisp:modify-message-copy
+                   (create-collision-object-message
+                    name pose-stamped
+                    :primitive-shapes primitive-shapes
+                    :mesh-shapes mesh-shapes
+                    :plane-shapes plane-shapes)
+                   operation (roslisp-msg-protocol:symbol-code
+                              'moveit_msgs-msg:collisionobject
+                              :add)))
+         (world-msg (roslisp:make-msg
+                     "moveit_msgs/PlanningSceneWorld"
+                     collision_objects (vector obj-msg)))
+         (scene-msg (roslisp:make-msg
+                     "moveit_msgs/PlanningScene"
+                     world world-msg
+                     is_diff t)))
+    (prog1 (roslisp:publish *planning-scene-publisher* scene-msg)
+      (roslisp:ros-info
+       (moveit)
+       "Added collision object to environment server."))))
+
+(defun remove-collision-object (name)
+  (let* ((obj-msg (roslisp:make-msg
+                   "moveit_msgs/CollisionObject"
+                   id name
+                   operation (roslisp-msg-protocol:symbol-code
+                              'moveit_msgs-msg:collisionobject
+                              :remove)))
+         (world-msg (roslisp:make-msg
+                     "moveit_msgs/PlanningSceneWorld"
+                     collision_objects (vector obj-msg)))
+         (scene-msg (roslisp:make-msg
+                     "moveit_msgs/PlanningScene"
+                     world world-msg
+                     is_diff t)))
+    (prog1 (roslisp:publish *planning-scene-publisher* scene-msg)
+      (roslisp:ros-info
+       (moveit)
+       "Removed collision object `~a' from environment server." name))))
+
+(defun clear-collision-objects ()
+  (remove-collision-object "all"))
+
+(defun attach-collision-object-to-link (name link
+                                        &key
+                                          touch-links
+                                          primitive-shapes
+                                          mesh-shapes
+                                          plane-shapes
+                                          pose-offset (tf:make-identity-pose)
+                                          stamp (roslisp:ros-time))
+  (let* ((obj-msg-plain (create-collision-object-message
+                         name (tf:pose->pose-stamped
+                               link
+                               stamp
+                               pose-offset)
+                         :primitive-shapes primitive-shapes
+                         :mesh-shapes mesh-shapes
+                         :plane-shapes plane-shapes))
+         (obj-msg (roslisp:modify-message-copy
+                   obj-msg-plain
+                   operation (roslisp-msg-protocol:symbol-code
+                              'moveit_msgs-msg:collisionobject
+                              :remove)))
+         (attach-msg (roslisp:make-msg
+                      "moveit_msgs/AttachedCollisionObject"
+                      link_name link
+                      object (roslisp:modify-message-copy
+                              obj-msg-plain
+                              operation (roslisp-msg-protocol:symbol-code
+                                         'moveit_msgs-msg:collisionobject
+                                         :add)
+                              id name)
+                      touch_links (concatenate
+                                   'vector
+                                   (list link) touch-links)
+                      weight 1.0))
+         (world-msg (roslisp:make-msg
+                     "moveit_msgs/PlanningSceneWorld"
+                     collision_objects (vector obj-msg)))
+         (scene-msg (roslisp:make-msg
+                     "moveit_msgs/PlanningScene"
+                     world world-msg
+                     (attached_collision_objects robot_state) (vector attach-msg)
+                     is_diff t)))
+    (prog1 (roslisp:publish *planning-scene-publisher* scene-msg)
+      (roslisp:ros-info
+       (moveit)
+       "Attached collision object `~a' to link `~a'." name link))))

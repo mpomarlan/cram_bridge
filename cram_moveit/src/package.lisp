@@ -49,6 +49,9 @@
    plan-link-movement
    init-moveit-bridge
    pose-distance
+   add-collision-object
+   remove-collision-object
+   clear-collision-objects
    ;; Conditions
    moveit-failure
    planning-failed
@@ -72,4 +75,5 @@
    collision-checking-unavailable
    robot-state-stale
    sensor-info-stale
-   no-ik-solution))
+   no-ik-solution
+   no-collision-shapes-defined))
