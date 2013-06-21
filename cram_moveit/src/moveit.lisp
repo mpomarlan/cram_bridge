@@ -33,6 +33,12 @@
   "Publisher handle for the planning scene topic.")
 (defvar *attached-object-publisher* nil
   "Publisher handle for attaching and detaching collicion objects through /attached_collision_object.")
+(defvar *joint-states-fluent* nil
+  "Fluent that keeps track of whether joint states were received or now.")
+(defvar *joint-states* nil
+  "List of current joint states as published by /joint_states.")
+(defvar *joint-states-subscriber* nil
+  "Subscriber to /joint_states.")
 
 (defun init-moveit-bridge ()
   "Sets up the basic action client communication handles for the
@@ -52,9 +58,70 @@
   (setf *attached-object-publisher*
         (roslisp:advertise
          "/attached_collision_object"
-         "moveit_msgs/AttachedCollisionObject" :latch t)))
+         "moveit_msgs/AttachedCollisionObject" :latch t))
+  (setf *joint-states-fluent*
+        (cram-language:make-fluent :name "joint-state-tracker"))
+  (setf *joint-states-subscriber*
+        (roslisp:subscribe "/joint_states"
+                           "sensor_msgs/JointState"
+                           #'joint-states-callback)))
+
+(defun joint-states-callback (msg)
+  (roslisp:with-fields (name position) msg
+    (setf
+     *joint-states*
+     (loop for i from 0 below (length name)
+           for n = (elt name i)
+           for p = (elt position i)
+           collect (cons n p)))))
 
 (register-ros-init-function init-moveit-bridge)
+
+(defun joint-states ()
+  *joint-states*)
+
+(defun copy-physical-joint-states (joint-names)
+  (let* ((joint-states (joint-states))
+         (relevant-states (loop for joint-name on joint-names
+                                for position = (position
+                                                joint-name joint-states
+                                                :test (lambda (name state)
+                                                        (equal
+                                                         (car name)
+                                                         (car state))))
+                               when position
+                                 collect (elt joint-states position))))
+    (set-planning-robot-state relevant-states)))
+
+(defun set-planning-robot-state (joint-states)
+  (let* ((rstate-msg (roslisp:make-msg
+                      "moveit_msgs/RobotState"
+                      (name joint_state) (map 'vector (lambda (joint-state)
+                                                        (car joint-state))
+                                              joint-states)
+                      (position joint_state) (map 'vector (lambda (joint-state)
+                                                            (cdr joint-state))
+                                                  joint-states)
+                      (velocity joint_state) (map 'vector
+                                                  (lambda (joint-state)
+                                                    (declare
+                                                     (ignore joint-state))
+                                                    0.0)
+                                                  joint-states)
+                      (effort joint_state) (map 'vector
+                                                (lambda (joint-state)
+                                                  (declare
+                                                   (ignore joint-state))
+                                                  0.0)
+                                                joint-states)))
+         (scene-msg (roslisp:make-msg
+                     "moveit_msgs/PlanningScene"
+                     robot_state rstate-msg
+                     is_diff t)))
+    (prog1 (roslisp:publish *planning-scene-publisher* scene-msg)
+      (roslisp:ros-info
+       (moveit)
+       "Setting robot planning state."))))
 
 (defun move-link-pose (link-name planning-group pose-stamped
                        &key allowed-collision-objects
