@@ -57,6 +57,7 @@
 
 ;; Specialized failure-conditions
 (define-condition no-collision-shapes-defined () ())
+(define-condition pose-not-transformable-into-link () ())
 
 (defvar *known-failures* nil
   "List of known failures and their respective error code as returned
