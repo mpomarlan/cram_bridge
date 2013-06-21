@@ -52,6 +52,9 @@
    add-collision-object
    remove-collision-object
    clear-collision-objects
+   joint-states
+   copy-physical-joint-states
+   set-planning-robot-state
    ;; Conditions
    moveit-failure
    planning-failed
