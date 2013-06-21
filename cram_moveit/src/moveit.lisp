@@ -276,19 +276,25 @@
 (defun clear-collision-objects ()
   (remove-collision-object "all"))
 
-(defun attach-collision-object-to-link (name link
+(defun attach-collision-object-to-link (name target-link current-pose-stamped
                                         &key
                                           touch-links
                                           primitive-shapes
                                           mesh-shapes
-                                          plane-shapes
-                                          pose-offset (tf:make-identity-pose)
-                                          stamp (roslisp:ros-time))
-  (let* ((obj-msg-plain (create-collision-object-message
-                         name (tf:pose->pose-stamped
-                               link
-                               stamp
-                               pose-offset)
+                                          plane-shapes)
+  (unless (tf:wait-for-transform
+           *tf*
+           :timeout 5.0
+           :time (tf:stamp current-pose-stamped)
+           :source-frame (tf:frame-id current-pose-stamped)
+           :target-frame target-link)
+    (cpl:fail 'pose-not-transformable-into-link))
+  (let* ((pose-in-link (tf:transform-pose
+                        *tf*
+                        :pose current-pose-stamped
+                        :target-frame target-link))
+         (obj-msg-plain (create-collision-object-message
+                         name pose-in-link
                          :primitive-shapes primitive-shapes
                          :mesh-shapes mesh-shapes
                          :plane-shapes plane-shapes))
@@ -299,7 +305,7 @@
                               :remove)))
          (attach-msg (roslisp:make-msg
                       "moveit_msgs/AttachedCollisionObject"
-                      link_name link
+                      link_name target-link
                       object (roslisp:modify-message-copy
                               obj-msg-plain
                               operation (roslisp-msg-protocol:symbol-code
@@ -308,7 +314,7 @@
                               id name)
                       touch_links (concatenate
                                    'vector
-                                   (list link) touch-links)
+                                   (list target-link) touch-links)
                       weight 1.0))
          (world-msg (roslisp:make-msg
                      "moveit_msgs/PlanningSceneWorld"
@@ -321,4 +327,52 @@
     (prog1 (roslisp:publish *planning-scene-publisher* scene-msg)
       (roslisp:ros-info
        (moveit)
-       "Attached collision object `~a' to link `~a'." name link))))
+       "Attached collision object `~a' to link `~a'." name target-link))))
+
+(defun detach-collision-object-from-link (name target-link current-pose-stamped
+                                          &key
+                                            primitive-shapes
+                                            mesh-shapes
+                                            plane-shapes)
+  (unless (tf:wait-for-transform
+           *tf*
+           :timeout 5.0
+           :time (tf:stamp current-pose-stamped)
+           :source-frame (tf:frame-id current-pose-stamped)
+           :target-frame target-link)
+    (cpl:fail 'pose-not-transformable-into-link))
+  (let* ((pose-in-link (tf:transform-pose
+                        *tf*
+                        :pose current-pose-stamped
+                        :target-frame target-link))
+         (obj-msg-plain (create-collision-object-message
+                         name pose-in-link
+                         :primitive-shapes primitive-shapes
+                         :mesh-shapes mesh-shapes
+                         :plane-shapes plane-shapes))
+         (obj-msg (roslisp:modify-message-copy
+                   obj-msg-plain
+                   operation (roslisp-msg-protocol:symbol-code
+                              'moveit_msgs-msg:collisionobject
+                              :add)))
+         (attach-msg (roslisp:make-msg
+                      "moveit_msgs/AttachedCollisionObject"
+                      object (roslisp:modify-message-copy
+                              obj-msg-plain
+                              operation (roslisp-msg-protocol:symbol-code
+                                         'moveit_msgs-msg:collisionobject
+                                         :remove)
+                              id name)))
+         (world-msg (roslisp:make-msg
+                     "moveit_msgs/PlanningSceneWorld"
+                     collision_objects (vector obj-msg)))
+         (scene-msg (roslisp:make-msg
+                     "moveit_msgs/PlanningScene"
+                     world world-msg
+                     (attached_collision_objects robot_state) (vector attach-msg)
+                     is_diff t)))
+    (prog1 (roslisp:publish *planning-scene-publisher* scene-msg)
+      (roslisp:ros-info
+       (moveit)
+       "Detaching collision object `~a' from link `~a'."
+       name (tf:frame-id current-pose-stamped)))))
