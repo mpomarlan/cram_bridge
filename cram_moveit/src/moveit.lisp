@@ -159,14 +159,14 @@
 
 (defun move-link-pose (link-name planning-group pose-stamped
                        &key allowed-collision-objects
-                         plan-only)
+                         plan-only touch-links
+                         default-collision-entries)
   "Calls the MoveIt! MoveGroup action. The link identified by
   `link-name' is tried to be positioned in the pose given by
   `pose-stamped'. Returns `T' on success and `nil' on failure, in
   which case a failure condition is signalled, based on the error code
   returned by the MoveIt! service (as defined in
   moveit_msgs/MoveItErrorCodes)."
-  (declare (ignore allowed-collision-objects)) ;; Implement this.
   ;; NOTE(winkler): Since MoveIt! crashes once it receives a frame-id
   ;; which includes the "/" character at the beginning, we change the
   ;; frame-id here just in case.
@@ -177,66 +177,102 @@
                                (t str)))
                        (tf:stamp pose-stamped)
                        pose-stamped)))
-    (let ((mpreq (make-message
-                  "moveit_msgs/MotionPlanRequest"
-                  :group_name planning-group
-                  :num_planning_attempts 1
-                  :allowed_planning_time 5.0
-                  :goal_constraints
-                  (vector
-                   (make-message
-                    "moveit_msgs/Constraints"
-                    :position_constraints
-                    (vector
-                     (make-message
-                      "moveit_msgs/PositionConstraint"
-                      :weight 1.0
-                      :link_name link-name
-                      :header
+    (let* ((mpreq (make-message
+                   "moveit_msgs/MotionPlanRequest"
+                   :group_name planning-group
+                   :num_planning_attempts 5
+                   :allowed_planning_time 5.0
+                   :goal_constraints
+                   (vector
+                    (make-message
+                     "moveit_msgs/Constraints"
+                     :position_constraints
+                     (vector
                       (make-message
-                       "std_msgs/Header"
-                       :frame_id (tf:frame-id pose-stamped)
-                       :stamp (tf:stamp pose-stamped))
-                      :constraint_region
+                       "moveit_msgs/PositionConstraint"
+                       :weight 1.0
+                       :link_name link-name
+                       :header
+                       (make-message
+                        "std_msgs/Header"
+                        :frame_id (tf:frame-id pose-stamped)
+                        :stamp (tf:stamp pose-stamped))
+                       :constraint_region
+                       (make-message
+                        "moveit_msgs/BoundingVolume"
+                        :primitives
+                        (vector
+                         (make-message
+                          "shape_msgs/SolidPrimitive"
+                          :type (roslisp-msg-protocol:symbol-code
+                                 'shape_msgs-msg:solidprimitive :box)
+                          :dimensions (vector 0.01 0.01 0.01)))
+                        :primitive_poses
+                        (vector
+                         (tf:pose->msg pose-stamped)))))
+                     :orientation_constraints
+                     (vector
                       (make-message
-                       "moveit_msgs/BoundingVolume"
-                       :primitives
-                       (vector
-                        (make-message
-                         "shape_msgs/SolidPrimitive"
-                         :type (roslisp-msg-protocol:symbol-code
-                                'shape_msgs-msg:solidprimitive :box)
-                         :dimensions (vector 0.001 0.001 0.001)))
-                       :primitive_poses
-                       (vector
-                        (tf:pose->msg pose-stamped)))))
-                    :orientation_constraints
-                    (vector
-                     (make-message
-                      "moveit_msgs/OrientationConstraint"
-                      :weight 1.0
-                      :link_name link-name
-                      :header
-                      (make-message
-                       "std_msgs/Header"
-                       :frame_id (tf:frame-id pose-stamped)
-                       :stamp (tf:stamp pose-stamped))
-                      :orientation
-                      (make-message
-                       "geometry_msgs/Quaternion"
-                       :x (tf:x (tf:orientation pose-stamped))
-                       :y (tf:y (tf:orientation pose-stamped))
-                       :z (tf:z (tf:orientation pose-stamped))
-                       :w (tf:w (tf:orientation pose-stamped)))
-                      :absolute_x_axis_tolerance 0.001
-                      :absolute_y_axis_tolerance 0.001
-                      :absolute_z_axis_tolerance 0.001))))))
-          (options (make-message
-                    "moveit_msgs/PlanningOptions"
-                    :planning_scene_diff
-                    (make-message "moveit_msgs/PlanningScene"
-                                  :is_diff t)
-                    :plan_only plan-only)))
+                       "moveit_msgs/OrientationConstraint"
+                       :weight 1.0
+                       :link_name link-name
+                       :header
+                       (make-message
+                        "std_msgs/Header"
+                        :frame_id (tf:frame-id pose-stamped)
+                        :stamp (tf:stamp pose-stamped))
+                       :orientation
+                       (make-message
+                        "geometry_msgs/Quaternion"
+                        :x (tf:x (tf:orientation pose-stamped))
+                        :y (tf:y (tf:orientation pose-stamped))
+                        :z (tf:z (tf:orientation pose-stamped))
+                        :w (tf:w (tf:orientation pose-stamped)))
+                       :absolute_x_axis_tolerance 0.001
+                       :absolute_y_axis_tolerance 0.001
+                       :absolute_z_axis_tolerance 0.001))))))
+           (touch-links-concat (concatenate 'vector allowed-collision-objects
+                                            touch-links (vector "pancake-mix")))
+           (options
+             (make-message
+              "moveit_msgs/PlanningOptions"
+              :planning_scene_diff
+              (make-message
+               "moveit_msgs/PlanningScene"
+               :is_diff t
+               :allowed_collision_matrix
+               (make-message
+                "moveit_msgs/AllowedCollisionMatrix"
+                :entry_names touch-links-concat
+                :entry_values
+                (let ((vec1 allowed-collision-objects)
+                      (vec2 touch-links))
+                  (flet ((in-vec (item vector)
+                           (not (eql (position item vector :test #'string=)
+                                     nil))))
+                    (map 'vector
+                         (lambda (x1)
+                           (make-message
+                            "moveit_msgs/AllowedCollisionEntry"
+                            :enabled
+                            (map 'vector
+                                 (lambda (x2)
+                                   (or (string= x1 x2)
+                                       (not (or (and (in-vec x1 vec1)
+                                                     (in-vec x2 vec1))
+                                                (and (in-vec x1 vec2)
+                                                     (in-vec x2 vec2))))))
+                                 touch-links-concat)))
+                         touch-links-concat)))
+                :default_entry_names (map
+                                      'vector (lambda (x)
+                                                (car x))
+                                      default-collision-entries)
+                :default_entry_values (map
+                                       'vector (lambda (x)
+                                                 (cdr x))
+                                       default-collision-entries)))
+              :plan_only plan-only)))
       (cond ((actionlib:wait-for-server *move-group-action-client* 5.0)
              (cpl:with-failure-handling
                  ((actionlib:server-lost (f)
@@ -260,7 +296,8 @@
             (t (error 'actionlib:server-lost))))))
 
 (defun plan-link-movement (link-name planning-group pose-stamped
-                                     &key allowed-collision-objects)
+                           &key allowed-collision-objects
+                             touch-links default-collision-entries)
   (cpl:with-failure-handling
       ((moveit:no-ik-solution (f)
          (declare (ignore f))
@@ -285,7 +322,9 @@
      planning-group pose-stamped
      :allowed-collision-objects
      allowed-collision-objects
-     :plan-only t)))
+     :plan-only t
+     :touch-links touch-links
+     :default-collision-entries default-collision-entries)))
 
 (defun pose-distance (link-frame pose-stamped)
   (tf:wait-for-transform
