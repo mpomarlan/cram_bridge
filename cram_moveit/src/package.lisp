@@ -55,6 +55,9 @@
    joint-states
    copy-physical-joint-states
    set-planning-robot-state
+   register-collision-object
+   unregister-collision-object
+   named-collision-object
    ;; Conditions
    moveit-failure
    planning-failed
