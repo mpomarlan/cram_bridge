@@ -58,6 +58,8 @@
    register-collision-object
    unregister-collision-object
    named-collision-object
+   attach-collision-object-to-link
+   detach-collision-object-from-link
    ;; Conditions
    moveit-failure
    planning-failed

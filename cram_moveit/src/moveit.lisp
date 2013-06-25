@@ -47,10 +47,6 @@
   (setf *move-group-action-client*
         (actionlib:make-action-client
          "move_group" "moveit_msgs/MoveGroupAction"))
-  (setf *collision-object-publisher*
-        (roslisp:advertise
-         "/collision_object"
-         "moveit_msgs/CollisionObject" :latch t))
   (setf *planning-scene-publisher*
         (roslisp:advertise
          "/planning_scene"
