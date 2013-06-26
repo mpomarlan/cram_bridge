@@ -228,7 +228,7 @@
                        :absolute_y_axis_tolerance 0.001
                        :absolute_z_axis_tolerance 0.001))))))
            (touch-links-concat (concatenate 'vector allowed-collision-objects
-                                            touch-links (vector "pancake-mix")))
+                                            touch-links))
            (options
              (make-message
               "moveit_msgs/PlanningOptions"
