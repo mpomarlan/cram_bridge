@@ -31,6 +31,9 @@
   ((name :initform nil
          :initarg :name
          :reader :name)
+   (pose :initform nil
+         :initarg :pose
+         :reader :pose)
    (primitive-shapes :initform nil
                      :initarg :primitive-shapes
                      :reader :primitive-shapes)
@@ -50,64 +53,78 @@ bridge.")
                                     primitive-shapes
                                     mesh-shapes
                                     plane-shapes)
-  (unless (named-collision-object name)
-    (push
-     (make-instance 'collision-object
-                    :name name
-                    :primitive-shapes primitive-shapes
-                    :mesh-shapes mesh-shapes
-                    :plane-shapes plane-shapes)
-     *known-collision-objects*)))
+  (let ((name (string name)))
+    (unless (named-collision-object name)
+      (push
+       (make-instance 'collision-object
+                      :name name
+                      :primitive-shapes primitive-shapes
+                      :mesh-shapes mesh-shapes
+                      :plane-shapes plane-shapes)
+       *known-collision-objects*))))
 
 (defun unregister-collision-object (name)
-  (setf *known-collision-objects*
-        (remove name *known-collision-objects*
-                :test (lambda (name object)
-                        (equal name (slot-value object 'name))))))
+  (let ((name (string name)))
+    (setf *known-collision-objects*
+          (remove name *known-collision-objects*
+                  :test (lambda (name object)
+                          (equal name (slot-value object 'name)))))))
 
 (defun named-collision-object (name)
-  (let ((position (position name *known-collision-objects*
-                            :test (lambda (name object)
-                                    (equal name (slot-value object 'name))))))
+  (let* ((name (string name))
+         (position (position name *known-collision-objects*
+                             :test (lambda (name object)
+                                     (equal name (slot-value object 'name))))))
     (when position
       (nth position *known-collision-objects*))))
+
+(defun collision-object-pose (name)
+  (let* ((name (string name))
+         (col-obj (named-collision-object name)))
+    (when col-obj
+      (slot-value col-obj 'pose))))
 
 (defun create-collision-object-message (name pose-stamped 
                                         &key
                                           primitive-shapes
                                           mesh-shapes
                                           plane-shapes)
-  (unless (or primitive-shapes mesh-shapes plane-shapes)
-    (cpl:fail 'no-collision-shapes-defined))
-  (flet* ((resolve-pose (pose-msg)
-            (or pose-msg (tf:pose->msg pose-stamped)))
-          (pose-present (object)
-            (and (listp object) (cdr object)))
-          (resolve-object (obj)
-            (or (and (listp obj) (car obj)) obj))
-          (prepare-shapes (shapes)
-            (map 'vector 'identity (mapcar #'resolve-object shapes)))
-          (prepare-poses (poses)
-            (map 'vector #'resolve-pose (mapcar #'pose-present poses))))
-    (let* ((obj-msg (roslisp:make-msg
-                     "moveit_msgs/CollisionObject"
-                     (stamp header) (tf:stamp pose-stamped)
-                     (frame_id header) (tf:frame-id pose-stamped)
-                     id name
-                     operation (roslisp-msg-protocol:symbol-code
-                                'moveit_msgs-msg:collisionobject
-                                :add)
-                     primitives (prepare-shapes primitive-shapes)
-                     primitive_poses (prepare-poses primitive-shapes)
-                     meshes (prepare-shapes mesh-shapes)
-                     mesh_poses (prepare-poses mesh-shapes)
-                     planes (prepare-shapes plane-shapes)
-                     plane_poses (prepare-poses plane-shapes))))
-      obj-msg)))
+  (let ((name (string name)))
+    (unless (or primitive-shapes mesh-shapes plane-shapes)
+      (cpl:fail 'no-collision-shapes-defined))
+    (flet* ((resolve-pose (pose-msg)
+              (or pose-msg (tf:pose->msg pose-stamped)))
+            (pose-present (object)
+              (and (listp object) (cdr object)))
+            (resolve-object (obj)
+              (or (and (listp obj) (car obj)) obj))
+            (prepare-shapes (shapes)
+              (map 'vector 'identity (mapcar #'resolve-object shapes)))
+            (prepare-poses (poses)
+              (map 'vector #'resolve-pose (mapcar #'pose-present poses))))
+      (let* ((obj-msg (roslisp:make-msg
+                       "moveit_msgs/CollisionObject"
+                       (stamp header) (tf:stamp pose-stamped)
+                       (frame_id header) (tf:frame-id pose-stamped)
+                       id name
+                       operation (roslisp-msg-protocol:symbol-code
+                                  'moveit_msgs-msg:collisionobject
+                                  :add)
+                       primitives (prepare-shapes primitive-shapes)
+                       primitive_poses (prepare-poses primitive-shapes)
+                       meshes (prepare-shapes mesh-shapes)
+                       mesh_poses (prepare-poses mesh-shapes)
+                       planes (prepare-shapes plane-shapes)
+                       plane_poses (prepare-poses plane-shapes))))
+        obj-msg))))
 
-(defun add-collision-object (name pose-stamped)
-  (let ((col-obj (named-collision-object name)))
-    (when col-obj
+(defun add-collision-object (name &optional pose-stamped)
+  (let* ((name (string name))
+         (col-obj (named-collision-object name))
+         (pose-stamped (or pose-stamped
+                           (collision-object-pose name))))
+    (when (and col-obj pose-stamped)
+      (setf (slot-value col-obj 'pose) pose-stamped)
       (let ((primitive-shapes (slot-value col-obj 'primitive-shapes))
             (mesh-shapes (slot-value col-obj 'mesh-shapes))
             (plane-shapes (slot-value col-obj 'plane-shapes)))
@@ -133,7 +150,8 @@ bridge.")
              "Added collision object `~a' to environment server." name)))))))
 
 (defun remove-collision-object (name)
-  (let ((col-obj (named-collision-object name)))
+  (let* ((name (string name))
+         (col-obj (named-collision-object name)))
     (when col-obj
       (let* ((obj-msg (roslisp:make-msg
                        "moveit_msgs/CollisionObject"
@@ -157,23 +175,29 @@ bridge.")
   (loop for col-obj in *known-collision-objects*
         do (remove-collision-object (slot-value col-obj 'name))))
 
-(defun attach-collision-object-to-link (name target-link current-pose-stamped
-                                        &key touch-links)
-  (let ((col-obj (named-collision-object name)))
-    (when col-obj
+(defun attach-collision-object-to-link (name target-link
+                                        &key current-pose-stamped touch-links)
+  (let* ((name (string name))
+         (col-obj (named-collision-object name))
+         (current-pose-stamped (or current-pose-stamped
+                                   (collision-object-pose name))))
+    (when (and col-obj current-pose-stamped)
       (let ((primitive-shapes (slot-value col-obj 'primitive-shapes))
             (mesh-shapes (slot-value col-obj 'mesh-shapes))
-            (plane-shapes (slot-value col-obj 'plane-shapes)))
+            (plane-shapes (slot-value col-obj 'plane-shapes))
+            (time (roslisp:ros-time)))
         (unless (tf:wait-for-transform
                  *tf*
                  :timeout 5.0
-                 :time (tf:stamp current-pose-stamped)
+                 :time time
                  :source-frame (tf:frame-id current-pose-stamped)
                  :target-frame target-link)
           (cpl:fail 'pose-not-transformable-into-link))
         (let* ((pose-in-link (tf:transform-pose
                               *tf*
-                              :pose current-pose-stamped
+                              :pose (tf:copy-pose-stamped
+                                     current-pose-stamped
+                                     :stamp time)
                               :target-frame target-link))
                (obj-msg-plain (create-collision-object-message
                                name pose-in-link
@@ -213,22 +237,29 @@ bridge.")
              "Attached collision object `~a' to link `~a'."
              name target-link)))))))
 
-(defun detach-collision-object-from-link (name target-link current-pose-stamped)
-  (let ((col-obj (named-collision-object name)))
-    (when col-obj
+(defun detach-collision-object-from-link (name target-link
+                                          &key current-pose-stamped)
+  (let* ((name (string name))
+         (col-obj (named-collision-object name))
+         (current-pose-stamped (or current-pose-stamped
+                                   (collision-object-pose name))))
+    (when (and col-obj current-pose-stamped)
       (let ((primitive-shapes (slot-value col-obj 'primitive-shapes))
             (mesh-shapes (slot-value col-obj 'mesh-shapes))
-            (plane-shapes (slot-value col-obj 'plane-shapes)))
+            (plane-shapes (slot-value col-obj 'plane-shapes))
+            (time (roslisp:ros-time)))
         (unless (tf:wait-for-transform
                  *tf*
                  :timeout 5.0
-                 :time (tf:stamp current-pose-stamped)
+                 :time time
                  :source-frame (tf:frame-id current-pose-stamped)
                  :target-frame target-link)
           (cpl:fail 'pose-not-transformable-into-link))
         (let* ((pose-in-link (tf:transform-pose
                               *tf*
-                              :pose current-pose-stamped
+                              :pose (tf:copy-pose-stamped
+                                     current-pose-stamped
+                                     :stamp time)
                               :target-frame target-link))
                (obj-msg-plain (create-collision-object-message
                                name pose-in-link
