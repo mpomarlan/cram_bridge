@@ -119,7 +119,11 @@
 (defun get-constraints-finished-fluent (fccl-interface)
   "Returns the fluent which signals finished motion execution."
   ;; TODO(@Georg): implement me!
-  (declare (ignore fccl-interface)))
+  (declare (ignore fccl-interface))
+  (error
+     'simple-error
+     :format-control "Get-constraints-finished-fluent in packge cram_fccl has not yet been implemented."
+     :format-argument nil))
 
 (defun get-constraints-state-fluent (fccl-interface)
   "Returns the fluent holding the state feedback from the controller."
