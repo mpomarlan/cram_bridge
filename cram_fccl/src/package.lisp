@@ -34,4 +34,8 @@
         #:common-lisp
         #:cram-feature-constraints)
   (:export feature-constraints->config-msg
-           feature-constraints->command-msg))
+           feature-constraints->command-msg
+           init-cram-fccl check-fccl-initialized
+           add-fccl-controller-interface get-fccl-controller-interface
+           send-constraints-config send-constraints-command execute-constraints-motion
+           get-constraints-finished-fluent get-constraints-state-fluent))

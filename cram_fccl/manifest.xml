@@ -13,4 +13,5 @@
   <depend package="cram_feature_constraints"/>
   <depend package="constraint_msgs"/>
   <depend package="geometry_msgs"/>
+  <depend package="cram_language"/>
 </package>

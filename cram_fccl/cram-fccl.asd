@@ -35,9 +35,11 @@
   :depends-on (roslisp
                cram-feature-constraints
                constraint_msgs-msg
-               geometry_msgs-msg)
+               geometry_msgs-msg
+               cram-language)
   :components
   ((:module "src"
     :components
     ((:file "package")
-     (:file "conversions" :depends-on ("package"))))))
+     (:file "conversions" :depends-on ("package"))
+     (:file "publisher-interface" :depends-on ("package" "conversions"))))))
