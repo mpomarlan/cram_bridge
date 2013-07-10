@@ -58,17 +58,20 @@
    tool_feature (feature->msg (tool-feature constraint))
    world_feature (feature->msg (world-feature constraint))))
 
-(defun feature-constraints->config-msg (constraints)
-  (declare (type list constraints))
+(defun feature-constraints->config-msg (constraints controller-id)
+  (declare (type list constraints)
+           (type string controller-id))
   (let ((constraint-msg-vector
            (map 'vector #'identity
                 (map 'list #'feature-constraint->single-config-msg constraints))))
     (roslisp:make-msg
      "constraint_msgs/constraintconfig"
+     :controller_id controller-id
      :constraints constraint-msg-vector)))
 
-(defun feature-constraints->command-msg (constraints)
-  (declare (type list constraints))
+(defun feature-constraints->command-msg (constraints controller-id)
+  (declare (type list constraints)
+           (type string controller-id))
   (let ((min_vels
           (map 'list #'minimum-velocity constraints))
         (max_vels
@@ -81,6 +84,7 @@
           (map 'list #'upper-boundary constraints)))
     (roslisp:make-msg
      "constraint_msgs/constraintcommand"
+     controller_id controller-id
      pos_lo (map 'vector #'identity
                  lower)
      pos_hi (map 'vector #'identity

@@ -34,7 +34,8 @@
   ((command-pub :reader command-pub :initarg :command-pub)
    (config-pub :reader config-pub :initarg :config-pub)
    (state-sub :reader state-sub :initarg :state-sub)
-   (state-fluent-queue :reader state-fluent-queue :initarg :state-fluent-queue)))
+   (state-fluent-queue :reader state-fluent-queue :initarg :state-fluent-queue)
+   (controller-id :reader controller-id :initarg :controller-id)))
 
 (defun init-cram-fccl ()
   "Init function for fccl-controller-interfaces. Needs to be called before calling any of the other functionality."
@@ -69,7 +70,8 @@
                                          "constraint_msgs/ConstraintState" 
                                          #'constraints-state-callback)
            :state-fluent-queue (cram-language:make-fluent 
-                                :name controller-name :allow-tracing nil))))
+                                :name controller-name :allow-tracing nil)
+           :controller-id controller-name)))
     (setf (gethash controller-name *fccl-controllers*) new-interface)
     new-interface))
 
@@ -88,7 +90,8 @@
            (type fccl-publisher-interface fccl-interface))
   (check-fccl-initialized)
   (roslisp:publish (config-pub fccl-interface)
-                   (feature-constraints->config-msg constraints)))
+                   (feature-constraints->config-msg constraints
+                                                    (controller-id fccl-interface))))
 
 (defun send-constraints-command (constraints fccl-interface)
   "Takes a list of 'constraints' and sends the resulting command-msg via the given 'fccl-interface'"
@@ -96,7 +99,8 @@
            (type fccl-publisher-interface fccl-interface))
   (check-fccl-initialized)
   (roslisp:publish (command-pub fccl-interface)
-                   (feature-constraints->command-msg constraints)))
+                   (feature-constraints->command-msg constraints
+                                                     (controller-id fccl-interface))))
 
 (defun execute-constraints-motion (constraints fccl-interface)
   "Takes a set of 'constraints' and configures and starts a feature constraints controller using its 'fccl-interface'."
@@ -114,6 +118,8 @@
     (let ((fccl-interface
             (get-fccl-controller-interface name)))
       ;; propagate the state-message into the fluent of our fccl-interface
+      ;; TODO(Georg): create a class to hold this state information in cram_feature_constraints.
+      ;;              this will allow abstracting away constraint_msgs for depending packages...
       (push controller-state-msg (cram-language:value (state-fluent-queue fccl-interface))))))
 
 (defun get-constraints-finished-fluent (fccl-interface)
