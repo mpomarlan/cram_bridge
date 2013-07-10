@@ -43,11 +43,19 @@
 
 (defun check-fccl-initialized ()
   "Checks whether init-cram-fccl has already been called. If not, an error will be thrown."
-  (unless *fccl-controllers*
+  (unless (fccl-initialized-p)
     (error
      'simple-error
      :format-control "Called cram-fccl functionality without prior calling of init-cram-fccl."
      :format-argument nil)))
+
+(defun fccl-initialized-p ()
+  "Returns T if interface has already been intialized, else NIL."
+  (when *fccl-controllers* T))
+
+(defun ensure-fccl-initialized ()
+  "Checks whether the interface has been initialized. If not init is done, else nothing happens."
+  (unless (fccl-initialized-p) (init-cram-fccl)))
 
 (defun add-fccl-controller-interface (config-topic command-topic state-topic controller-name)
   "Create a new fccl-interface with the given information. The interface will be returned and saved internally. 'controller-name' shall save as unique identifier of the interface."
@@ -62,7 +70,7 @@
           (make-instance
            'fccl-publisher-interface
            :command-pub (roslisp:advertise command-topic 
-                                           "constraints_msgs/ConstraintCommand")
+                                           "constraint_msgs/ConstraintCommand")
            :config-pub (roslisp:advertise config-topic 
                                           "constraint_msgs/ConstraintConfig" 
                                           :latch t)
@@ -120,16 +128,7 @@
       ;; propagate the state-message into the fluent of our fccl-interface
       ;; TODO(Georg): create a class to hold this state information in cram_feature_constraints.
       ;;              this will allow abstracting away constraint_msgs for depending packages...
-      (push controller-state-msg (cram-language:value (state-fluent-queue fccl-interface))))))
-
-(defun get-constraints-finished-fluent (fccl-interface)
-  "Returns the fluent which signals finished motion execution."
-  ;; TODO(@Georg): implement me!
-  (declare (ignore fccl-interface))
-  (error
-     'simple-error
-     :format-control "Get-constraints-finished-fluent in packge cram_fccl has not yet been implemented."
-     :format-argument nil))
+      (setf (cram-language:value (state-fluent-queue fccl-interface)) controller-state-msg))))
 
 (defun get-constraints-state-fluent (fccl-interface)
   "Returns the fluent holding the state feedback from the controller."
