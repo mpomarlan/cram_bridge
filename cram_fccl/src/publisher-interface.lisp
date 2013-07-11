@@ -35,7 +35,8 @@
    (config-pub :reader config-pub :initarg :config-pub)
    (state-sub :reader state-sub :initarg :state-sub)
    (state-fluent-queue :reader state-fluent-queue :initarg :state-fluent-queue)
-   (controller-id :reader controller-id :initarg :controller-id)))
+   (controller-id :reader controller-id :initarg :controller-id)
+   (movement-id :reader movement-id :initarg :movement-id :initform -1)))
 
 (defun init-cram-fccl ()
   "Init function for fccl-controller-interfaces. Needs to be called before calling any of the other functionality."
@@ -121,9 +122,8 @@
   "Takes a set of 'constraints' and configures and starts a feature constraints controller using its 'fccl-interface'."
   (declare (type list constraints)
            (type fccl-publisher-interface fccl-interface))
-  (format t "sending config-msg...~%")
+  (reinitialize-instance fccl-interface :movement-id (sxhash constraints))
   (send-constraints-config constraints fccl-interface)
-  (format t "sending command-msg~%")
   (send-constraints-command constraints fccl-interface))
 
 (defun constraints-state-callback (controller-state-msg)

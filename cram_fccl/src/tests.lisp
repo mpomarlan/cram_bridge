@@ -28,30 +28,29 @@
 
 (in-package :cram-fccl)
 
-(defun fccl-controller-finished-p (msg)
+(defun fccl-controller-finished-p (msg current-movement-id)
   "Checks whether all weight entries in 'msg' are smaller than 1.0. If yes T is return, else nil."
   (when msg
-    (roslisp:with-fields (weights) msg
-      ;; calculate maximum weight over all constraints
-      (let ((max-weight (loop for i from 0 below (length weights)
-                              for weight = (elt weights i)
-                              maximizing weight into max-weight
-                              finally (return max-weight))))
-        ;; return T if max-weight is greater then 1.0, else 'when' returns nil.
-        (when (< max-weight 1.0) t)))))
+    (roslisp:with-fields (weights movement_id) msg
+      (when (eql movement_id current-movement-id)
+        ;; calculate maximum weight over all constraints
+        (let ((max-weight (loop for i from 0 below (length weights)
+                                for weight = (elt weights i)
+                                maximizing weight into max-weight
+                                finally (return max-weight))))
+          ;; return T if max-weight is greater then 1.0, else 'when' returns nil.
+          (when (< max-weight 1.0) t))))))
 
 (defun fccl-pr2-pouring-test ()
   ;; make sure the machinerie of the fccl-interface is initialized
   (ensure-fccl-initialized)
   ;; get a fccl-interface for the left arm of the robot
-  (format t "fccl-interface intialized~%")
   (let ((pr2-left-arm-interface
           (add-fccl-controller-interface
            "/left_arm_feature_controller/constraint_config"
            "/left_arm_feature_controller/constraint_command"
            "/left_arm_feature_controller/constraint_state"
            "pr2_left_arm_feature_controller")))
-    (format t "interface to left arm of pr2 started~%")
     ;; setup the movement descriptions
     (let ((bottle-top (cram-feature-constraints:make-plane-feature
                        "bottle-cover-top" "/pancake_bottle" 
@@ -90,21 +89,17 @@
                                         top-height-constraint
                                         bottle-pointing-at-oven-center
                                         bottle-tilting-down)))
-          (let ((motion-phases (list constraints-phase1 constraints-phase2)))
-            (format t "motion phases created~%")
+          (let ((motion-phases (list constraints-phase1 constraints-phase2 constraints-phase1)))
             ;; greedily execute the phases one at a time
             (loop for phase in motion-phases 
                   do (progn
                        ;; start motion execution
-                       (format t "start executing phase ~a~%" phase)
                        (execute-constraints-motion phase pr2-left-arm-interface)
-                       (format t "finished sending execution~%")
                        ;; wait for fluent to finish
-                       (format t "sleeping on fluent...~%")
                        (cram-language:wait-for 
                         (cram-language:fl-funcall 
                          #'fccl-controller-finished-p 
-                         (get-constraints-state-fluent pr2-left-arm-interface)))
-                       (format t "fluent woke us up.~%~%")))
+                         (get-constraints-state-fluent pr2-left-arm-interface) 
+                         (movement-id pr2-left-arm-interface)))))
             (remove-fccl-controller-interface pr2-left-arm-interface)))))))
       

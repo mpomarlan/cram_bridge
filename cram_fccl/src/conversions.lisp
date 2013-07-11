@@ -66,6 +66,7 @@
     (roslisp:make-msg
      "constraint_msgs/constraintconfig"
      :controller_id controller-id
+     :movement_id (sxhash constraints)
      :constraints constraint-msg-vector)))
 
 (defun feature-constraints->command-msg (constraints controller-id)
@@ -84,6 +85,7 @@
     (roslisp:make-msg
      "constraint_msgs/constraintcommand"
      controller_id controller-id
+     movement_id (sxhash constraints)
      pos_lo (map 'vector #'identity
                  lower)
      pos_hi (map 'vector #'identity
