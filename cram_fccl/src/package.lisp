@@ -35,6 +35,8 @@
   (:export feature-constraints->config-msg
            feature-constraints->command-msg
            ensure-fccl-initialized
-           add-fccl-controller-interface get-fccl-controller-interface
+           add-fccl-controller-interface 
+           get-fccl-controller-interface
+           remove-fccl-controller-interface
            execute-constraints-motion
            get-constraints-state-fluent))

@@ -83,6 +83,14 @@
     (setf (gethash controller-name *fccl-controllers*) new-interface)
     new-interface))
 
+(defun remove-fccl-controller-interface (fccl-interface)
+  "Terminates all ROS-communcation associated with 'fccl-interface' and removes 'fccl-interface' from the active list of fccl-interfaces."
+  (declare (type fccl-publisher-interface))
+  (unadvertise (roslisp::pub-topic-type (command-pub fccl-interface)))
+  (unadvertise (roslisp::pub-topic-type (config-pub fccl-interface)))
+  (unsubscribe (state-sub fccl-interface))
+  (remhash (controller-id fccl-interface) *fccl-controllers*))
+
 (defun get-fccl-controller-interface (controller-name)
   "Retrieves fccl-interface associated with 'controller-name'."
   (declare (type string controller-name))
@@ -115,16 +123,18 @@
   (declare (type list constraints)
            (type fccl-publisher-interface fccl-interface))
   (check-fccl-initialized)
+  (format t "sending config-msg...~%")
   (send-constraints-config constraints fccl-interface)
+  (format t "sending command-msg~%")
   (send-constraints-command constraints fccl-interface))
 
 (defun constraints-state-callback (controller-state-msg)
   "Generic state callback function for fccl-controllers. It tries to identify the corresponding fccl-interface and pushes the state message into the corresponding fluent of the interface."
   (check-fccl-initialized)
   ;; try identifying the fccl-interface by the name provided from the controller
-  (roslisp:with-fields (name) controller-state-msg
+  (roslisp:with-fields (controller_id) controller-state-msg
     (let ((fccl-interface
-            (get-fccl-controller-interface name)))
+            (get-fccl-controller-interface controller_id)))
       ;; propagate the state-message into the fluent of our fccl-interface
       ;; TODO(Georg): create a class to hold this state information in cram_feature_constraints.
       ;;              this will allow abstracting away constraint_msgs for depending packages...
