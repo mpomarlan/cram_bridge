@@ -60,7 +60,7 @@
 (defun add-fccl-controller-interface (config-topic command-topic state-topic controller-name)
   "Create a new fccl-interface with the given information. The interface will be returned and saved internally. 'controller-name' shall save as unique identifier of the interface."
   (declare (type string config-topic command-topic state-topic controller-name))
-  (check-fccl-initialized)
+  (ensure-fccl-initialized)
   (when (roslisp-utils:hash-table-has-key *fccl-controllers* controller-name)
     (error
      'simple-error
@@ -86,6 +86,7 @@
 (defun remove-fccl-controller-interface (fccl-interface)
   "Terminates all ROS-communcation associated with 'fccl-interface' and removes 'fccl-interface' from the active list of fccl-interfaces."
   (declare (type fccl-publisher-interface))
+  (check-fccl-initialized)
   (unadvertise (roslisp::pub-topic-type (command-pub fccl-interface)))
   (unadvertise (roslisp::pub-topic-type (config-pub fccl-interface)))
   (unsubscribe (state-sub fccl-interface))
@@ -104,7 +105,6 @@
   "Takes a list of 'constraints' and sends the resulting configuration-msg via the given 'fccl-interface'"
   (declare (type list constraints)
            (type fccl-publisher-interface fccl-interface))
-  (check-fccl-initialized)
   (roslisp:publish (config-pub fccl-interface)
                    (feature-constraints->config-msg constraints
                                                     (controller-id fccl-interface))))
@@ -113,7 +113,6 @@
   "Takes a list of 'constraints' and sends the resulting command-msg via the given 'fccl-interface'"
   (declare (type list constraints)
            (type fccl-publisher-interface fccl-interface))
-  (check-fccl-initialized)
   (roslisp:publish (command-pub fccl-interface)
                    (feature-constraints->command-msg constraints
                                                      (controller-id fccl-interface))))
@@ -122,7 +121,6 @@
   "Takes a set of 'constraints' and configures and starts a feature constraints controller using its 'fccl-interface'."
   (declare (type list constraints)
            (type fccl-publisher-interface fccl-interface))
-  (check-fccl-initialized)
   (format t "sending config-msg...~%")
   (send-constraints-config constraints fccl-interface)
   (format t "sending command-msg~%")
@@ -143,5 +141,4 @@
 (defun get-constraints-state-fluent (fccl-interface)
   "Returns the fluent holding the state feedback from the controller."
   (declare (type fccl-publisher-interface fccl-interface))
-  (check-fccl-initialized)
   (state-fluent-queue fccl-interface))
