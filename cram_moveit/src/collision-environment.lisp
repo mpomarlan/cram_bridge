@@ -48,20 +48,40 @@
   "List of collision object instances registered with the CRAM/MoveIt!
 bridge.")
 
-(defun register-collision-object (name
-                                  &key
-                                    primitive-shapes
-                                    mesh-shapes
-                                    plane-shapes)
-  (let ((name (string name)))
-    (unless (named-collision-object name)
+(defgeneric register-collision-object (object &rest rest))
+
+(defmethod register-collision-object ((object object-designator)
+                                      &key pose-stamped)
+  (let ((name (string (desig-prop-value object 'desig-props:name)))
+        (shape (ecase (desig-prop-value object 'desig-props:shape)
+                 (desig-props:box 1)))
+        (dimensions (desig-prop-value object 'desig-props:dimensions)))
+    (register-collision-object
+     name
+     :primitive-shapes (list (roslisp:make-msg
+                              "shape_msgs/SolidPrimitive"
+                              type shape
+                              dimensions dimensions))
+     :pose-stamped pose-stamped)))
+
+(defmethod register-collision-object ((name string)
+                                      &key
+                                        primitive-shapes
+                                        mesh-shapes
+                                        plane-shapes
+                                        pose-stamped)
+  (let ((name (string-upcase (string name)))
+        (obj (named-collision-object name)))
+    (unless obj
       (push
        (make-instance 'collision-object
                       :name name
                       :primitive-shapes primitive-shapes
                       :mesh-shapes mesh-shapes
                       :plane-shapes plane-shapes)
-       *known-collision-objects*))))
+       *known-collision-objects*))
+    (when (and obj pose-stamped)
+      (set-collision-object-pose name pose-stamped))))
 
 (defun unregister-collision-object (name)
   (let ((name (string name)))
@@ -71,7 +91,7 @@ bridge.")
                           (equal name (slot-value object 'name)))))))
 
 (defun named-collision-object (name)
-  (let* ((name (string name))
+  (let* ((name (string-upcase (string name)))
          (position (position name *known-collision-objects*
                              :test (lambda (name object)
                                      (equal name (slot-value object 'name))))))
@@ -79,10 +99,14 @@ bridge.")
       (nth position *known-collision-objects*))))
 
 (defun collision-object-pose (name)
-  (let* ((name (string name))
-         (col-obj (named-collision-object name)))
+  (let* ((col-obj (named-collision-object name)))
     (when col-obj
       (slot-value col-obj 'pose))))
+
+(defun set-collision-object-pose (name pose-stamped)
+  (let* ((col-obj (named-collision-object name)))
+    (when col-obj
+      (setf (slot-value col-obj 'pose) pose-stamped))))
 
 (defun create-collision-object-message (name pose-stamped 
                                         &key
@@ -231,11 +255,12 @@ bridge.")
                            (attached_collision_objects robot_state) (vector
                                                                      attach-msg)
                            is_diff t)))
-          (prog1 (roslisp:publish *planning-scene-publisher* scene-msg)
-            (roslisp:ros-info
-             (moveit)
-             "Attached collision object `~a' to link `~a'."
-             name target-link)))))))
+          (roslisp:publish *planning-scene-publisher* scene-msg)
+          (set-collision-object-pose name pose-in-link)
+          (roslisp:ros-info
+           (moveit)
+           "Attached collision object `~a' to link `~a'."
+           name target-link))))))
 
 (defun detach-collision-object-from-link (name target-link
                                           &key current-pose-stamped)
@@ -288,8 +313,9 @@ bridge.")
                            (attached_collision_objects robot_state) (vector
                                                                      attach-msg)
                            is_diff t)))
-          (prog1 (roslisp:publish *planning-scene-publisher* scene-msg)
-            (roslisp:ros-info
-             (moveit)
-             "Detaching collision object `~a' from link `~a'."
-             name (tf:frame-id current-pose-stamped))))))))
+          (roslisp:publish *planning-scene-publisher* scene-msg)
+          (set-collision-object-pose name pose-in-link)
+          (roslisp:ros-info
+           (moveit)
+           "Detaching collision object `~a' from link `~a'."
+           name (tf:frame-id current-pose-stamped)))))))
