@@ -34,9 +34,11 @@
         #:cram-feature-constraints)
   (:export feature-constraints->config-msg
            feature-constraints->command-msg
+           constraint-state-msg->feature-constraint-state
            ensure-fccl-initialized
            add-fccl-controller-interface 
            get-fccl-controller-interface
            remove-fccl-controller-interface
            execute-constraints-motion
-           get-constraints-state-fluent))
+           get-constraints-state-fluent
+           movement-id))

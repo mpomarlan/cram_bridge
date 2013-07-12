@@ -109,3 +109,8 @@
   (roslisp-msg-protocol:symbol-code
    'constraint_msgs-msg:feature
    type-symbol))
+
+(defun constraint-state-msg->feature-constraint-state (msg)
+  (when msg
+    (roslisp:with-fields (weights movement_id) msg
+      (cram-feature-constraints:make-constraint-state weights movement_id))))
