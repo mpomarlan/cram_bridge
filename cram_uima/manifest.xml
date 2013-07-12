@@ -11,7 +11,7 @@
   
   <depend package="roslisp" />
   <depend package="actionlib" />
-  <depend package="iai_msgs" />
+  <depend package="designator_integration_lisp" />
   
 </package>
 
