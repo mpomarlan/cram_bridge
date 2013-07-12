@@ -31,15 +31,14 @@
 (defvar *uima-result-subscriber* nil)
 (defvar *uima-result-fluent* nil)
 (defvar *uima-result-msg* nil)
+(defvar *uima-comm-mode* :service)
+(defvar *uima-service-topic* "/naive_perception")
+(defvar *uima-trigger-service-topic* "/uima/uima_trigger")
+(defvar *uima-results-topic* "/uima/uima_result")
 
 (defun init-uima-bridge ()
   "Sets up the basic action client communication handles for the
 UIMA framework."
-  (setf *uima-result-subscriber*
-        (subscribe
-         "/uima/uima_result"
-         "iai_msgs/PerceiveResult"
-         #'uima-result-callback))
   (setf *uima-result-fluent*
         (cpl:pulsed (cpl:make-fluent
                      :name 'uima-result
@@ -48,21 +47,48 @@ UIMA framework."
 
 (register-ros-init-function init-uima-bridge)
 
+(defun set-comm-mode (comm-mode
+                      &key
+                        service-topic
+                        trigger-service-topic
+                        results-topic)
+  "Set the flag that decides how communication is taking place. The
+default setting is to call the ROS service specified by
+`service-topic' (`comm-mode' = `:service'). The only current
+alternative is setting `comm-mode' to `:topic', which results in
+sending a request message in a special UIMA trigger topic and waiting
+for a reply on another topic."
+  (setf *uima-service-topic* service-topic)
+  (setf *uima-trigger-service-topic* trigger-service-topic)
+  (setf *uima-results-topic* results-topic)
+  (setf *uima-comm-mode* comm-mode)
+  (when *uima-result-subscriber*
+    (roslisp:unsubscribe *uima-result-subscriber*))
+  (setf *uima-result-subscriber*
+        (subscribe
+         *uima-results-topic*
+         "designator_integration_msgs/DesignatorResponse"
+         #'uima-result-callback)))
+
 (defun uima-result-callback (msg)
   (setf *uima-result-msg* msg)
   (cpl:pulse *uima-result-fluent*))
 
-(defun trigger-uima ()
-  (let ((service "/uima/trigger_uima_pipeline")
-        (request-string "start"))
-    (roslisp:wait-for-service service)
-    (roslisp:call-service service
-                          'iai_msgs-srv:TriggerUIMAPipeline
-                          :str request-string)))
+(defun trigger (designator-request)
+  (roslisp:wait-for-service *uima-trigger-service-topic*)
+  (roslisp:call-service
+   *uima-trigger-service-topic*
+   'designator_integration_msgs-msg::DesignatorRequest
+   :designator designator-request))
 
-(defun get-uima-result ()
-  (trigger-uima)
-  (when (cpl:wait-for *uima-result-fluent* :timeout 5.0)
-    (roslisp:with-fields (objects)
-        *uima-result-msg*
-      objects)))
+(defun get-uima-result (designator-request)
+  (ecase *uima-comm-mode*
+    (:topic
+     (trigger designator-request)
+     (when (cpl:wait-for *uima-result-fluent* :timeout 5.0)
+       (roslisp:with-fields (objects)
+           *uima-result-msg*
+         objects)))
+    (:service
+     (desig-int::call-designator-service
+      *uima-service-topic* designator-request))))

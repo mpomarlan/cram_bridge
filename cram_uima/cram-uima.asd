@@ -43,7 +43,8 @@
                actionlib
                std_msgs-msg
                cram-plan-failures
-               designator-integration-lisp)
+               designator-integration-lisp
+               designator_integration_msgs-msg)
   :components
   ((:module "src"
     :components

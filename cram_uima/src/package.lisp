@@ -46,4 +46,5 @@
   (:export
    ;; Functions
    init-uima-bridge
+   set-comm-mode
    get-uima-result))
