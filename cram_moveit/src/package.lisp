@@ -60,6 +60,8 @@
    named-collision-object
    attach-collision-object-to-link
    detach-collision-object-from-link
+   get-joint-value
+   set-collision-object-pose
    ;; Conditions
    moveit-failure
    planning-failed
@@ -84,4 +86,5 @@
    robot-state-stale
    sensor-info-stale
    no-ik-solution
-   no-collision-shapes-defined))
+   no-collision-shapes-defined)
+  (:desig-properties #:shape #:dimensions #:box))

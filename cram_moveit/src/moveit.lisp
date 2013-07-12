@@ -76,6 +76,15 @@
 (defun joint-states ()
   *joint-states*)
 
+(defun get-joint-value (name)
+  (let* ((joint-states (joint-states))
+         (joint-state
+           (nth (position name joint-states
+                          :test (lambda (name state)
+                                  (equal name (car state))))
+                joint-states)))
+    (cdr joint-state)))
+
 (defun copy-physical-joint-states (joint-names)
   (let* ((joint-states (joint-states))
          (relevant-states (loop for joint-name on joint-names
@@ -156,7 +165,8 @@
 (defun move-link-pose (link-name planning-group pose-stamped
                        &key allowed-collision-objects
                          plan-only touch-links
-                         default-collision-entries)
+                         default-collision-entries
+                         ignore-collisions)
   "Calls the MoveIt! MoveGroup action. The link identified by
   `link-name' is tried to be positioned in the pose given by
   `pose-stamped'. Returns `T' on success and `nil' on failure, in
@@ -166,7 +176,16 @@
   ;; NOTE(winkler): Since MoveIt! crashes once it receives a frame-id
   ;; which includes the "/" character at the beginning, we change the
   ;; frame-id here just in case.
-  (let ((pose-stamped (tf:pose->pose-stamped
+  (let ((allowed-collision-objects
+          (cond (ignore-collisions
+                 (loop for obj in *known-collision-objects*
+                       collect (slot-value obj 'name)))
+                (t (mapcar (lambda (x)
+                             (string x))
+                           allowed-collision-objects))))
+        (touch-links
+          (mapcar (lambda (x) (string x)) touch-links))
+        (pose-stamped (tf:pose->pose-stamped
                        (let ((str (tf:frame-id pose-stamped)))
                          (cond ((string= (elt str 0) "/")
                                 (subseq str 1))
@@ -241,25 +260,21 @@
                 "moveit_msgs/AllowedCollisionMatrix"
                 :entry_names touch-links-concat
                 :entry_values
-                (let ((vec1 allowed-collision-objects)
-                      (vec2 touch-links))
-                  (flet ((in-vec (item vector)
-                           (not (eql (position item vector :test #'string=)
-                                     nil))))
-                    (map 'vector
-                         (lambda (x1)
-                           (make-message
-                            "moveit_msgs/AllowedCollisionEntry"
-                            :enabled
-                            (map 'vector
-                                 (lambda (x2)
-                                   (or (string= x1 x2)
-                                       (not (or (and (in-vec x1 vec1)
-                                                     (in-vec x2 vec1))
-                                                (and (in-vec x1 vec2)
-                                                     (in-vec x2 vec2))))))
-                                 touch-links-concat)))
-                         touch-links-concat)))
+                ;; NOTE(winkler): This loop is kind
+                ;; of ugly. There sure must be a
+                ;; more elegant solution to this.
+                (map 'vector
+                     (lambda (x1)
+                       (declare (ignore x1))
+                       (make-message
+                        "moveit_msgs/AllowedCollisionEntry"
+                        :enabled
+                        (map 'vector
+                             (lambda (x2)
+                               (declare (ignore x2))
+                               t)
+                             touch-links-concat)))
+                     touch-links-concat)
                 :default_entry_names (map
                                       'vector (lambda (x)
                                                 (car x))
