@@ -162,6 +162,65 @@
        (moveit)
        "Setting robot planning state."))))
 
+(defun move-base (pose-stamped)
+  (let* ((link-name "base_link")
+         (planning-group "base")
+         (mpreq (make-message
+                 "moveit_msgs/MotionPlanRequest"
+                 :group_name planning-group
+                 :num_planning_attempts 25
+                 :allowed_planning_time 5.0
+                 :goal_constraints
+                 (vector
+                  (make-message
+                   "moveit_msgs/Constraints"
+                   :position_constraints
+                   (vector
+                    (make-message
+                     "moveit_msgs/PositionConstraint"
+                     :weight 1.0
+                     :link_name link-name
+                     :header
+                     (make-message
+                      "std_msgs/Header"
+                      :frame_id (tf:frame-id pose-stamped)
+                      :stamp (tf:stamp pose-stamped))
+                     :constraint_region
+                     (make-message
+                      "moveit_msgs/BoundingVolume"
+                      :primitives
+                      (vector
+                       (make-message
+                        "shape_msgs/SolidPrimitive"
+                        :type (roslisp-msg-protocol:symbol-code
+                               'shape_msgs-msg:solidprimitive :box)
+                        :dimensions (vector 0.01 0.01 0.01)))
+                      :primitive_poses
+                      (vector
+                       (tf:pose->msg pose-stamped)))))
+                   :orientation_constraints
+                   (vector
+                    (make-message
+                     "moveit_msgs/OrientationConstraint"
+                     :weight 1.0
+                     :link_name link-name
+                     :header
+                     (make-message
+                      "std_msgs/Header"
+                      :frame_id (tf:frame-id pose-stamped)
+                      :stamp (tf:stamp pose-stamped))
+                     :orientation
+                     (make-message
+                      "geometry_msgs/Quaternion"
+                      :x (tf:x (tf:orientation pose-stamped))
+                      :y (tf:y (tf:orientation pose-stamped))
+                      :z (tf:z (tf:orientation pose-stamped))
+                      :w (tf:w (tf:orientation pose-stamped)))
+                     :absolute_x_axis_tolerance 0.001
+                     :absolute_y_axis_tolerance 0.001
+                     :absolute_z_axis_tolerance 0.001))))))
+         )))
+
 (defun move-link-pose (link-name planning-group pose-stamped
                        &key allowed-collision-objects
                          plan-only touch-links
@@ -195,7 +254,7 @@
     (let* ((mpreq (make-message
                    "moveit_msgs/MotionPlanRequest"
                    :group_name planning-group
-                   :num_planning_attempts 5
+                   :num_planning_attempts 25
                    :allowed_planning_time 5.0
                    :goal_constraints
                    (vector
