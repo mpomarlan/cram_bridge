@@ -75,20 +75,41 @@ for a reply on another topic."
   (cpl:pulse *uima-result-fluent*))
 
 (defun trigger (designator-request)
-  (roslisp:wait-for-service *uima-trigger-service-topic*)
-  (roslisp:call-service
-   *uima-trigger-service-topic*
-   'designator_integration_msgs-msg::DesignatorRequest
-   :designator designator-request))
+  (desig-int::call-designator-service
+   *uima-service-topic* designator-request))
+  ;; (roslisp:wait-for-service *uima-trigger-service-topic*)
+  ;; (roslisp:call-service
+  ;;  *uima-trigger-service-topic*
+  ;;  'designator_integration_msgs-msg::DesignatorRequest
+  ;;  :designator designator-request))
+
+(defgeneric hook-before-uima-request (designator-request))
+(defmethod hook-before-uima-request (designator-request))
+
+(defgeneric hook-after-uima-request (id result))
+(defmethod hook-after-uima-request (id result))
 
 (defun get-uima-result (designator-request)
-  (ecase *uima-comm-mode*
-    (:topic
-     (trigger designator-request)
-     (when (cpl:wait-for *uima-result-fluent* :timeout 5.0)
-       (roslisp:with-fields (objects)
-           *uima-result-msg*
-         objects)))
-    (:service
-     (desig-int::call-designator-service
-      *uima-service-topic* designator-request))))
+  (let* ((desc (append (description designator-request)
+                       `((__id ,(concatenate 'string
+                                             (write-to-string
+                                              (roslisp:ros-time))
+                                             "_"
+                                             (write-to-string
+                                              (random 10000)))))))
+         (designator-request
+           (make-designator 'object desc))
+         (log-id (hook-before-uima-request designator-request))
+         (result-designators
+           (ecase *uima-comm-mode*
+             (:topic
+              (trigger designator-request)
+              (when (cpl:wait-for *uima-result-fluent* :timeout 5.0)
+                (roslisp:with-fields (objects)
+                    *uima-result-msg*
+                  objects)))
+             (:service
+              (desig-int::call-designator-service
+               *uima-service-topic* designator-request)))))
+    (hook-after-uima-request log-id result-designators)
+    result-designators))
