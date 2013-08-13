@@ -133,10 +133,11 @@
   (roslisp:with-fields (controller_id) controller-state-msg
     (let ((fccl-interface
             (get-fccl-controller-interface controller_id)))
-      ;; propagate the state-message into the fluent of our fccl-interface
-      ;; TODO(Georg): create a class to hold this state information in cram_feature_constraints.
-      ;;              this will allow abstracting away constraint_msgs for depending packages...
-      (setf (cram-language:value (state-fluent-queue fccl-interface)) controller-state-msg))))
+      ;; propagate the state into the fluent of our fccl-interface
+      ;; NOTE: make sure the convert it into the CRAM-internal data-structure, first
+      ;;       to decouple from the ROS-messages
+      (setf (cram-language:value (state-fluent-queue fccl-interface)) 
+            (constraint-state-msg->feature-constraint-state controller-state-msg)))))
 
 (defun get-constraints-state-fluent (fccl-interface)
   "Returns the fluent holding the state feedback from the controller."
