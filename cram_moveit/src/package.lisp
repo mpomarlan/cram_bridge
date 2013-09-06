@@ -86,5 +86,6 @@
    robot-state-stale
    sensor-info-stale
    no-ik-solution
-   no-collision-shapes-defined)
+   no-collision-shapes-defined
+   pose-not-transformable-into-link)
   (:desig-properties #:shape #:dimensions #:box))

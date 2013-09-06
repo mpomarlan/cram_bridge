@@ -168,8 +168,8 @@
          (mpreq (make-message
                  "moveit_msgs/MotionPlanRequest"
                  :group_name planning-group
-                 :num_planning_attempts 25
-                 :allowed_planning_time 5.0
+                 :num_planning_attempts 1
+                 :allowed_planning_time 3.0
                  :goal_constraints
                  (vector
                   (make-message
