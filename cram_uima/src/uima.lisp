@@ -83,6 +83,14 @@ for a reply on another topic."
   ;;  'designator_integration_msgs-msg::DesignatorRequest
   ;;  :designator designator-request))
 
+(defun make-perception-request-id ()
+  (concatenate
+   'string
+   "request_"
+   (write-to-string (random 1000000))
+   "_"
+   (write-to-string (random 1000000))))
+
 (defgeneric hook-before-uima-request (designator-request))
 (defmethod hook-before-uima-request (designator-request))
 
@@ -90,26 +98,26 @@ for a reply on another topic."
 (defmethod hook-after-uima-request (id result))
 
 (defun get-uima-result (designator-request)
-  (let* ((desc (append (description designator-request)
-                       `((__id ,(concatenate 'string
-                                             (write-to-string
-                                              (roslisp:ros-time))
-                                             "_"
-                                             (write-to-string
-                                              (random 10000)))))))
-         (designator-request
-           (make-designator 'object desc))
-         (log-id (hook-before-uima-request designator-request))
-         (result-designators
-           (ecase *uima-comm-mode*
-             (:topic
-              (trigger designator-request)
-              (when (cpl:wait-for *uima-result-fluent* :timeout 5.0)
-                (roslisp:with-fields (objects)
-                    *uima-result-msg*
-                  objects)))
-             (:service
-              (desig-int::call-designator-service
-               *uima-service-topic* designator-request)))))
-    (hook-after-uima-request log-id result-designators)
-    result-designators))
+  (let ((designator-request-plus-id
+          (make-designator
+           (ecase (class-name (class-of designator-request))
+             (desig:object-designator 'cram-designators:object)
+             (desig:action-designator 'cram-designators:action)
+             (desig:location-designator 'cram-designators:location))
+           (append (description designator-request)
+                   (list `(request-id ,(make-perception-request-id)))))))
+    (equate designator-request designator-request-plus-id)
+    (let ((log-id (hook-before-uima-request designator-request-plus-id))
+          (result-designators
+            (ecase *uima-comm-mode*
+              (:topic
+               (trigger designator-request-plus-id)
+               (when (cpl:wait-for *uima-result-fluent* :timeout 5.0)
+                 (roslisp:with-fields (objects)
+                     *uima-result-msg*
+                   objects)))
+              (:service
+               (desig-int::call-designator-service
+                *uima-service-topic* designator-request-plus-id)))))
+      (hook-after-uima-request log-id result-designators)
+      result-designators)))
