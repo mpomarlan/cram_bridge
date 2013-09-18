@@ -174,7 +174,8 @@ bridge.")
      id id
      (r color) (elt col-vec 0)
      (g color) (elt col-vec 1)
-     (b color) (elt col-vec 2))))
+     (b color) (elt col-vec 2)
+     (a color) 1.0)))
 
 (defun add-collision-object (name &optional pose-stamped)
   (let* ((name (string name))
