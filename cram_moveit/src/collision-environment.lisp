@@ -34,6 +34,9 @@
    (pose :initform nil
          :initarg :pose
          :reader :pose)
+   (color :initform nil
+          :initarg :pose
+          :reader :pose)
    (primitive-shapes :initform nil
                      :initarg :primitive-shapes
                      :reader :primitive-shapes)
@@ -51,18 +54,23 @@ bridge.")
 (defgeneric register-collision-object (object &rest rest))
 
 (defmethod register-collision-object ((object object-designator)
-                                      &key pose-stamped)
-  (let ((name (string (desig-prop-value object 'desig-props:name)))
-        (shape (ecase (desig-prop-value object 'desig-props:shape)
-                 (desig-props:box 1)))
-        (dimensions (desig-prop-value object 'desig-props:dimensions)))
+                                      &key pose-stamped add)
+  (let ((name (string-upcase (string (desig-prop-value object 'desig-props:name))))
+        (shape (cond
+                 ((eql (desig-prop-value object 'desig-props:shape) 'desig-props:box) 1)
+                 (t 1)))
+        (dimensions (or
+                     (desig-prop-value object 'desig-props:dimensions)
+                     (vector 0.1 0.1 0.1))))
     (register-collision-object
      name
      :primitive-shapes (list (roslisp:make-msg
                               "shape_msgs/SolidPrimitive"
                               type shape
                               dimensions dimensions))
-     :pose-stamped pose-stamped)))
+     :pose-stamped pose-stamped)
+    (when add
+      (add-collision-object name))))
 
 (defmethod register-collision-object ((name string)
                                       &key
@@ -117,7 +125,17 @@ bridge.")
     (unless (or primitive-shapes mesh-shapes plane-shapes)
       (cpl:fail 'no-collision-shapes-defined))
     (flet* ((resolve-pose (pose-msg)
-              (or pose-msg (tf:pose->msg pose-stamped)))
+              (let ((pm (or pose-msg (tf:pose->msg pose-stamped))))
+                (cond ((tf:wait-for-transform *tf*
+                                              :timeout 5.0
+                                              :source-frame "/map"
+                                              :target-frame "/odom_combined")
+                       (tf:pose->msg (tf:transform-pose
+                                      *tf* :pose (tf:pose->pose-stamped
+                                                  "/map" 0.0
+                                                  (tf:msg->pose pm))
+                                           :target-frame "/odom_combined")))
+                      (t pm))))
             (pose-present (object)
               (and (listp object) (cdr object)))
             (resolve-object (obj)
@@ -142,6 +160,22 @@ bridge.")
                        plane_poses (prepare-poses plane-shapes))))
         obj-msg))))
 
+(defun make-object-color (id color)
+  (let ((col-vec (case (intern (string-upcase (string color)))
+                   (blue (vector 0.0 0.0 1.0))
+                   (red (vector 1.0 0.0 0.0))
+                   (green (vector 0.0 1.0 0.0))
+                   (yellow (vector 1.0 1.0 0.0))
+                   (black (vector 0.0 0.0 0.0))
+                   (white (vector 1.0 1.0 1.0))
+                   (t (vector 1.0 0.0 1.0)))))
+    (roslisp:make-message
+     "moveit_msgs/ObjectColor"
+     id id
+     (r color) (elt col-vec 0)
+     (g color) (elt col-vec 1)
+     (b color) (elt col-vec 2))))
+
 (defun add-collision-object (name &optional pose-stamped)
   (let* ((name (string name))
          (col-obj (named-collision-object name))
@@ -151,7 +185,8 @@ bridge.")
       (setf (slot-value col-obj 'pose) pose-stamped)
       (let ((primitive-shapes (slot-value col-obj 'primitive-shapes))
             (mesh-shapes (slot-value col-obj 'mesh-shapes))
-            (plane-shapes (slot-value col-obj 'plane-shapes)))
+            (plane-shapes (slot-value col-obj 'plane-shapes))
+            (color (slot-value col-obj 'color)))
         (let* ((obj-msg (roslisp:modify-message-copy
                          (create-collision-object-message
                           name pose-stamped
@@ -167,6 +202,7 @@ bridge.")
                (scene-msg (roslisp:make-msg
                            "moveit_msgs/PlanningScene"
                            world world-msg
+                           object_colors (vector (make-object-color name color))
                            is_diff t)))
           (prog1 (roslisp:publish *planning-scene-publisher* scene-msg)
             (roslisp:ros-info
