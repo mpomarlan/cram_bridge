@@ -40,10 +40,10 @@
   "Sets up the basic action client communication handles for the
 UIMA framework."
   (setf *uima-result-fluent*
-        (cpl:pulsed (cpl:make-fluent
-                     :name 'uima-result
-                     :value nil
-                     :allow-tracing nil))))
+        (cpl:make-fluent
+         :name 'uima-result
+         :value nil
+         :allow-tracing nil)))
 
 (register-ros-init-function init-uima-bridge)
 
@@ -63,20 +63,22 @@ for a reply on another topic."
   (setf *uima-results-topic* results-topic)
   (setf *uima-comm-mode* comm-mode)
   (when *uima-result-subscriber*
-    (roslisp:unsubscribe *uima-result-subscriber*))
+    ;;(roslisp:unsubscribe *uima-result-subscriber*)
+    (setf *uima-result-subscriber* nil))
   (setf *uima-result-subscriber*
         (subscribe
          *uima-results-topic*
          "designator_integration_msgs/DesignatorResponse"
-         #'uima-result-callback)))
+         #'uima-result-callback))
+  nil)
 
 (defun uima-result-callback (msg)
-  (setf *uima-result-msg* msg)
-  (cpl:pulse *uima-result-fluent*))
+  (cpl:setf (cpl:value *uima-result-fluent*) msg))
 
 (defun trigger (designator-request)
+  (cpl:setf (cpl:value *uima-result-fluent*) nil)
   (desig-int::call-designator-service
-   *uima-service-topic* designator-request))
+   *uima-trigger-service-topic* designator-request))
   ;; (roslisp:wait-for-service *uima-trigger-service-topic*)
   ;; (roslisp:call-service
   ;;  *uima-trigger-service-topic*
@@ -98,26 +100,41 @@ for a reply on another topic."
 (defmethod hook-after-uima-request (id result))
 
 (defun get-uima-result (designator-request)
+  ;; This is a hacky solution. We configure UIMA over and over again
+  ;; here in order to make sure that the service is connected
+  ;; properly.
+  (config-uima)
   (let ((designator-request-plus-id
           (make-designator
            (ecase (class-name (class-of designator-request))
              (desig:object-designator 'cram-designators:object)
              (desig:action-designator 'cram-designators:action)
              (desig:location-designator 'cram-designators:location))
-           (append (description designator-request)
-                   (list `(request-id ,(make-perception-request-id)))))))
+           (description designator-request))))
+           ;; (append (description designator-request)
+           ;;         (list `(request-id ,(make-perception-request-id)))))))
     (equate designator-request designator-request-plus-id)
     (let ((log-id (hook-before-uima-request designator-request-plus-id))
           (result-designators
             (ecase *uima-comm-mode*
               (:topic
+               (format t "Triggering.~%")
                (trigger designator-request-plus-id)
-               (when (cpl:wait-for *uima-result-fluent* :timeout 5.0)
-                 (roslisp:with-fields (objects)
-                     *uima-result-msg*
-                   objects)))
+               (format t "Did it.~%")
+               (when (cpl:wait-for *uima-result-fluent*)
+                 (roslisp:with-fields (designators)
+                     (cpl:value *uima-result-fluent*)
+                   (map 'list (lambda (x)
+                                (desig-int::msg->designator x))
+                        designators))))
               (:service
                (desig-int::call-designator-service
                 *uima-service-topic* designator-request-plus-id)))))
       (hook-after-uima-request log-id result-designators)
       result-designators)))
+
+(defun config-uima ()
+  (cram-uima::set-comm-mode
+   :topic
+   :trigger-service-topic "/kinect_uima_bridge/trigger_uima_pipeline"
+   :results-topic "/kinect_uima_bridge/uima_result"))
