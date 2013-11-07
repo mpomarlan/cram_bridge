@@ -88,4 +88,5 @@
    no-ik-solution
    no-collision-shapes-defined
    pose-not-transformable-into-link)
-  (:desig-properties #:shape #:dimensions #:box #:name))
+  (:desig-properties #:shape #:dimensions #:box #:cylinder
+                     #:sphere #:cone #:round #:name))

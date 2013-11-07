@@ -55,22 +55,43 @@ bridge.")
 
 (defmethod register-collision-object ((object object-designator)
                                       &key pose-stamped add)
-  (let ((name (string-upcase (string (desig-prop-value object 'desig-props:name))))
-        (shape (cond
-                 ((eql (desig-prop-value object 'desig-props:shape) 'desig-props:box) 1)
-                 (t 1)))
-        (dimensions (or
-                     (desig-prop-value object 'desig-props:dimensions)
-                     (vector 0.1 0.1 0.1))))
-    (register-collision-object
-     name
-     :primitive-shapes (list (roslisp:make-msg
-                              "shape_msgs/SolidPrimitive"
-                              type shape
-                              dimensions dimensions))
-     :pose-stamped pose-stamped)
-    (when add
-      (add-collision-object name))))
+  (flet ((primitive-code (symbol)
+           (roslisp-msg-protocol:symbol-code
+            'shape_msgs-msg:solidprimitive symbol)))
+    (let* ((name (string-upcase (string (desig-prop-value
+                                         object 'desig-props:name))))
+           (shape-prop (or (desig-prop-value object 'desig-props:shape)
+                           'desig-props:box))
+           (shape (primitive-code
+                   (case shape-prop
+                     (desig-props:box :box)
+                     (desig-props:sphere :sphere)
+                     (desig-props:cylinder :cylinder)
+                     (desig-props:round :cylinder)
+                     (desig-props:cone :cone))))
+           (dimensions (or
+                        (desig-prop-value object 'desig-props:dimensions)
+                        (case shape-prop
+                          (desig-props:box (vector 0.1 0.1 0.1))
+                          (desig-props:sphere (vector 0.1 0.1))
+                          (desig-props:cylinder (vector 0.2 0.08))
+                          (desig-props:round (vector 0.2 0.08))
+                          (desig-props:cone (vector 0.1 0.1)))))
+           (pose-stamped
+             (or pose-stamped
+                 (when (desig-prop-value object 'desig-props:at)
+                   (reference (desig-prop-value object 'desig-props:at))))))
+      (unless pose-stamped
+        (roslisp:ros-warn (moveit) "No pose-stamped given (neither manually nor in the object-designator) when adding object-designator ~a to the collision environment." object))
+      (register-collision-object
+       name
+       :primitive-shapes (list (roslisp:make-msg
+                                "shape_msgs/SolidPrimitive"
+                                type shape
+                                dimensions dimensions))
+       :pose-stamped pose-stamped)
+      (when add
+        (add-collision-object name)))))
 
 (defmethod register-collision-object ((name string)
                                       &key
@@ -79,15 +100,15 @@ bridge.")
                                         plane-shapes
                                         pose-stamped)
   (let ((name (string-upcase (string name)))
-        (obj (named-collision-object name)))
-    (unless obj
-      (push
-       (make-instance 'collision-object
-                      :name name
-                      :primitive-shapes primitive-shapes
-                      :mesh-shapes mesh-shapes
-                      :plane-shapes plane-shapes)
-       *known-collision-objects*))
+        (obj (or (named-collision-object name)
+                 (let ((obj-create
+                         (make-instance 'collision-object
+                                        :name name
+                                        :primitive-shapes primitive-shapes
+                                        :mesh-shapes mesh-shapes
+                                        :plane-shapes plane-shapes)))
+                   (push obj-create *known-collision-objects*)
+                   obj-create))))
     (when (and obj pose-stamped)
       (set-collision-object-pose name pose-stamped))))
 
@@ -235,6 +256,11 @@ bridge.")
 (defun clear-collision-objects ()
   (loop for col-obj in *known-collision-objects*
         do (remove-collision-object (slot-value col-obj 'name))))
+
+(defun clear-collision-environment ()
+  (clear-collision-objects)
+  (setf *known-collision-objects* nil)
+  (roslisp:ros-info (moveit) "Cleared collision environment."))
 
 (defun attach-collision-object-to-link (name target-link
                                         &key current-pose-stamped touch-links)
