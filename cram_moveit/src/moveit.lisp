@@ -27,8 +27,6 @@
 
 (in-package :cram-moveit)
 
-(defvar *move-group-action-client* nil
-  "Action client for the MoveGroup action.")
 (defvar *planning-scene-publisher* nil
   "Publisher handle for the planning scene topic.")
 (defvar *attached-object-publisher* nil
@@ -44,9 +42,6 @@
   "Sets up the basic action client communication handles for the
   MoveIt! framework and registers known conditions."
   (register-known-moveit-errors)
-  (setf *move-group-action-client*
-        (actionlib:make-action-client
-         "move_group" "moveit_msgs/MoveGroupAction"))
   (setf *planning-scene-publisher*
         (roslisp:advertise
          "/planning_scene"
@@ -219,6 +214,8 @@
                      :absolute_x_axis_tolerance 0.001
                      :absolute_y_axis_tolerance 0.001
                      :absolute_z_axis_tolerance 0.001))))))
+         ;; TODO(winkler): Implement the movement of the robot base
+         ;; here.
          )))
 
 (defun move-link-pose (link-name planning-group pose-stamped
@@ -254,8 +251,8 @@
     (let* ((mpreq (make-message
                    "moveit_msgs/MotionPlanRequest"
                    :group_name planning-group
-                   :num_planning_attempts 25
-                   :allowed_planning_time 5.0
+                   :num_planning_attempts 1
+                   :allowed_planning_time 3.0
                    :goal_constraints
                    (vector
                     (make-message
@@ -343,27 +340,29 @@
                                                  (cdr x))
                                        default-collision-entries)))
               :plan_only plan-only)))
-      (cond ((actionlib:wait-for-server *move-group-action-client* 5.0)
-             (cpl:with-failure-handling
-                 ((actionlib:server-lost (f)
-                    (declare (ignore f))
-                    (error 'planning-failed)))
-               (let ((result (actionlib:call-goal
-                              *move-group-action-client*
-                              (actionlib:make-action-goal
-                                  *move-group-action-client*
-                                :request mpreq
-                                :planning_options options))))
-                 (roslisp:with-fields (error_code
-                                       trajectory_start
-                                       planned_trajectory) result
-                   (roslisp:with-fields (val) error_code
-                     (unless (eql val (roslisp-msg-protocol:symbol-code
-                                       'moveit_msgs-msg:moveiterrorcodes
-                                       :success))
-                       (signal-moveit-error val))
-                     (values trajectory_start planned_trajectory))))))
-            (t (error 'actionlib:server-lost))))))
+      (let ((move-group-action-client (actionlib:make-action-client
+                                       "move_group" "moveit_msgs/MoveGroupAction")))
+        (cond ((actionlib:wait-for-server move-group-action-client 5.0)
+               (cpl:with-failure-handling
+                   ((actionlib:server-lost (f)
+                      (declare (ignore f))
+                      (error 'planning-failed)))
+                 (let ((result (actionlib:call-goal
+                                move-group-action-client
+                                (actionlib:make-action-goal
+                                    move-group-action-client
+                                  :request mpreq
+                                  :planning_options options))))
+                   (roslisp:with-fields (error_code
+                                         trajectory_start
+                                         planned_trajectory) result
+                     (roslisp:with-fields (val) error_code
+                       (unless (eql val (roslisp-msg-protocol:symbol-code
+                                         'moveit_msgs-msg:moveiterrorcodes
+                                         :success))
+                         (signal-moveit-error val))
+                       (values trajectory_start planned_trajectory))))))
+              (t (error 'actionlib:server-lost)))))))
 
 (defun plan-link-movement (link-name planning-group pose-stamped
                            &key allowed-collision-objects
