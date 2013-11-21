@@ -52,6 +52,7 @@
    add-collision-object
    remove-collision-object
    clear-collision-objects
+   clear-collision-environment
    joint-states
    copy-physical-joint-states
    set-planning-robot-state
