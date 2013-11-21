@@ -56,8 +56,9 @@ bridge.")
 (defmethod register-collision-object ((object object-designator)
                                       &key pose-stamped add)
   (flet ((primitive-code (symbol)
-           (roslisp-msg-protocol:symbol-code
-            'shape_msgs-msg:solidprimitive symbol)))
+           (let ((symbol (or symbol :box)))
+             (roslisp-msg-protocol:symbol-code
+              'shape_msgs-msg:solidprimitive symbol))))
     (let* ((name (string-upcase (string (desig-prop-value
                                          object 'desig-props:name))))
            (shape-prop (or (desig-prop-value object 'desig-props:shape)
@@ -74,7 +75,7 @@ bridge.")
                         (case shape-prop
                           (desig-props:box (vector 0.1 0.1 0.1))
                           (desig-props:sphere (vector 0.1 0.1))
-                          (desig-props:cylinder (vector 0.2 0.08))
+                          (desig-props:cylinder (vector 0.2 0.03))
                           (desig-props:round (vector 0.2 0.08))
                           (desig-props:cone (vector 0.1 0.1)))))
            (pose-stamped
