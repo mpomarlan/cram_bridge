@@ -62,14 +62,15 @@ for a reply on another topic."
   (setf *uima-trigger-service-topic* trigger-service-topic)
   (setf *uima-results-topic* results-topic)
   (setf *uima-comm-mode* comm-mode)
-  (when *uima-result-subscriber*
-    ;;(roslisp:unsubscribe *uima-result-subscriber*)
-    (setf *uima-result-subscriber* nil))
-  (setf *uima-result-subscriber*
-        (subscribe
-         *uima-results-topic*
-         "designator_integration_msgs/DesignatorResponse"
-         #'uima-result-callback))
+  (when (eql comm-mode :topic)
+    (when *uima-result-subscriber*
+      ;;(roslisp:unsubscribe *uima-result-subscriber*)
+      (setf *uima-result-subscriber* nil))
+    (setf *uima-result-subscriber*
+          (subscribe
+           *uima-results-topic*
+           "designator_integration_msgs/DesignatorResponse"
+           #'uima-result-callback)))
   nil)
 
 (defun uima-result-callback (msg)
@@ -103,7 +104,7 @@ for a reply on another topic."
   ;; This is a hacky solution. We configure UIMA over and over again
   ;; here in order to make sure that the service is connected
   ;; properly.
-  (config-uima)
+  ;(config-uima)
   (let ((designator-request-plus-id
           (make-designator
            (ecase (class-name (class-of designator-request))
@@ -111,16 +112,13 @@ for a reply on another topic."
              (desig:action-designator 'cram-designators:action)
              (desig:location-designator 'cram-designators:location))
            (description designator-request))))
-           ;; (append (description designator-request)
-           ;;         (list `(request-id ,(make-perception-request-id)))))))
     (equate designator-request designator-request-plus-id)
+    (format t "Waiting for hook 1~%")
     (let ((log-id (hook-before-uima-request designator-request-plus-id))
           (result-designators
             (ecase *uima-comm-mode*
               (:topic
-               (format t "Triggering.~%")
                (trigger designator-request-plus-id)
-               (format t "Did it.~%")
                (when (cpl:wait-for *uima-result-fluent*)
                  (roslisp:with-fields (designators)
                      (cpl:value *uima-result-fluent*)
@@ -130,11 +128,17 @@ for a reply on another topic."
               (:service
                (desig-int::call-designator-service
                 *uima-service-topic* designator-request-plus-id)))))
+      (format t "Waiting for hook 2~%")
       (hook-after-uima-request log-id result-designators)
       result-designators)))
 
 (defun config-uima ()
-  (cram-uima::set-comm-mode
+  (cram-uima:set-comm-mode
    :topic
    :trigger-service-topic "/kinect_uima_bridge/trigger_uima_pipeline"
    :results-topic "/kinect_uima_bridge/uima_result"))
+
+(defun config-naive-perception ()
+  (cram-uima:set-comm-mode
+   :service
+   :service-topic "/naive_perception"))
