@@ -26,28 +26,26 @@
 ;;; ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ;;; POSSIBILITY OF SUCH DAMAGE.
 
-(defsystem cram-fccl
-  :author "Georg Bartels <georg.bartels@cs.uni-bremen.de>"
-  :license "BSD"
-  :description "Interface package of CRAM to communicate with feature constraints controllers in FCCL."
+(in-package :cram-fccl)
 
-  :depends-on (roslisp
-               actionlib
-               fccl_msgs-msg
-               geometry_msgs-msg
-               cl-transforms
-               ;; cram-feature-constraints
-               ;; constraint_msgs-msg
-               ;; geometry_msgs-msg
-               ;; cram-language
-               )
-  :components
-  ((:module "src"
-    :components
-    ((:file "package")
-     (:file "datatypes" :depends-on ("package"))
-     (:file "conversions" :depends-on ("package" "datatypes"))
-     (:file "action-interface" :depends-on ("package" "datatypes" "conversions"))
-     ;; (:file "publisher-interface" :depends-on ("package" "conversions"))
-     ;; (:file "tests" :depends-on ("package" "conversions" "publisher-interface"))
-     ))))
+(defclass fccl-action-interface ()
+  ((action-client :initarg :action-client :reader action-client)
+   (kinematic-chain :initarg :kinematic-chain :reader kinematic-chain)))
+
+(defun make-fccl-action-interface (action-client kinematic-chain)
+  (declare (type kinematic-chain kinematic-chain)
+           (type actionlib::action-client action-client))
+  (make-instance 'fccl-action-interface
+                 :action-client action-client
+                 :kinematic-chain kinematic-chain))
+
+(defgeneric execute-fccl-motion (interface motion))
+
+(defmethod execute-fccl-motion ((interface fccl-action-interface) (motion list))
+  (actionlib:wait-for-server (action-client interface) 5.0)
+  (actionlib:send-goal-and-wait (action-client interface)
+                                (actionlib:make-action-goal
+                                    (action-client interface)
+                                  :constraints (to-msg motion)
+                                  :kinematics (to-msg (kinematic-chain interface)))
+                                :exec-timeout 5.0))
