@@ -33,28 +33,36 @@
 (defmethod to-msg ((feature geometric-feature))
   (roslisp:make-msg
    "fccl_msgs/feature"
-   name (name feature)
-   reference (reference-id feature)
-   type (ecase (feature-type feature)
-          (line
-           (get-feature-type-msg-symbol-code :line))
-          (plane
-           (get-feature-type-msg-symbol-code :plane))
-          (point
-           (get-feature-type-msg-symbol-code :point)))
+   name (to-msg (name feature))
+   reference (to-msg (reference-id feature))
+   ; TODO(Georg): refactor message to use primitive messages
+   type (roslisp:make-msg
+         "std_msgs/Uint8"
+         data (ecase (feature-type feature)
+                (line
+                 (get-feature-type-msg-symbol-code :line))
+                (plane
+                 (get-feature-type-msg-symbol-code :plane))
+                (point
+                 (get-feature-type-msg-symbol-code :point))))
    position (to-msg (feature-position feature))
    direction (to-msg (feature-direction feature))))
 
 (defmethod to-msg ((constraint geometric-constraint))
   (roslisp:make-msg
    "fccl_msgs/constraint"
-   name (name constraint)
-   reference (reference-id constraint)
-   function (constraint-function constraint)
+   name (to-msg (name constraint))
+   reference (to-msg (reference-id constraint))
+   function (to-msg (constraint-function constraint))
    tool_feature (to-msg (tool-feature constraint))
    object_feature (to-msg (object-feature constraint))
-   lower_boundary (lower-boundary constraint)
-   upper_boundary (upper-boundary constraint)))
+   ; TODO(Georg): refactor message to use primitive types
+   lower_boundary (roslisp:make-msg
+                   "std_msgs/Float64"
+                   data (lower-boundary constraint))
+   upper_boundary (roslisp:make-msg
+                   "std_msgs/Float64"
+                   data (upper-boundary constraint))))
 
 (defmethod to-msg ((list-of-data list))
   (map 'vector #'identity
@@ -63,8 +71,8 @@
 (defmethod to-msg ((chain kinematic-chain))
   (roslisp:make-msg
    "fccl_msgs/kinematicchain"
-   base_frame (base-frame-id chain)
-   tip_frame (tip-frame-id chain)))
+   base_frame (to-msg (base-frame-id chain))
+   tip_frame (to-msg (tip-frame-id chain))))
 
 ;; (defun feature-constraints->config-msg (constraints controller-id)
 ;;   (declare (type list constraints)
@@ -112,6 +120,11 @@
    x (cl-transforms:x point)
    y (cl-transforms:y point)
    z (cl-transforms:z point)))
+
+(defmethod to-msg ((string-data string))
+  (roslisp:make-msg
+   "std_msgs/String"
+   data string-data))
 
 (defun get-feature-type-msg-symbol-code (type-symbol)
   (roslisp-msg-protocol:symbol-code
