@@ -34,6 +34,8 @@
   :depends-on (roslisp
                actionlib
                fccl_msgs-msg
+               geometry_msgs-msg
+               cl-transforms
                ;; cram-feature-constraints
                ;; constraint_msgs-msg
                ;; geometry_msgs-msg
@@ -43,7 +45,8 @@
   ((:module "src"
     :components
     ((:file "package")
-     (:file "conversions" :depends-on ("package"))
+     (:file "datatypes" :depends-on ("package"))
+     (:file "conversions" :depends-on ("package" "datatypes"))
      ;; (:file "publisher-interface" :depends-on ("package" "conversions"))
      ;; (:file "tests" :depends-on ("package" "conversions" "publisher-interface"))
      ))))

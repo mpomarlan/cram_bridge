@@ -28,25 +28,24 @@
 
 (in-package :cram-fccl)
 
-;; (defun feature->msg (feature)
-;;   (declare (type geometric-feature feature))
-;;   (roslisp:make-msg
-;;    "constraint_msgs/feature"
-;;    frame_id (frame-id feature)
-;;    name (name feature)
-;;    type (ecase (feature-type feature)
-;;           (line
-;;            (get-feature-type-msg-symbol-code :line))
-;;           (plane
-;;            (get-feature-type-msg-symbol-code :plane))
-;;           (point
-;;            (get-feature-type-msg-symbol-code :point)))
-;;    position (3d-vector->vector3-msg
-;;              (feature-position feature))
-;;    direction (3d-vector->vector3-msg
-;;               (feature-direction feature))
-;;    contact_direction (3d-vector->vector3-msg
-;;                       (contact-direction feature))))
+(defgeneric toMsg (data))
+
+(defmethod toMsg ((feature geometric-feature))
+  (roslisp:make-msg
+   "fccl_msgs/feature"
+   name (name feature)
+   reference (reference-id feature)
+   type (ecase (feature-type feature)
+          (line
+           (get-feature-type-msg-symbol-code :line))
+          (plane
+           (get-feature-type-msg-symbol-code :plane))
+          (point
+           (get-feature-type-msg-symbol-code :point)))
+   position (3d-vector->vector3-msg
+             (feature-position feature))
+   direction (3d-vector->vector3-msg
+              (feature-direction feature))))
 
 ;; (defun feature-constraint->single-config-msg (constraint)
 ;;   (declare (type feature-constraint constraint))
@@ -97,18 +96,18 @@
 ;;      min_vel (map 'vector #'identity
 ;;                   min_vels))))
 
-;; (defun 3d-vector->vector3-msg (point)
-;;   (declare (type cl-transforms:3d-vector point))
-;;   (roslisp:make-msg
-;;    "geometry_msgs/vector3"
-;;    x (cl-transforms:x point)
-;;    y (cl-transforms:y point)
-;;    z (cl-transforms:z point)))
+(defun 3d-vector->vector3-msg (point)
+  (declare (type cl-transforms:3d-vector point))
+  (roslisp:make-msg
+   "geometry_msgs/vector3"
+   x (cl-transforms:x point)
+   y (cl-transforms:y point)
+   z (cl-transforms:z point)))
 
-;; (defun get-feature-type-msg-symbol-code (type-symbol)
-;;   (roslisp-msg-protocol:symbol-code
-;;    'constraint_msgs-msg:feature
-;;    type-symbol))
+(defun get-feature-type-msg-symbol-code (type-symbol)
+  (roslisp-msg-protocol:symbol-code
+   'fccl_msgs-msg:feature
+   type-symbol))
 
 ;; (defun constraint-state-msg->feature-constraint-state (msg)
 ;;   (when msg
