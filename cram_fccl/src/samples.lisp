@@ -36,7 +36,7 @@
 (defun make-action-interface ()
   (make-fccl-action-interface
    (actionlib:make-action-client
-    "/command"
+    "/l_arm_fccl_controller/command"
     "fccl_msgs/SingleArmMotionAction")
    (make-kinematic-chain "torso_lift_link" "l_gripper_tool_frame")))
 
