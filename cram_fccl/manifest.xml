@@ -11,6 +11,7 @@
   <depend package="actionlib_lisp"/>
   <depend package="fccl_msgs"/>
   <depend package="geometry_msgs"/>
+  <depend package="std_msgs"/>
   <depend package="cl_transforms"/>
   <!--depend package="cram_feature_constraints"/-->
   <!--depend package="constraint_msgs"/-->
