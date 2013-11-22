@@ -49,6 +49,7 @@
   (roslisp:make-msg
    "fccl_msgs/constraint"
    name (name constraint)
+   reference (reference-id constraint)
    function (constraint-function constraint)
    tool_feature (to-msg (tool-feature constraint))
    object_feature (to-msg (object-feature constraint))
