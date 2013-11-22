@@ -37,7 +37,7 @@
 
 (defclass geometric-constraint ()
   ((name :initarg :name :reader name)
-   (reference-id :initarg :reference-id :reader reference)
+   (reference-id :initarg :reference-id :reader reference-id)
    (constraint-function :initarg :constraint-function :reader constraint-function)
    (tool-feature :initarg :tool-feature :reader tool-feature)
    (object-feature :initarg :object-feature :reader object-feature)
@@ -65,3 +65,18 @@
 
 (defun make-plane-feature (name reference-id position direction)
   (make-geometric-feature name reference-id 'plane position direction))
+
+(defun make-geometric-constraint (name reference-id function 
+                                  tool-feature object-feature
+                                  lower-boundary upper-boundary)
+  (declare (type string name reference-id function)
+           (type geometric-feature tool-feature object-feature)
+           (type number lower-boundary upper-boundary))
+  (make-instance 'geometric-constraint
+                 :name name
+                 :reference-id reference-id
+                 :constraint-function function
+                 :tool-feature tool-feature
+                 :object-feature object-feature
+                 :lower-boundary lower-boundary
+                 :upper-boundary upper-boundary))
