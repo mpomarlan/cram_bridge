@@ -47,14 +47,21 @@
    direction (3d-vector->vector3-msg
               (feature-direction feature))))
 
-;; (defun feature-constraint->single-config-msg (constraint)
-;;   (declare (type feature-constraint constraint))
-;;   (roslisp:make-msg
-;;    "constraint_msgs/constraint"
-;;    name (name constraint)
-;;    function (feature-function constraint)
-;;    tool_feature (feature->msg (tool-feature constraint))
-;;    world_feature (feature->msg (world-feature constraint))))
+(defmethod toMsg ((constraint geometric-constraint))
+  (roslisp:make-msg
+   "fccl_msgs/constraint"
+   name (name constraint)
+   function (constraint-function constraint)
+   tool_feature (toMsg (tool-feature constraint))
+   object_feature (toMsg (object-feature constraint))
+   lower_boundary (lower-boundary constraint)
+   upper_boundary (upper-boundary constraint)))
+
+(defmethod toMsg ((chain kinematic-chain))
+  (roslisp:make-msg
+   "fccl_msgs/kinematicchain"
+   base_frame (base-frame-id chain)
+   tip_frame (tip-frame-id chain)))
 
 ;; (defun feature-constraints->config-msg (constraints controller-id)
 ;;   (declare (type list constraints)

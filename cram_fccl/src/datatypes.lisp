@@ -35,7 +35,7 @@
    (feature-position :initarg :feature-position :reader feature-position)
    (feature-direction :initarg :feature-direction :reader feature-direction)))
 
-(defclass constraint ()
+(defclass geometric-constraint ()
   ((name :initarg :name :reader name)
    (reference-id :initarg :reference-id :reader reference)
    (constraint-function :initarg :constraint-function :reader constraint-function)
