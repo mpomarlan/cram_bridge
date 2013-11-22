@@ -80,3 +80,9 @@
                  :object-feature object-feature
                  :lower-boundary lower-boundary
                  :upper-boundary upper-boundary))
+
+(defun make-kinematic-chain (base-frame-id tip-frame-id)
+  (declare (type string base-frame-id tip-frame-id))
+  (make-instance 'kinematic-chain
+                 :base-frame-id base-frame-id
+                 :tip-frame-id tip-frame-id))
