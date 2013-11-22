@@ -29,24 +29,25 @@
 (in-package :cram-fccl)
 
 (defclass geometric-feature ()
-  ((name :initarg :name :reader name)
-   (reference-id :initarg :reference-id :reader reference-id)
+  ((name :initarg :name :reader name :type string)
+   (reference-id :initarg :reference-id :reader reference-id :type string)
    (feature-type :initarg :feature-type :reader feature-type)
    (feature-position :initarg :feature-position :reader feature-position)
    (feature-direction :initarg :feature-direction :reader feature-direction)))
 
 (defclass geometric-constraint ()
-  ((name :initarg :name :reader name)
-   (reference-id :initarg :reference-id :reader reference-id)
-   (constraint-function :initarg :constraint-function :reader constraint-function)
+  ((name :initarg :name :reader name :type string)
+   (reference-id :initarg :reference-id :reader reference-id :type string)
+   (constraint-function :initarg :constraint-function 
+                        :reader constraint-function :type string)
    (tool-feature :initarg :tool-feature :reader tool-feature)
    (object-feature :initarg :object-feature :reader object-feature)
    (lower-boundary :initarg :lower-boundary :reader lower-boundary)
    (upper-boundary :initarg :upper-boundary :reader upper-boundary)))
 
 (defclass kinematic-chain ()
-  ((base-frame-id :initarg :base-frame-id :reader base-frame-id)
-   (tip-frame-id :initarg :tip-frame-id :reader tip-frame-id)))
+  ((base-frame-id :initarg :base-frame-id :reader base-frame-id :type string)
+   (tip-frame-id :initarg :tip-frame-id :reader tip-frame-id :type string)))
 
 (defun make-geometric-feature (name reference-id type position 
                                &optional (direction (cl-transforms:make-identity-vector)))
