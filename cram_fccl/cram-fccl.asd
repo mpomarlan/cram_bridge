@@ -32,6 +32,7 @@
   :description "Interface package of CRAM to communicate with feature constraints controllers in FCCL."
 
   :depends-on (roslisp
+               actionlib
                fccl_msgs-msg
                ;; cram-feature-constraints
                ;; constraint_msgs-msg

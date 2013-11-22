@@ -8,6 +8,7 @@
   <url>http://ai.uni-bremen.de/wiki/software/fccl</url>
 
   <depend package="roslisp"/>
+  <depend package="actionlib_lisp"/>
   <depend package="fccl_msgs"/>
   <!--depend package="cram_feature_constraints"/-->
   <!--depend package="constraint_msgs"/-->
