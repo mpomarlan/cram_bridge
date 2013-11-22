@@ -28,9 +28,9 @@
 
 (in-package :cram-fccl)
 
-(defgeneric toMsg (data))
+(defgeneric to-msg (data))
 
-(defmethod toMsg ((feature geometric-feature))
+(defmethod to-msg ((feature geometric-feature))
   (roslisp:make-msg
    "fccl_msgs/feature"
    name (name feature)
@@ -42,22 +42,20 @@
            (get-feature-type-msg-symbol-code :plane))
           (point
            (get-feature-type-msg-symbol-code :point)))
-   position (3d-vector->vector3-msg
-             (feature-position feature))
-   direction (3d-vector->vector3-msg
-              (feature-direction feature))))
+   position (to-msg (feature-position feature))
+   direction (to-msg (feature-direction feature))))
 
-(defmethod toMsg ((constraint geometric-constraint))
+(defmethod to-msg ((constraint geometric-constraint))
   (roslisp:make-msg
    "fccl_msgs/constraint"
    name (name constraint)
    function (constraint-function constraint)
-   tool_feature (toMsg (tool-feature constraint))
-   object_feature (toMsg (object-feature constraint))
+   tool_feature (to-msg (tool-feature constraint))
+   object_feature (to-msg (object-feature constraint))
    lower_boundary (lower-boundary constraint)
    upper_boundary (upper-boundary constraint)))
 
-(defmethod toMsg ((chain kinematic-chain))
+(defmethod to-msg ((chain kinematic-chain))
   (roslisp:make-msg
    "fccl_msgs/kinematicchain"
    base_frame (base-frame-id chain)
@@ -103,8 +101,7 @@
 ;;      min_vel (map 'vector #'identity
 ;;                   min_vels))))
 
-(defun 3d-vector->vector3-msg (point)
-  (declare (type cl-transforms:3d-vector point))
+(defmethod to-msg ((point cl-transforms:3d-vector))
   (roslisp:make-msg
    "geometry_msgs/vector3"
    x (cl-transforms:x point)
@@ -115,6 +112,8 @@
   (roslisp-msg-protocol:symbol-code
    'fccl_msgs-msg:feature
    type-symbol))
+
+(defgeneric from-Msg (data))
 
 ;; (defun constraint-state-msg->feature-constraint-state (msg)
 ;;   (when msg
