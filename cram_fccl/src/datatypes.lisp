@@ -47,3 +47,21 @@
 (defclass kinematic-chain ()
   ((base-frame-id :initarg :base-frame-id :reader base-frame-id)
    (tip-frame-id :initarg :tip-frame-id :reader tip-frame-id)))
+
+(defun make-geometric-feature (name reference-id type position 
+                               &optional (direction (cl-transforms:make-identity-vector)))
+  (make-instance 'geometric-feature
+                 :name name
+                 :reference-id reference-id
+                 :feature-type type
+                 :feature-position position
+                 :feature-direction direction))
+
+(defun make-point-feature (name reference-id position)
+  (make-geometric-feature name reference-id 'point position))
+
+(defun make-line-feature (name reference-id position direction)
+  (make-geometric-feature name reference-id 'line position direction))
+
+(defun make-plane-feature (name reference-id position direction)
+  (make-geometric-feature name reference-id 'plane position direction))
