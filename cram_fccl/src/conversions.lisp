@@ -56,6 +56,10 @@
    lower_boundary (lower-boundary constraint)
    upper_boundary (upper-boundary constraint)))
 
+(defmethod to-msg ((list-of-data list))
+  (map 'vector #'identity
+       (map 'list #'to-msg list-of-data)))
+
 (defmethod to-msg ((chain kinematic-chain))
   (roslisp:make-msg
    "fccl_msgs/kinematicchain"
