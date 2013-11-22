@@ -26,29 +26,33 @@
 ;;; ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ;;; POSSIBILITY OF SUCH DAMAGE.
 
-(defsystem cram-fccl
-  :author "Georg Bartels <georg.bartels@cs.uni-bremen.de>"
-  :license "BSD"
-  :description "Interface package of CRAM to communicate with feature constraints controllers in FCCL."
+(in-package :cram-fccl)
 
-  :depends-on (roslisp
-               actionlib
-               fccl_msgs-msg
-               geometry_msgs-msg
-               cl-transforms
-               ;; cram-feature-constraints
-               ;; constraint_msgs-msg
-               ;; geometry_msgs-msg
-               ;; cram-language
-               )
-  :components
-  ((:module "src"
-    :components
-    ((:file "package")
-     (:file "datatypes" :depends-on ("package"))
-     (:file "conversions" :depends-on ("package" "datatypes"))
-     (:file "action-interface" :depends-on ("package" "datatypes" "conversions"))
-     (:file "samples" :depends-on ("package" "datatypes" "action-interface"))
-     ;; (:file "publisher-interface" :depends-on ("package" "conversions"))
-     ;; (:file "tests" :depends-on ("package" "conversions" "publisher-interface"))
-     ))))
+(defun test-pr2-left-arm-above-waist ()
+  (let ((action-interface (make-action-interface))
+        (constraints (make-constraint-specification)))
+    (execute-fccl-motion action-interface constraints)))
+
+(defun make-action-interface ()
+  (make-fccl-action-interface
+   (actionlib:make-action-client
+    "/command"
+    "fccl_msgs/SingleArmMotionAction")
+   (make-kinematic-chain "torso_lift_link" "l_gripper_tool_frame")))
+
+(defun make-constraint-specification ()
+  (let ((hand-plane (make-plane-feature
+                     "left gripper plane"
+                     "l_gripper_tool_frame"
+                     (cl-transforms:make-3d-vector 0 0 0)
+                     (cl-transforms:make-3d-vector 0 0 1)))
+        (waist-plane (make-plane-feature
+                      "horizontal waist plane"
+                      "torso_lift_link"
+                      (cl-transforms:make-3d-vector 0 0 0)
+                      (cl-transforms:make-3d-vector 0 0 1))))
+    (let ((left-hand-above-waist-constraint 
+            (make-geometric-constraint
+             "left hand above waist constraint" "base_link" "above"
+             hand-plane waist-plane 0.0 2.0)))
+      (list left-hand-above-waist-constraint))))
