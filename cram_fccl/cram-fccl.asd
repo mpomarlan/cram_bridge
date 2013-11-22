@@ -43,7 +43,7 @@
   ((:module "src"
     :components
     ((:file "package")
-     ;; (:file "conversions" :depends-on ("package"))
+     (:file "conversions" :depends-on ("package"))
      ;; (:file "publisher-interface" :depends-on ("package" "conversions"))
      ;; (:file "tests" :depends-on ("package" "conversions" "publisher-interface"))
      ))))

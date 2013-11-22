@@ -28,89 +28,89 @@
 
 (in-package :cram-fccl)
 
-(defun feature->msg (feature)
-  (declare (type geometric-feature feature))
-  (roslisp:make-msg
-   "constraint_msgs/feature"
-   frame_id (frame-id feature)
-   name (name feature)
-   type (ecase (feature-type feature)
-          (line
-           (get-feature-type-msg-symbol-code :line))
-          (plane
-           (get-feature-type-msg-symbol-code :plane))
-          (point
-           (get-feature-type-msg-symbol-code :point)))
-   position (3d-vector->vector3-msg
-             (feature-position feature))
-   direction (3d-vector->vector3-msg
-              (feature-direction feature))
-   contact_direction (3d-vector->vector3-msg
-                      (contact-direction feature))))
+;; (defun feature->msg (feature)
+;;   (declare (type geometric-feature feature))
+;;   (roslisp:make-msg
+;;    "constraint_msgs/feature"
+;;    frame_id (frame-id feature)
+;;    name (name feature)
+;;    type (ecase (feature-type feature)
+;;           (line
+;;            (get-feature-type-msg-symbol-code :line))
+;;           (plane
+;;            (get-feature-type-msg-symbol-code :plane))
+;;           (point
+;;            (get-feature-type-msg-symbol-code :point)))
+;;    position (3d-vector->vector3-msg
+;;              (feature-position feature))
+;;    direction (3d-vector->vector3-msg
+;;               (feature-direction feature))
+;;    contact_direction (3d-vector->vector3-msg
+;;                       (contact-direction feature))))
 
-(defun feature-constraint->single-config-msg (constraint)
-  (declare (type feature-constraint constraint))
-  (roslisp:make-msg
-   "constraint_msgs/constraint"
-   name (name constraint)
-   function (feature-function constraint)
-   tool_feature (feature->msg (tool-feature constraint))
-   world_feature (feature->msg (world-feature constraint))))
+;; (defun feature-constraint->single-config-msg (constraint)
+;;   (declare (type feature-constraint constraint))
+;;   (roslisp:make-msg
+;;    "constraint_msgs/constraint"
+;;    name (name constraint)
+;;    function (feature-function constraint)
+;;    tool_feature (feature->msg (tool-feature constraint))
+;;    world_feature (feature->msg (world-feature constraint))))
 
-(defun feature-constraints->config-msg (constraints controller-id)
-  (declare (type list constraints)
-           (type string controller-id))
-  (let ((constraint-msg-vector
-           (map 'vector #'identity
-                (map 'list #'feature-constraint->single-config-msg constraints))))
-    (roslisp:make-msg
-     "constraint_msgs/constraintconfig"
-     :controller_id controller-id
-     :movement_id (sxhash constraints)
-     :constraints constraint-msg-vector)))
+;; (defun feature-constraints->config-msg (constraints controller-id)
+;;   (declare (type list constraints)
+;;            (type string controller-id))
+;;   (let ((constraint-msg-vector
+;;            (map 'vector #'identity
+;;                 (map 'list #'feature-constraint->single-config-msg constraints))))
+;;     (roslisp:make-msg
+;;      "constraint_msgs/constraintconfig"
+;;      :controller_id controller-id
+;;      :movement_id (sxhash constraints)
+;;      :constraints constraint-msg-vector)))
 
-(defun feature-constraints->command-msg (constraints controller-id)
-  (declare (type list constraints)
-           (type string controller-id))
-  (let ((min_vels
-          (map 'list #'minimum-velocity constraints))
-        (max_vels
-          (map 'list #'maximum-velocity constraints))
-        (weights
-          (map 'list #'weight constraints))
-        (lower
-          (map 'list #'lower-boundary constraints))
-        (upper
-          (map 'list #'upper-boundary constraints)))
-    (roslisp:make-msg
-     "constraint_msgs/constraintcommand"
-     controller_id controller-id
-     movement_id (sxhash constraints)
-     pos_lo (map 'vector #'identity
-                 lower)
-     pos_hi (map 'vector #'identity
-                 upper)
-     weight (map 'vector #'identity
-                 weights)
-     max_vel (map 'vector #'identity
-                  max_vels)
-     min_vel (map 'vector #'identity
-                  min_vels))))
+;; (defun feature-constraints->command-msg (constraints controller-id)
+;;   (declare (type list constraints)
+;;            (type string controller-id))
+;;   (let ((min_vels
+;;           (map 'list #'minimum-velocity constraints))
+;;         (max_vels
+;;           (map 'list #'maximum-velocity constraints))
+;;         (weights
+;;           (map 'list #'weight constraints))
+;;         (lower
+;;           (map 'list #'lower-boundary constraints))
+;;         (upper
+;;           (map 'list #'upper-boundary constraints)))
+;;     (roslisp:make-msg
+;;      "constraint_msgs/constraintcommand"
+;;      controller_id controller-id
+;;      movement_id (sxhash constraints)
+;;      pos_lo (map 'vector #'identity
+;;                  lower)
+;;      pos_hi (map 'vector #'identity
+;;                  upper)
+;;      weight (map 'vector #'identity
+;;                  weights)
+;;      max_vel (map 'vector #'identity
+;;                   max_vels)
+;;      min_vel (map 'vector #'identity
+;;                   min_vels))))
 
-(defun 3d-vector->vector3-msg (point)
-  (declare (type cl-transforms:3d-vector point))
-  (roslisp:make-msg
-   "geometry_msgs/vector3"
-   x (cl-transforms:x point)
-   y (cl-transforms:y point)
-   z (cl-transforms:z point)))
+;; (defun 3d-vector->vector3-msg (point)
+;;   (declare (type cl-transforms:3d-vector point))
+;;   (roslisp:make-msg
+;;    "geometry_msgs/vector3"
+;;    x (cl-transforms:x point)
+;;    y (cl-transforms:y point)
+;;    z (cl-transforms:z point)))
 
-(defun get-feature-type-msg-symbol-code (type-symbol)
-  (roslisp-msg-protocol:symbol-code
-   'constraint_msgs-msg:feature
-   type-symbol))
+;; (defun get-feature-type-msg-symbol-code (type-symbol)
+;;   (roslisp-msg-protocol:symbol-code
+;;    'constraint_msgs-msg:feature
+;;    type-symbol))
 
-(defun constraint-state-msg->feature-constraint-state (msg)
-  (when msg
-    (roslisp:with-fields (weights movement_id) msg
-      (cram-feature-constraints:make-constraint-state weights movement_id))))
+;; (defun constraint-state-msg->feature-constraint-state (msg)
+;;   (when msg
+;;     (roslisp:with-fields (weights movement_id) msg
+;;       (cram-feature-constraints:make-constraint-state weights movement_id))))
