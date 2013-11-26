@@ -44,7 +44,6 @@
                actionlib
                std_msgs-msg
                cram-plan-failures
-               planlogger-srv
                designator-integration-lisp
                designator_integration_msgs-msg
                designator_integration_msgs-srv
