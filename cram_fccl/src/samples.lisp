@@ -36,16 +36,6 @@
         (constraints (make-constraint-specification)))
       (execute-fccl-motion action-interface constraints #'feedback-callback)))
 
-(defun feedback-callback (feedback-msg)
-  "Feedback callback returning t if all constraints in `feedback-msg' are fulfilled."
-  (let ((feedback-list (from-msg feedback-msg)))
-    (every #'constraint-fulfilled-p feedback-list)))
-
-(defun constraint-fulfilled-p (constraint-feedback)
-  "Checks whether `constraint-feedback' of type constraint-feedback is fulfilled."
-  (declare (type geometric-constraint-feedback constraint-feedback))
-  (< (weight (output constraint-feedback)) 1.0))
-
 (defun make-action-interface ()
   "Creates a fccl-action-interface to command the left arm."
   (make-fccl-action-interface
@@ -71,3 +61,13 @@
              "left hand above waist constraint" "base_link" "above"
              hand-plane waist-plane 0.0 2.0)))
       (list left-hand-above-waist-constraint))))
+
+(defun feedback-callback (feedback-msg)
+  "Feedback callback returning t if all constraints in `feedback-msg' are fulfilled."
+  (let ((feedback-list (from-msg feedback-msg)))
+    (every #'constraint-fulfilled-p feedback-list)))
+
+(defun constraint-fulfilled-p (constraint-feedback)
+  "Checks whether `constraint-feedback' of type constraint-feedback is fulfilled."
+  (declare (type geometric-constraint-feedback constraint-feedback))
+  (< (weight (output constraint-feedback)) 1.0))
