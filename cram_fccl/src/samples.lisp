@@ -28,15 +28,26 @@
 
 (in-package :cram-fccl)
 
+(defparameter *feedback-msg* nil)
+
 (defun test-pr2-left-arm-above-waist ()
+  "Sample function show-casing how to use the fccl action-interface."
   (let ((action-interface (make-action-interface))
         (constraints (make-constraint-specification)))
       (execute-fccl-motion action-interface constraints #'feedback-callback)))
 
-(defun feedback-callback (feedback-signal)
-  (declare (ignore feedback-signal)))
+(defun feedback-callback (feedback-msg)
+  "Feedback callback returning t if all constraints in `feedback-msg' are fulfilled."
+  (let ((feedback-list (from-msg feedback-msg)))
+    (every #'constraint-fulfilled-p feedback-list)))
+
+(defun constraint-fulfilled-p (constraint-feedback)
+  "Checks whether `constraint-feedback' of type constraint-feedback is fulfilled."
+  (declare (type geometric-constraint-feedback constraint-feedback))
+  (< (weight (output constraint-feedback)) 1.0))
 
 (defun make-action-interface ()
+  "Creates a fccl-action-interface to command the left arm."
   (make-fccl-action-interface
    (actionlib:make-action-client
     "/l_arm_fccl_controller/command"
@@ -44,6 +55,7 @@
    (make-kinematic-chain "torso_lift_link" "l_gripper_tool_frame")))
 
 (defun make-constraint-specification ()
+  "Creates a sample constraint specification to move the left gripper in front of the chest of the PR2."
   (let ((hand-plane (make-plane-feature
                      "left gripper plane"
                      "l_gripper_tool_frame"
