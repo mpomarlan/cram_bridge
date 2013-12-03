@@ -131,7 +131,73 @@
    'fccl_msgs-msg:feature
    type-symbol))
 
-(defgeneric from-Msg (data))
+(defun get-feature-type-symbol-from-msg-code (type-code)
+  (car 
+   (find type-code (roslisp-msg-protocol:symbol-codes 'fccl_msgs-msg:feature) :key #'cdr)))
+
+(defgeneric from-msg (data))
+
+(defmethod from-msg ((msg fccl_msgs-msg:SingleArmMotionFeedback))
+  (with-fields (constraints) msg
+    (from-msg constraints)))
+
+(defmethod from-msg ((vector-of-msgs vector))
+  (map 'list #'identity
+       (map 'vector #'from-msg vector-of-msgs)))
+
+(defmethod from-msg ((msg fccl_msgs-msg:ConstraintFeedback))
+  (with-fields (command output) msg
+    (make-geometric-constraint-feedback (from-msg command) (from-msg output))))
+
+(defmethod from-msg ((msg fccl_msgs-msg:ConstraintState))
+  (roslisp:with-fields (output_value desired_output weight) msg
+    (make-geometric-constraint-state output_value desired_output weight)))
+
+(defmethod from-msg ((msg fccl_msgs-msg:Constraint))
+  (with-fields (name reference function tool_feature object_feature
+                     lower_boundary upper_boundary) msg
+    ;; TODO(Georg): use primitive datatypes in msg
+    (make-geometric-constraint
+     (from-msg name)
+     (from-msg reference)
+     (from-msg function)
+     (from-msg tool_feature)
+     (from-msg object_feature)
+     (from-msg lower_boundary)
+     (from-msg upper_boundary))))
+
+(defmethod from-msg ((msg fccl_msgs-msg:Feature))
+  (with-fields ((name-msg name) (reference-msg reference) (type-msg type)
+                (position-msg position) (direction-msg direction)) msg
+      (let ((name (from-msg name-msg))
+            (reference (from-msg reference-msg))
+            (type (from-msg type-msg))
+            (position (from-msg position-msg))
+            (direction (from-msg direction-msg)))
+        (cond ((eq (get-feature-type-symbol-from-msg-code type) :point)
+               (make-point-feature name reference position))
+              ((eq (get-feature-type-symbol-from-msg-code type) :line)
+               (make-line-feature name reference position direction))
+              ((eq (get-feature-type-symbol-from-msg-code type) :plane)
+               (make-plane-feature name reference position direction))
+              ;; TODO(Georg): throw meaningful error error
+              (t nil)))))
+
+(defmethod from-msg ((msg geometry_msgs-msg:Vector3))
+  (with-fields (x y z) msg
+      (cl-transforms:make-3d-vector x y z)))
+
+(defmethod from-msg ((msg std_msgs-msg:String))
+  (with-fields (data) msg
+    data))
+
+(defmethod from-msg ((msg std_msgs-msg:Float64))
+  (with-fields ((data2 data)) msg 
+    data2))
+
+(defmethod from-msg ((msg std_msgs-msg:Uint8))
+  (with-fields (data) msg
+    data))
 
 ;; (defun constraint-state-msg->feature-constraint-state (msg)
 ;;   (when msg
