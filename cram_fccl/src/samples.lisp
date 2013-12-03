@@ -31,7 +31,10 @@
 (defun test-pr2-left-arm-above-waist ()
   (let ((action-interface (make-action-interface))
         (constraints (make-constraint-specification)))
-    (execute-fccl-motion action-interface constraints)))
+      (execute-fccl-motion action-interface constraints #'feedback-callback)))
+
+(defun feedback-callback (feedback-signal)
+  (declare (ignore feedback-signal)))
 
 (defun make-action-interface ()
   (make-fccl-action-interface
