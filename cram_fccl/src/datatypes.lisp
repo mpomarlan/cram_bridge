@@ -45,6 +45,15 @@
    (lower-boundary :initarg :lower-boundary :reader lower-boundary)
    (upper-boundary :initarg :upper-boundary :reader upper-boundary)))
 
+(defclass geometric-constraint-state ()
+  ((output :initarg :output :reader output)
+   (desired-output :initarg :desired-output :reader desired-output)
+   (weight :initarg :weight :reader weight)))
+
+(defclass geometric-constraint-feedback ()
+  ((command :initarg :command :reader command :type geometric-constraint)
+   (output :initarg :output :reader output :type geometric-constraint-state)))
+
 (defclass kinematic-chain ()
   ((base-frame-id :initarg :base-frame-id :reader base-frame-id :type string)
    (tip-frame-id :initarg :tip-frame-id :reader tip-frame-id :type string)))
@@ -81,6 +90,13 @@
                  :object-feature object-feature
                  :lower-boundary lower-boundary
                  :upper-boundary upper-boundary))
+
+(defun make-geometric-constraint-state (output desired-output weight)
+  (make-instance 'geometric-constraint-state
+                 :output output :desired-output desired-output :weight weight))
+
+(defun make-geometric-constraint-feedback (command output)
+  (make-instance 'geometric-constraint-feedback :command command :output output))
 
 (defun make-kinematic-chain (base-frame-id tip-frame-id)
   (declare (type string base-frame-id tip-frame-id))
