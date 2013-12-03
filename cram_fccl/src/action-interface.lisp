@@ -39,13 +39,18 @@
                  :action-client action-client
                  :kinematic-chain kinematic-chain))
 
-(defgeneric execute-fccl-motion (interface motion cancel-callback))
+(defgeneric execute-fccl-motion (interface motion cancel-callback 
+                                 &key server-timeout execution-timeout))
 
-(defmethod execute-fccl-motion ((interface fccl-action-interface) (motion list) (cancel-callback function))
-  (actionlib:wait-for-server (action-client interface) 2.0)
+(defmethod execute-fccl-motion ((interface fccl-action-interface)
+                                (motion list) (cancel-callback function)
+                                &key (server-timeout 2.0) execution-timeout)
+  (actionlib:wait-for-server (action-client interface) server-timeout)
   (handler-bind ((actionlib:feedback-signal 
                    (lambda (feedback-signal)
-                     (with-slots ((goal-handle actionlib::goal) (feedback actionlib::feedback)) feedback-signal
+                     (with-slots ((goal-handle actionlib::goal) 
+                                  (feedback actionlib::feedback)) 
+                         feedback-signal
                        (declare (ignore goal-handle))
                        (when (funcall cancel-callback feedback)
                          (invoke-restart 'actionlib:abort-goal))))))
@@ -54,4 +59,4 @@
                                    (action-client interface)
                                    :constraints (to-msg motion)
                                    :kinematics (to-msg (kinematic-chain interface)))
-                                  :exec-timeout 5.0)))
+                                  :exec-timeout execution-timeout)))
