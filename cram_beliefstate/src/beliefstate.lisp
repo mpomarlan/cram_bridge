@@ -27,7 +27,8 @@
 
 (in-package :cram-beliefstate)
 
-(defvar *planlogging-namespace* "/planlogger")
+;;(defvar *planlogging-namespace* "/planlogger")
+(defvar *planlogging-namespace* "/beliefstate_ros")
 (defvar *designator-publisher* nil)
 (defvar *designator-topic* "/logged_designators")
 
@@ -46,11 +47,11 @@
 
 (defun start-node (name log-parameters detail-level)
   (let ((service (fully-qualified-service-name
-                  "start_node")))
+                  "begin_context")));;"start_node")))
+    (format t "~a~%" service)
     (when (roslisp:wait-for-service service 0.3)
       (let* ((parameters
-               (mapcar (lambda (x)
-                         x)
+               (mapcar (lambda (x) x)
                        (append (list (list '_name name)
                                      (list '_detail-level detail-level)
                                      (list '_source 'cram)
@@ -65,7 +66,7 @@
 
 (defun stop-node (id &key (success t))
   (let ((service (fully-qualified-service-name
-                  "stop_node")))
+                  "end_context")));;"stop_node")))
     (when (roslisp:wait-for-service service 0.3)
       (designator-integration-lisp:call-designator-service
        service
@@ -78,10 +79,7 @@
 (defun extract-dot-file (filename &key
                                     (successes t)
                                     (fails t)
-                                    (max-detail-level 99)
-                                    (use-color t use-color-set-p))
-  (when use-color-set-p
-    (set-color-usage use-color))
+                                    (max-detail-level 99))
   (extract-file filename 'dot
                 :successes successes
                 :fails fails
@@ -104,13 +102,13 @@
     (owl)
     (dot))
   (let ((service (fully-qualified-service-name
-                  "control")))
+                  "alter_context")));"control")))
     (when (roslisp:wait-for-service service 0.3)
       (designator-integration-lisp:call-designator-service
        service
        (cram-designators:make-designator
         'cram-designators:action
-        (list (list 'command 'extract)
+        (list (list 'command 'export-planlog) ;; was: extract
               (list 'format format)
               (list 'filename filename)
               (list 'show-successes (cond (successes 1)
@@ -141,21 +139,9 @@
                                       (t 0)))
               (list 'max-detail-level max-detail-level)))))))
 
-(defun set-color-usage (use-color)
-  (let ((service (fully-qualified-service-name
-                  "control")))
-    (when (roslisp:wait-for-service service 0.3)
-      (designator-integration-lisp:call-designator-service
-       service
-       (cram-designators:make-designator
-        'cram-designators:action
-        (list (list 'command 'use-color)
-              (list 'use-color (cond (use-color 1)
-                                     (t 0)))))))))
-
 (defun alter-node (designator)
   (let ((service (fully-qualified-service-name
-                  "alter_node")))
+                  "alter_context")));;"alter_node")))
     (when (roslisp:wait-for-service service 0.3)
       (designator-integration-lisp:call-designator-service
        service
@@ -189,8 +175,8 @@
      (cram-designators:make-designator
       'cram-designators:action
       (list (list 'command 'add-image)
-            (list 'origin image-topic)
-            (list 'filename filename))))))
+            ;;(list 'filename filename)
+            (list 'origin image-topic))))))
 
 (defun add-failure-to-active-node (condition)
   (let ((cond-str (write-to-string condition)))
@@ -220,10 +206,10 @@
       (let* ((desig-id (desig-prop-value (first result) 'desig-props::id))
              (is-new (eql (desig-prop-value (first result) 'desig-props::is-new)
                           1.0d0)))
-        (when is-new
-          (publish-logged-designator
-           (type-of designator)
-           (append description (list `(__id ,desig-id)))))
+        ;; (when is-new
+        ;;   (publish-logged-designator
+        ;;    (type-of designator)
+        ;;    (append description (list `(__id ,desig-id)))))
         desig-id))))
 
 (defun publish-logged-designator (type description)
@@ -280,10 +266,10 @@
         (dot-name (concatenate 'string name ".dot"))
         (owl-name-no-details (concatenate 'string name "-no-details.owl"))
         (dot-name-no-details (concatenate 'string name "-no-details.dot")))
-    (extract-dot-file dot-name)
-    (extract-owl-file owl-name)
-    (extract-dot-file dot-name-no-details :max-detail-level 2)
-    (extract-owl-file owl-name-no-details :max-detail-level 2)))
+    ;(extract-dot-file dot-name)
+    (extract-owl-file owl-name)))
+    ;(extract-dot-file dot-name-no-details :max-detail-level 2)
+    ;(extract-owl-file owl-name-no-details :max-detail-level 2)))
 
 (defun extract-mongodb-entries (&key
                                   (database "db_exp_log")
