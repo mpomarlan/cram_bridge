@@ -33,8 +33,11 @@
 (defun test-pr2-left-arm-above-waist ()
   "Sample function show-casing how to use the fccl action-interface."
   (let ((action-interface (make-action-interface))
-        (constraints (make-constraint-specification)))
-      (execute-fccl-motion action-interface constraints #'feedback-callback)))
+        (motion-list (make-constraint-specifications)))
+    (map 'list
+         (lambda (single-motion)
+           (execute-fccl-motion action-interface single-motion #'feedback-callback))
+         motion-list)))
 
 (defun make-action-interface ()
   "Creates a fccl-action-interface to command the left arm."
@@ -44,7 +47,7 @@
     "fccl_msgs/SingleArmMotionAction")
    (make-kinematic-chain "torso_lift_link" "l_gripper_tool_frame")))
 
-(defun make-constraint-specification ()
+(defun make-constraint-specifications ()
   "Creates a sample constraint specification to move the left gripper in front of the chest of the PR2."
   (let ((hand-plane (make-plane-feature
                      "left gripper plane"
@@ -59,8 +62,14 @@
     (let ((left-hand-above-waist-constraint 
             (make-geometric-constraint
              "left hand above waist constraint" "base_link" "above"
-             hand-plane waist-plane 0.0 2.0)))
-      (list left-hand-above-waist-constraint))))
+             hand-plane waist-plane 0.1 2.0))
+          (left-hand-below-waist-constraint 
+            (make-geometric-constraint
+             "left hand below waist constraint" "base_link" "above"
+             hand-plane waist-plane -2.0 -0.1)))
+      (list 
+       (list left-hand-above-waist-constraint)
+       (list left-hand-below-waist-constraint)))))
 
 (defun feedback-callback (feedback-msg)
   "Feedback callback returning t if all constraints in `feedback-msg' are fulfilled."
