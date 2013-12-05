@@ -28,16 +28,24 @@
 
 (in-package :cram-fccl)
 
-(defparameter *feedback-msg* nil)
+(defvar *action-interface* nil)
 
 (defun test-pr2-left-arm-above-waist ()
   "Sample function show-casing how to use the fccl action-interface."
-  (let ((action-interface (make-action-interface))
+  (let ((action-interface (get-action-interface))
         (motion-list (make-constraint-specifications)))
     (map 'list
          (lambda (single-motion)
            (execute-fccl-motion action-interface single-motion #'feedback-callback))
          motion-list)))
+
+(defun get-action-interface ()
+  (ensure-action-interface)
+  *action-interface*)
+
+(defun ensure-action-interface ()
+  (unless *action-interface*
+    (setf *action-interface* (make-action-interface))))
 
 (defun make-action-interface ()
   "Creates a fccl-action-interface to command the left arm."
