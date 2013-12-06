@@ -69,15 +69,39 @@
                       (cl-transforms:make-3d-vector 0 0 1))))
     (let ((left-hand-above-waist-constraint 
             (make-geometric-constraint
-             "left hand above waist constraint" "base_link" "above"
+             "left hand above waist constraint" "torso_lift_link" "above"
              hand-plane waist-plane 0.1 2.0))
           (left-hand-below-waist-constraint 
             (make-geometric-constraint
-             "left hand below waist constraint" "base_link" "above"
-             hand-plane waist-plane -2.0 -0.1)))
+             "left hand below waist constraint" "torso_lift_link" "below"
+             hand-plane waist-plane 0.1 2.0))
+          (left-hand-left-of-waist-constraint 
+            (make-geometric-constraint
+             "left hand left of waist constraint" "torso_lift_link" "left"
+             hand-plane waist-plane 0.05 0.1))
+          (left-hand-right-of-waist-constraint 
+            (make-geometric-constraint
+             "left hand right of waist constraint" "torso_lift_link" "right"
+             hand-plane waist-plane 0.05 0.1))
+          (left-hand-infront-of-waist-constraint 
+            (make-geometric-constraint
+             "left hand in front of waist constraint" "torso_lift_link" "behind"
+             hand-plane waist-plane 0.4 0.5))
+          (left-hand-infront-of-waist-constraint2
+            (make-geometric-constraint
+             "left hand in front of waist constraint 2" "torso_lift_link" "infront"
+             hand-plane waist-plane -0.25 -0.2))
+          (left-hand-parallel-to-ground-constraint
+            (make-geometric-constraint
+             "left hand parallel to ground constraint" "torso_lift_link" "perpendicular"
+             hand-plane waist-plane 0.95 1.2)))
       (list 
-       (list left-hand-above-waist-constraint)
-       (list left-hand-below-waist-constraint)))))
+       (list left-hand-above-waist-constraint left-hand-parallel-to-ground-constraint)
+       (list left-hand-below-waist-constraint left-hand-parallel-to-ground-constraint)
+       (list left-hand-left-of-waist-constraint left-hand-parallel-to-ground-constraint)
+       (list left-hand-right-of-waist-constraint left-hand-parallel-to-ground-constraint)
+       (list left-hand-infront-of-waist-constraint left-hand-parallel-to-ground-constraint)
+       (list left-hand-infront-of-waist-constraint2 left-hand-parallel-to-ground-constraint)))))
 
 (defun feedback-callback (feedback-msg)
   "Feedback callback returning t if all constraints in `feedback-msg' are fulfilled."
