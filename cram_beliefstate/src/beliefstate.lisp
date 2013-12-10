@@ -27,10 +27,10 @@
 
 (in-package :cram-beliefstate)
 
-;;(defvar *planlogging-namespace* "/planlogger")
 (defvar *planlogging-namespace* "/beliefstate_ros")
 (defvar *designator-publisher* nil)
 (defvar *designator-topic* "/logged_designators")
+(defvar *kinect-topic-rgb* "/kinect_head/rgb/image_color")
 
 (defun beliefstate-init ()
   (setf *designator-publisher*
@@ -47,8 +47,7 @@
 
 (defun start-node (name log-parameters detail-level)
   (let ((service (fully-qualified-service-name
-                  "begin_context")));;"start_node")))
-    (format t "~a~%" service)
+                  "begin_context")))
     (when (roslisp:wait-for-service service 0.3)
       (let* ((parameters
                (mapcar (lambda (x) x)
@@ -66,7 +65,7 @@
 
 (defun stop-node (id &key (success t))
   (let ((service (fully-qualified-service-name
-                  "end_context")));;"stop_node")))
+                  "end_context")))
     (when (roslisp:wait-for-service service 0.3)
       (designator-integration-lisp:call-designator-service
        service
@@ -102,13 +101,13 @@
     (owl)
     (dot))
   (let ((service (fully-qualified-service-name
-                  "alter_context")));"control")))
+                  "alter_context")))
     (when (roslisp:wait-for-service service 0.3)
       (designator-integration-lisp:call-designator-service
        service
        (cram-designators:make-designator
         'cram-designators:action
-        (list (list 'command 'export-planlog) ;; was: extract
+        (list (list 'command 'export-planlog)
               (list 'format format)
               (list 'filename filename)
               (list 'show-successes (cond (successes 1)
@@ -141,11 +140,21 @@
 
 (defun alter-node (designator)
   (let ((service (fully-qualified-service-name
-                  "alter_context")));;"alter_node")))
+                  "alter_context")))
     (when (roslisp:wait-for-service service 0.3)
       (designator-integration-lisp:call-designator-service
        service
        designator))))
+
+(defun start-new-experiment ()
+  (let ((service (fully-qualified-service-name
+                  "alter_context")))
+    (when (roslisp:wait-for-service service 0.3)
+      (designator-integration-lisp:call-designator-service
+       service
+       (cram-designators:make-designator
+        'cram-designators:action
+        (list (list 'command 'start-new-experiment)))))))
 
 (defun add-object-to-active-node (designator &key (annotation ""))
   (let* ((memory-address (write-to-string
@@ -175,7 +184,6 @@
      (cram-designators:make-designator
       'cram-designators:action
       (list (list 'command 'add-image)
-            ;;(list 'filename filename)
             (list 'origin image-topic))))))
 
 (defun add-failure-to-active-node (condition)
@@ -203,13 +211,7 @@
                          (list 'memory-address memory-address)
                          (list 'description description))))))
     (when result
-      (let* ((desig-id (desig-prop-value (first result) 'desig-props::id))
-             (is-new (eql (desig-prop-value (first result) 'desig-props::is-new)
-                          1.0d0)))
-        ;; (when is-new
-        ;;   (publish-logged-designator
-        ;;    (type-of designator)
-        ;;    (append description (list `(__id ,desig-id)))))
+      (let* ((desig-id (desig-prop-value (first result) 'desig-props::id)))
         desig-id))))
 
 (defun publish-logged-designator (type description)
@@ -266,7 +268,7 @@
         (dot-name (concatenate 'string name ".dot"))
         (owl-name-no-details (concatenate 'string name "-no-details.owl"))
         (dot-name-no-details (concatenate 'string name "-no-details.dot")))
-    ;(extract-dot-file dot-name)
+    (extract-dot-file dot-name)
     (extract-owl-file owl-name)))
     ;(extract-dot-file dot-name-no-details :max-detail-level 2)
     ;(extract-owl-file owl-name-no-details :max-detail-level 2)))
