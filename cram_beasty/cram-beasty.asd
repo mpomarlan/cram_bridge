@@ -38,6 +38,6 @@
   ((:module "src"
     :components
     ((:file "package")
-     (:file "interface" :depends-on ("package"))
      (:file "conversions" :depends-on ("package"))
-     ))))
+     (:file "login" :depends-on ("package" "conversions"))
+     (:file "interface" :depends-on ("package" "login"))))))

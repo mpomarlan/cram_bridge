@@ -30,4 +30,5 @@
 
 (defpackage :cram-beasty
   (:use #:roslisp
-        #:common-lisp))
+        #:common-lisp)
+  (:export :make-beasty-interface))

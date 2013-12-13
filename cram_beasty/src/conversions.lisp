@@ -27,3 +27,15 @@
 ;;; POSSIBILITY OF SUCH DAMAGE.
 
 (in-package :cram-beasty)
+
+(defgeneric to-msg (data)
+  (:documentation "Creates the ROS message corresponding to lisp-data `data'."))
+
+(defgeneric from-msg (msg)
+  (:documentation "Creates the lisp data structure corresponding to ROS message `msg'."))
+
+(defun get-beasty-command-code (command-symbol)
+  "Returns the Beasty command-code defined in dlr_msgs/RCUGoal which corresponds to
+   `command-symbol'."
+  (declare (type symbol command-symbol))
+  (roslisp-msg-protocol:symbol-code 'dlr_msgs-msg:rcugoal command-symbol))

@@ -27,3 +27,29 @@
 ;;; POSSIBILITY OF SUCH DAMAGE.
 
 (in-package :cram-beasty)
+
+(defclass beasty-interface ()
+  ((action-client :initarg :action-client :reader action-client 
+                  :type actionlib::action-client
+                  :documentation "ROS action client to communicate with controller.")
+   (session-id :initarg :session-id :reader session-id :type number
+               :documentation "ID of current communication session.")
+   (cmd-id :initarg :cmd-id :reader cmd-id :type number
+           :documentation "cmd-id to be used in the next goal.")))
+
+(defun make-beasty-interface (action-name)
+  "Creates a BEASTY interface. `action-name' is the name of the action used to create
+   the ROS action-client and will also be used to identify the BEASTY interface."
+  (declare (type string action-name))
+  (let ((action-client (actionlib:make-action-client action-name "dlr_msgs/RCUAction")))
+    (actionlib:wait-for-server action-client 2.0)
+    (multiple-value-bind (session-id cmd-id)
+        (login-beasty action-client)
+      (make-instance 'beasty-interface 
+                     :action-client action-client
+                     :session-id session-id
+                     :cmd-id (update-cmd-id cmd-id)))))
+
+(defun update-cmd-id (cmd-id)
+  "Returns a new valid cmd-id for Beasty given that the controller last returned `cmd-id'."
+  (+ cmd-id 1))

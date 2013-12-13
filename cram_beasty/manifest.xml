@@ -10,5 +10,3 @@
   <depend package="actionlib_lisp"/>
   <depend package="dlr_msgs"/>
 </package>
-
-
