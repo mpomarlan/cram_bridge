@@ -26,18 +26,4 @@
 ;;; ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ;;; POSSIBILITY OF SUCH DAMAGE.
 
-(defsystem cram-beasty
-  :author "Georg Bartels <georg.bartels@cs.uni-bremen.de>"
-  :license "BSD"
-  :description "Interface package of CRAM to command Beasty LWR controllers."
-
-  :depends-on (roslisp
-               actionlib
-               dlr_msgs-msg)
-  :components
-  ((:module "src"
-    :components
-    ((:file "package")
-     (:file "interface" :depends-on ("package"))
-     (:file "conversions" :depends-on ("package"))
-     ))))
+(in-package :cram-beasty)
