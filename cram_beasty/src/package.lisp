@@ -31,4 +31,5 @@
 (defpackage :cram-beasty
   (:use #:roslisp
         #:common-lisp)
-  (:export :make-beasty-interface))
+  (:export :make-beasty-interface :command-beasty :set-simulated-robot :set-real-robot
+           :power-on :power-off))
