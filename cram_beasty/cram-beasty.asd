@@ -39,8 +39,10 @@
   ((:module "src"
     :components
     ((:file "package")
+     (:file "beasty-robot" :depends-on ("package"))
      (:file "interface" :depends-on ("package"))
-     (:file "action-interface" :depends-on ("package" "interface" "login"))
-     (:file "conversions" :depends-on ("package"))
+     (:file "conversions" :depends-on ("package" "beasty-robot"))
      (:file "login" :depends-on ("package" "conversions"))
-     (:file "beasty-robot" :depends-on ("package"))))))
+     (:file "action-interface" :depends-on ("package" "interface" "login"))
+     (:file "gravity-compensation" 
+      :depends-on ("package" "conversions" "beasty-robot" "action-interface"))))))
