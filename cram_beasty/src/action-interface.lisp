@@ -35,9 +35,7 @@
    (session-id :initarg :session-id :accessor session-id :type number
                :documentation "ID of current communication session.")
    (cmd-id :initarg :cmd-id :accessor cmd-id :type number
-           :documentation "cmd-id to be used in the next goal.")
-   (robot :initform (make-instance 'beasty-robot) :accessor robot :type beasty-robot
-          :documentation "Robot information about this LWR.")))
+           :documentation "cmd-id to be used in the next goal.")))
 
 (defun make-beasty-interface (action-name)
   "Creates a BEASTY interface. `action-name' is the name of the action used to create
@@ -51,3 +49,46 @@
                      :action-client action-client
                      :session-id session-id
                      :cmd-id cmd-id))))
+
+(defmethod command-beasty ((interface beasty-interface) robot parameters safety)
+  (declare (type beasty-interface interface))
+  (let ((goal (actionlib:make-action-goal (action-client interface)
+                :command (get-beasty-command-code 
+                          (infer-command-symbol parameters))
+                :parameters (make-parameter-msg interface robot parameters safety))))
+    (multiple-value-bind (result status)
+        (actionlib:send-goal-and-wait (action-client interface) goal)
+      (unless (equal :succeeded status)
+        (error 'beasty-command-error :test "Error commanding beasty action interface."))
+      (with-fields (state) result
+      (with-fields (com) state
+        (with-fields (cmd_id) com
+          (setf (cmd-id interface) (elt cmd_id (get-beasty-command-code
+                                                (infer-command-symbol parameters))))))))))
+
+(defun infer-command-symbol (parameters)
+  "Infers the command type based on the type of `parameters'."
+  (etypecase parameters
+    (gravity-control-parameters :CHANGE_BEHAVIOUR)))
+                           
+(defgeneric make-parameter-msg (interface robot parameters safety)
+  (:documentation "Creates the appropriate parameter message to control `robot' behind
+    `interface' to perform motion specified by `parameters' with `safety'."))
+
+(defmethod make-parameter-msg ((interface beasty-interface) (robot beasty-robot)
+                               (parameters gravity-control-parameters) safety)
+  (declare (ignore safety))
+  (multiple-value-bind (robot-msg settings-msg) (to-msg robot)
+    (multiple-value-bind (controller-msg interpolator-msg) (to-msg parameters)
+      (roslisp:make-msg 
+       "dlr_msgs/tcu2rcu"
+       :com (roslisp:make-msg 
+             "dlr_msgs/tcu2rcu_Com"
+             :command (get-beasty-command-code 
+                       (infer-command-symbol parameters))
+             :cmd_id (cmd-id interface)
+             :session_id (session-id interface))
+       :robot robot-msg
+       :controller controller-msg
+       :interpolator interpolator-msg
+       :settings settings-msg))))

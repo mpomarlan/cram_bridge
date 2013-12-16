@@ -37,12 +37,6 @@
 (defgeneric to-vector (data)
   (:documentation "Transforms `data' into a corresponding vector representation."))
 
-(defun get-beasty-command-code (command-symbol)
-  "Returns the Beasty command-code defined in dlr_msgs/RCUGoal which corresponds to
-   `command-symbol'."
-  (declare (type symbol command-symbol))
-  (roslisp-msg-protocol:symbol-code 'dlr_msgs-msg:rcugoal command-symbol))
-
 (defmethod to-msg ((robot beasty-robot))
   (let ((robot-msg
           (roslisp:make-msg "dlr_msgs/tcu2rcu_Robot"
@@ -62,15 +56,17 @@
                             :ddx_o (base-acceleration (base-configuration robot)))))
     (values robot-msg settings-msg)))
 
-(defmethod to-msg ((parameters beasty-control-parameters))
-  (roslisp:make-msg "dlr_msgs/tcu2rcu_Interpolator"
-                    :mode (ecase (interpolator-mode parameters)
-                            (:JOINT-SCALING-INTERPOLATION 5))
-                    :dq_max (max-joint-vel parameters)
-                    :ddq_max (max-joint-acc parameters)
-                    :o_t_f (to-vector (cl-transforms:make-identity-transform))
-                    :o_t_via (to-vector (cl-transforms:make-identity-transform))))
-                            
+(defmethod to-msg ((params gravity-control-parameters))
+  (let ((controller-msg (roslisp:make-msg "dlr_msgs/tcu2rcu_Controller" :mode 3))
+        (interpolator-msg (roslisp:make-msg 
+                           "dlr_msgs/tcu2rcu_Interpolator"
+                           :mode 5 ; JOINT-SCALING-INTERPOLATION
+                           :dq_max (max-joint-vel params)
+                           :ddq_max (max-joint-acc params)
+                           :o_t_f (to-vector (cl-transforms:make-identity-transform))
+                           :o_t_via (to-vector (cl-transforms:make-identity-transform)))))
+    (values controller-msg interpolator-msg)))
+
 (defmethod to-vector ((transform cl-transforms:transform))
   (let ((array4x4 (cl-transforms:transform->matrix transform)))
     (make-array (array-total-size array4x4)

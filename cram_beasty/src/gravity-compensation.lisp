@@ -32,18 +32,15 @@
   ((text :initarg :text :reader text)))
 
 (defun command-gravity (interface robot parameters safety)
-  (declare (type beasty-interface interface)
-           (type beasty-robot robot)
+  (declare (type beasty-robot robot)
            (type beasty-control-parameters))
-  (multiple-value-bind (result status)
-      (actionlib:send-goal-and-wait (action-client interface)
-                                    (make-gravity-goal interface robot parameters safety))
-    (unless (equal :succeeded status)
-      (error 'beasty-command-error :text "Gravity command to BEASTY controller failed."))
+  
+  (let* ((command :CHANGE_BEHAVIOR)
+         (result (command-beasty-action command interface robot parameters safety)))
     (with-fields (state) result
       (with-fields (com) state
         (with-fields (cmd_id) com
-          (setf (cmd-id interface) (elt cmd_id 4)))))))
+          (setf (cmd-id interface) (elt cmd_id (get-beasty-command-code command))))))))
 
 (defun make-gravity-goal (interface robot parameters safety)
   (declare (type beasty-interface interface)
@@ -56,7 +53,8 @@
       :parameters (roslisp:make-msg "dlr_msgs/tcu2rcu"
                                     :com (roslisp:make-msg 
                                           "dlr_msgs/tcu2rcu_Com"
-                                          :command (get-beasty-command-code :CHANGE_BEHAVIOuR)
+                                          :command (get-beasty-command-code 
+                                                    :CHANGE_BEHAVIOUR)
                                           :cmd_id (cmd-id interface)
                                           :session_id (session-id interface))
                                     :robot robot-msg

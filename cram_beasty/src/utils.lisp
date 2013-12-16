@@ -1,4 +1,3 @@
-
 ;;; Copyright (c) 2013, Georg Bartels <georg.bartels@cs.uni-bremen.de>
 ;;; All rights reserved.
 ;;;
@@ -27,24 +26,10 @@
 ;;; ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ;;; POSSIBILITY OF SUCH DAMAGE.
 
-(defsystem cram-beasty
-  :author "Georg Bartels <georg.bartels@cs.uni-bremen.de>"
-  :license "BSD"
-  :description "Interface package of CRAM to command Beasty LWR controllers."
+(in-package :cram-beasty)
 
-  :depends-on (roslisp
-               cl-transforms
-               actionlib
-               dlr_msgs-msg)
-  :components
-  ((:module "src"
-    :components
-    ((:file "package")
-     (:file "beasty-robot" :depends-on ("package"))
-     (:file "utils" :depends-on ("package"))
-     (:file "interface" :depends-on ("package"))
-     (:file "conversions" :depends-on ("package" "beasty-robot"))
-     (:file "login" :depends-on ("package" "utils"))
-     (:file "action-interface" :depends-on ("package" "login" "beasty-robot" "conversions"))
-     (:file "gravity-compensation" 
-      :depends-on ("package" "conversions" "beasty-robot" "action-interface"))))))
+(defun get-beasty-command-code (command-symbol)
+  "Returns the Beasty command-code defined in dlr_msgs/RCUGoal which corresponds to
+   `command-symbol'."
+  (declare (type symbol command-symbol))
+  (roslisp-msg-protocol:symbol-code 'dlr_msgs-msg:rcugoal command-symbol))

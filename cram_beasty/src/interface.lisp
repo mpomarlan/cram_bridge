@@ -28,6 +28,6 @@
 
 (in-package :cram-beasty)
 
-(defgeneric command-beasty (interface mode parameters)
-  (:documentation "Commands Beasty controller serving `interface' to perform a motion
-    of type `mode' with `parameters'."))
+(defgeneric command-beasty (interface robot parameters safety)
+  (:documentation "Commands Beasty controller of `robot' serving `interface' to perform a
+    motion of with `parameters' and `safety'."))
