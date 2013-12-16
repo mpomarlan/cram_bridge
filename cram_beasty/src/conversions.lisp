@@ -54,10 +54,22 @@
           (roslisp:make-msg "dlr_msgs/tcu2rcu_Settings"
                             :tcp_t_ee (to-vector (ee-transform (tool-configuration robot)))
                             :w_t_o (to-vector (base-transform (base-configuration robot)))
+                            :w_t_op (to-vector (cl-transforms:make-identity-transform))
+                            :ee_t_k (to-vector (cl-transforms:make-identity-transform))
+                            :ref_t_k (to-vector (cl-transforms:make-identity-transform))
                             :ml (mass (tool-configuration robot))
                             :ml_com (to-vector (com (tool-configuration robot)))
                             :ddx_o (base-acceleration (base-configuration robot)))))
     (values robot-msg settings-msg)))
+
+(defmethod to-msg ((parameters beasty-control-parameters))
+  (roslisp:make-msg "dlr_msgs/tcu2rcu_Interpolator"
+                    :mode (ecase (interpolator-mode parameters)
+                            (:JOINT-SCALING-INTERPOLATION 5))
+                    :dq_max (max-joint-vel parameters)
+                    :ddq_max (max-joint-acc parameters)
+                    :o_t_f (to-vector (cl-transforms:make-identity-transform))
+                    :o_t_via (to-vector (cl-transforms:make-identity-transform))))
                             
 (defmethod to-vector ((transform cl-transforms:transform))
   (let ((array4x4 (cl-transforms:transform->matrix transform)))
