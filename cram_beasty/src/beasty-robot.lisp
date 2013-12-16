@@ -33,9 +33,11 @@
                     :documentation "Indicates simulated robot. 'nil' for real robot.")
    (motor-power :initform nil :accessor motor-power :type boolean
                 :documentation "Flag for power of motors. nil=power-off, t:power-on.")
-   (tool-configuration :initform (make-instance 'beasty-tool) :type beasty-tool
+   (tool-configuration :initform (make-instance 'beasty-tool) 
+                       :accessor tool-configuration :type beasty-tool
                        :documentation "Description of the EE mounted on the arm.")
-   (base-configuration :initform (make-instance 'beasty-base) :type beasty-base
+   (base-configuration :initform (make-instance 'beasty-base) 
+                       :accessor base-configuration :type beasty-base
                        :documentation "Description of the mounting of the arm's base.")))
 
 (defclass beasty-base ()

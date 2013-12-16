@@ -34,8 +34,36 @@
 (defgeneric from-msg (msg)
   (:documentation "Creates the lisp data structure corresponding to ROS message `msg'."))
 
+(defgeneric to-vector (data)
+  (:documentation "Transforms `data' into a corresponding vector representation."))
+
 (defun get-beasty-command-code (command-symbol)
   "Returns the Beasty command-code defined in dlr_msgs/RCUGoal which corresponds to
    `command-symbol'."
   (declare (type symbol command-symbol))
   (roslisp-msg-protocol:symbol-code 'dlr_msgs-msg:rcugoal command-symbol))
+
+(defmethod to-msg ((robot beasty-robot))
+  (let ((robot-msg
+          (roslisp:make-msg "dlr_msgs/tcu2rcu_Robot"
+                            :mode (if (simulation-flag robot) 1 0)
+                            :power (if (motor-power robot)
+                                       (make-array 7 :initial-element 1)
+                                       (make-array 6 :initial-element 0))))
+        (settings-msg
+          (roslisp:make-msg "dlr_msgs/tcu2rcu_Settings"
+                            :tcp_t_ee (to-vector (ee-transform (tool-configuration robot)))
+                            :w_t_o (to-vector (base-transform (base-configuration robot)))
+                            :ml (mass (tool-configuration robot))
+                            :ml_com (to-vector (com (tool-configuration robot)))
+                            :ddx_o (base-acceleration (base-configuration robot)))))
+    (values robot-msg settings-msg)))
+                            
+(defmethod to-vector ((transform cl-transforms:transform))
+  (let ((array4x4 (cl-transforms:transform->matrix transform)))
+    (make-array (array-total-size array4x4)
+                :element-type (array-element-type array4x4)
+                :displaced-to array4x4)))
+
+(defmethod to-vector ((point cl-transforms:3d-vector))
+  (vector (cl-transforms:x point) (cl-transforms:y point) (cl-transforms:z point)))
