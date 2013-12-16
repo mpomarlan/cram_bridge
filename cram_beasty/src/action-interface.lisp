@@ -28,6 +28,9 @@
 
 (in-package :cram-beasty)
 
+(define-condition beasty-command-error (error)
+  ((text :initarg :text :reader text)))
+
 (defclass beasty-interface ()
   ((action-client :initarg :action-client :reader action-client 
                   :type actionlib::action-client
