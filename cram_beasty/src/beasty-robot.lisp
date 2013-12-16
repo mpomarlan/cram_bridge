@@ -34,7 +34,18 @@
    (motor-power :initform nil :accessor motor-power :type boolean
                 :documentation "Flag for power of motors. nil=power-off, t:power-on.")
    (tool-configuration :initform (make-instance 'beasty-tool) :type beasty-tool
-                       :documentation "Description of the EE mounted on the arm.")))
+                       :documentation "Description of the EE mounted on the arm.")
+   (base-configuration :initform (make-instance 'beasty-base) :type beasty-base
+                       :documentation "Description of the mounting of the arm's base.")))
+
+(defclass beasty-base ()
+  ((base-transform :initform (cl-transforms:make-identity-transform)
+                   :accessor base-transform :type cl-transforms:transform
+                   :documentation "Transform from World to Base. Note: Base is located in the base of the LWR with z-axis pointing to 1st joint and the x-axis pointing to the cable connection. World may be chosen arbitrarily.")
+   (base-acceleration :initform (make-array 6 :initial-element 0)
+                      :accessor base-acceleration :type vector
+                      :documentation "6-dimensional Cart. acceleration acting on the base of the robot.")))
+   
 
 (defclass beasty-tool ()
   ((ee-transform :initform (cl-transforms:make-identity-transform)
