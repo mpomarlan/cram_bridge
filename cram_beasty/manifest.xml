@@ -7,6 +7,7 @@
 
   <rosdep name="sbcl"/>
   <depend package="roslisp"/>
+  <depend package="cl_transforms"/>
   <depend package="actionlib_lisp"/>
   <depend package="dlr_msgs"/>
 </package>

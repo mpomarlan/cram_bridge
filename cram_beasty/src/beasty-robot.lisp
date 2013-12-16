@@ -32,4 +32,15 @@
   ((simulation-flag :initform t :accessor simulation-flag :type boolean
                     :documentation "Indicates simulated robot. 'nil' for real robot.")
    (motor-power :initform nil :accessor motor-power :type boolean
-                :documentation "Flag for power of motors. nil=power-off, t:power-on.")))
+                :documentation "Flag for power of motors. nil=power-off, t:power-on.")
+   (tool-configuration :initform (make-instance 'beasty-tool) :type beasty-tool
+                       :documentation "Description of the EE mounted on the arm.")))
+
+(defclass beasty-tool ()
+  ((ee-transform :initform (cl-transforms:make-identity-transform)
+                 :accessor ee-transform :type cl-transforms:transform
+                 :documentation "Transform from TCP to EE. Note: TCP is located at the center of the last link (sphere) of the LWR III with the z-axis pointing in the direction to the flange. For q7 = 0 the y-axis points to the 6th joint.")
+   (mass :initform 0.0 :accessor mass :type number
+         :documentation "Mass in kg of the EE (incl. load).")
+   (com :initform (cl-transforms:make-identity-vector) :accessor com 
+        :type cl-transforms:3d-vector :documentation "Center of mass of EE w.r.t. to TCP.")))
