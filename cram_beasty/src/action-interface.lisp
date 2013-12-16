@@ -32,9 +32,9 @@
   ((action-client :initarg :action-client :reader action-client 
                   :type actionlib::action-client
                   :documentation "ROS action client to communicate with controller.")
-   (session-id :initarg :session-id :reader session-id :type number
+   (session-id :initarg :session-id :accessor session-id :type number
                :documentation "ID of current communication session.")
-   (cmd-id :initarg :cmd-id :reader cmd-id :type number
+   (cmd-id :initarg :cmd-id :accessor cmd-id :type number
            :documentation "cmd-id to be used in the next goal.")
    (robot :initform (make-instance 'beasty-robot) :accessor robot :type beasty-robot
           :documentation "Robot information about this LWR.")))
