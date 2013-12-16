@@ -38,7 +38,8 @@
                        :documentation "Description of the EE mounted on the arm.")
    (base-configuration :initform (make-instance 'beasty-base) 
                        :accessor base-configuration :type beasty-base
-                       :documentation "Description of the mounting of the arm's base.")))
+                       :documentation "Description of the mounting of the arm's base."))
+  (:documentation "Representation of LWR robot for Beasty controller."))
 
 (defclass beasty-base ()
   ((base-transform :initform (cl-transforms:make-identity-transform)
@@ -46,7 +47,8 @@
                    :documentation "Transform from World to Base. Note: Base is located in the base of the LWR with z-axis pointing to 1st joint and the x-axis pointing to the cable connection. World may be chosen arbitrarily.")
    (base-acceleration :initform (make-array 6 :initial-element 0)
                       :accessor base-acceleration :type vector
-                      :documentation "6-dimensional Cart. acceleration acting on the base of the robot.")))
+                      :documentation "6-dimensional Cart. acceleration acting on the base of the robot."))
+  (:documentation "Representation of base configuration of LWR controlled by Beasty."))
    
 (defclass beasty-tool ()
   ((ee-transform :initform (cl-transforms:make-identity-transform)
@@ -55,4 +57,5 @@
    (mass :initform 0.0 :accessor mass :type number
          :documentation "Mass in kg of the EE (incl. load).")
    (com :initform (cl-transforms:make-identity-vector) :accessor com 
-        :type cl-transforms:3d-vector :documentation "Center of mass of EE w.r.t. to TCP.")))
+        :type cl-transforms:3d-vector :documentation "Center of mass of EE w.r.t. to TCP."))
+  (:documentation "Representation of tool mounted on LWR controlled by Beasty."))

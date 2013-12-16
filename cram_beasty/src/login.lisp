@@ -35,7 +35,8 @@
   "User Password for server.")
 
 (define-condition beasty-login-error (error)
-  ((test :initarg :text :reader text)))
+  ((test :initarg :text :reader text))
+  (:documentation "Error signalling error during login into Beasty controller."))
 
 (defun login-beasty (action-client &optional (user-id *beasty-user-id*)
                                      (user-pwd *beasty-user-pwd*))

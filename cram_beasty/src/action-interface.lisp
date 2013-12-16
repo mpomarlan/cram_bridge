@@ -29,7 +29,8 @@
 (in-package :cram-beasty)
 
 (define-condition beasty-command-error (error)
-  ((text :initarg :text :reader text)))
+  ((text :initarg :text :reader text))
+  (:documentation "Condition signalling an error while commanding Beasty controller."))
 
 (defclass beasty-interface ()
   ((action-client :initarg :action-client :reader action-client 
@@ -38,7 +39,8 @@
    (session-id :initarg :session-id :accessor session-id :type number
                :documentation "ID of current communication session.")
    (cmd-id :initarg :cmd-id :accessor cmd-id :type number
-           :documentation "cmd-id to be used in the next goal.")))
+           :documentation "cmd-id to be used in the next goal."))
+  (:documentation "Action-client interface with book-keeping for LWR controller Beasty."))
 
 (defun make-beasty-interface (action-name)
   "Creates a BEASTY interface. `action-name' is the name of the action used to create
@@ -54,6 +56,8 @@
                      :cmd-id cmd-id))))
 
 (defun command-beasty (interface robot parameters safety)
+  "Sends a command to beasty controller behind `interface' controlling `robot'. Uses can
+  alter motion command with `parameters' and `safety'."
   (declare (type beasty-interface interface)
            (type beasty-robot robot))
   (let ((goal (actionlib:make-action-goal (action-client interface)

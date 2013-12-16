@@ -38,6 +38,8 @@
   (:documentation "Transforms `data' into a corresponding vector representation."))
 
 (defmethod to-msg ((robot beasty-robot))
+  "Creates 'dlr_msgs/tcu2rcu_Robot' and 'dlr_msgs/tcu2rcu_Settings' message using the data
+   stored in `robot'."
   (let ((robot-msg
           (roslisp:make-msg "dlr_msgs/tcu2rcu_Robot"
                             :mode (if (simulation-flag robot) 1 0)
@@ -57,6 +59,8 @@
     (values robot-msg settings-msg)))
 
 (defmethod to-msg ((params gravity-control-parameters))
+  "Creates a 'dlr_msgs/tcu2rcu_Controller' and a 'dlr_msgs/tcu2rcu_Interpolator' message
+   using the data stored in `params' of type 'gravity-control-parameters'."
   (let ((controller-msg (roslisp:make-msg "dlr_msgs/tcu2rcu_Controller" :mode 3))
         (interpolator-msg (roslisp:make-msg 
                            "dlr_msgs/tcu2rcu_Interpolator"
@@ -68,10 +72,12 @@
     (values controller-msg interpolator-msg)))
 
 (defmethod to-vector ((transform cl-transforms:transform))
+  "Turns 'cl-transforms:transform' `transform' into row-ordered 16x1 double-array."
   (let ((array4x4 (cl-transforms:transform->matrix transform)))
     (make-array (array-total-size array4x4)
                 :element-type (array-element-type array4x4)
                 :displaced-to array4x4)))
 
 (defmethod to-vector ((point cl-transforms:3d-vector))
+  "Turns 'cl-transforms:3d-vector' `point' into a regular array of size 3."
   (vector (cl-transforms:x point) (cl-transforms:y point) (cl-transforms:z point)))
