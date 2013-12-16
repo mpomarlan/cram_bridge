@@ -26,20 +26,10 @@
 ;;; ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ;;; POSSIBILITY OF SUCH DAMAGE.
 
-(defsystem cram-beasty
-  :author "Georg Bartels <georg.bartels@cs.uni-bremen.de>"
-  :license "BSD"
-  :description "Interface package of CRAM to command Beasty LWR controllers."
+(in-package :cram-beasty)
 
-  :depends-on (roslisp
-               actionlib
-               dlr_msgs-msg)
-  :components
-  ((:module "src"
-    :components
-    ((:file "package")
-     (:file "interface" :depends-on ("package"))
-     (:file "action-interface" :depends-on ("package" "interface" "login"))
-     (:file "conversions" :depends-on ("package"))
-     (:file "login" :depends-on ("package" "conversions"))
-     (:file "beasty-robot" :depends-on ("package"))))))
+(defclass beasty-robot ()
+  ((simulation-flag :initform t :accessor simulation-flag :type boolean
+                    :documentation "Indicates simulated robot. 'nil' for real robot.")
+   (motor-power :initform nil :accessor motor-power :type boolean
+                :documentation "Flag for power of motors. nil=power-off, t:power-on.")))

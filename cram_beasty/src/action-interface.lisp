@@ -55,21 +55,3 @@
 (defun update-cmd-id (cmd-id)
   "Returns a new valid cmd-id for Beasty given that the controller last returned `cmd-id'."
   (+ cmd-id 1))
-
-(defclass beasty-robot ()
-  ((simulated-robot :initform t :accessor simulated-robot
-                    :documentation "Flag indicating simulated robot. 'nil' for real robot.")
-   (motor-power :initform (make-array 7 :initial-element 0) :accessor motor-power
-                :documentation "Flags for power of motors. 0=power-off, 1:power-on.")))
-
-(defmethod set-simulated-robot ((interface beasty-interface))
-  (setf (simulated-robot (robot interface)) t))
-
-(defmethod set-real-robot ((interface beasty-interface))
-  (setf (simulated-robot (robot interface)) nil))
-
-(defmethod power-on ((interface beasty-interface))
-  (setf (motor-power (robot interface)) (make-array 7 :initial-element 1)))
-
-(defmethod power-off ((interface beasty-interface))
-  (setf (motor-power (robot interface)) (make-array 7 :initial-element 0)))

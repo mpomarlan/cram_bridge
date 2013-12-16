@@ -31,15 +31,3 @@
 (defgeneric command-beasty (interface mode parameters)
   (:documentation "Commands Beasty controller serving `interface' to perform a motion
     of type `mode' with `parameters'."))
-
-(defgeneric set-simulated-robot (interface)
-  (:documentation "Marks the robot represented by `interface' as a simulated one."))
-
-(defgeneric set-real-robot (interface)
-  (:documentation "Marks the robot represented by `interface' as a real one."))
-
-(defgeneric power-on (interface)
-  (:documentation "Powers on the motors of the robot represented by `interface'."))
-
-(defgeneric power-off (interface)
-  (:documentation "Powers off the motors of the robot represented by `interface'."))
