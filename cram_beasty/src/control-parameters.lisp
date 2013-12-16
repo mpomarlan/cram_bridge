@@ -1,4 +1,3 @@
-
 ;;; Copyright (c) 2013, Georg Bartels <georg.bartels@cs.uni-bremen.de>
 ;;; All rights reserved.
 ;;;
@@ -27,23 +26,10 @@
 ;;; ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ;;; POSSIBILITY OF SUCH DAMAGE.
 
-(defsystem cram-beasty
-  :author "Georg Bartels <georg.bartels@cs.uni-bremen.de>"
-  :license "BSD"
-  :description "Interface package of CRAM to command Beasty LWR controllers."
+(in-package :cram-beasty)
 
-  :depends-on (roslisp
-               cl-transforms
-               actionlib
-               dlr_msgs-msg)
-  :components
-  ((:module "src"
-    :components
-    ((:file "package")
-     (:file "beasty-robot" :depends-on ("package"))
-     (:file "control-parameters" :depends-on ("package"))
-     (:file "utils" :depends-on ("package"))
-     (:file "conversions" :depends-on ("package" "beasty-robot" "control-parameters"))
-     (:file "login" :depends-on ("package" "utils"))
-     (:file "action-interface" 
-      :depends-on ("package" "login" "beasty-robot" "control-parameters" "conversions"))))))
+(defclass gravity-control-parameters ()
+  ((max-joint-vel :initform (make-array 7 :initial-element 1.0) :accessor max-joint-vel
+                  :type vector :documentation "Maximum joint velocities in rad/s.")
+   (max-joint-acc :initform (make-array 7 :initial-element 0.5) :accessor max-joint-acc
+                  :type vector :documentation "Maximum joint accelerations in rad/s^2.")))

@@ -29,10 +29,10 @@
 (in-package :cram-beasty)
 
 (defparameter *beasty-user-id* 1001
-  "User ID provided by Sven.")
+  "User ID for server.")
 
 (defparameter *beasty-user-pwd* 1234
-  "User Password provided by Sven.")
+  "User Password for server.")
 
 (define-condition beasty-login-error (error)
   ((test :initarg :text :reader text)))
