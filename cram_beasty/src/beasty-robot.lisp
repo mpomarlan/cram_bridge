@@ -48,7 +48,6 @@
                       :accessor base-acceleration :type vector
                       :documentation "6-dimensional Cart. acceleration acting on the base of the robot.")))
    
-
 (defclass beasty-tool ()
   ((ee-transform :initform (cl-transforms:make-identity-transform)
                  :accessor ee-transform :type cl-transforms:transform
@@ -57,3 +56,11 @@
          :documentation "Mass in kg of the EE (incl. load).")
    (com :initform (cl-transforms:make-identity-vector) :accessor com 
         :type cl-transforms:3d-vector :documentation "Center of mass of EE w.r.t. to TCP.")))
+
+(defclass beasty-control-parameters ()
+  ((interpolator-mode :initform :JOINT-SCALING-INTERPOLATION :accessor interpolator-mode
+                      :type symbol :documentation "Interpolation strategy used by controller.")
+   (max-joint-vel :initform (make-array 7 :initial-element 1.0) :accessor max-joint-vel
+                  :type vector :documentation "Maximum joint velocities in rad/s.")
+   (max-joint-acc :initform (make-array 7 :initial-element 0.5) :accessor max-joint-acc
+                  :type vector :documentation "Maximum joint accelerations in rad/s^2.")))
