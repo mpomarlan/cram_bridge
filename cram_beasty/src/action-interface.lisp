@@ -50,8 +50,4 @@
       (make-instance 'beasty-interface 
                      :action-client action-client
                      :session-id session-id
-                     :cmd-id (update-cmd-id cmd-id)))))
-
-(defun update-cmd-id (cmd-id)
-  "Returns a new valid cmd-id for Beasty given that the controller last returned `cmd-id'."
-  (+ cmd-id 1))
+                     :cmd-id cmd-id))))
