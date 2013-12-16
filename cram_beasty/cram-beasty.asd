@@ -42,7 +42,6 @@
     ((:file "package")
      (:file "beasty-robot" :depends-on ("package"))
      (:file "utils" :depends-on ("package"))
-     (:file "interface" :depends-on ("package"))
      (:file "conversions" :depends-on ("package" "beasty-robot"))
      (:file "login" :depends-on ("package" "utils"))
      (:file "action-interface" :depends-on ("package" "login" "beasty-robot" "conversions"))
