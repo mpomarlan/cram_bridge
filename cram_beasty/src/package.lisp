@@ -31,4 +31,7 @@
 (defpackage :cram-beasty
   (:use #:roslisp
         #:common-lisp)
-  (:export :make-beasty-interface :command-beasty))
+  (:export :make-beasty-interface :command-beasty :beasty-robot :simulation-flag
+           :motor-power :tool-configuration :base-configuration :beasty-base
+           :base-transform :base-acceleration :beasty-tool :ee-transform
+           :mass :com :gravity-control-parameters :max-joint-vel :max-joint-acc))
