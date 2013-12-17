@@ -106,6 +106,26 @@
                            :o_t_via (to-vector (cl-transforms:make-identity-transform)))))
     (values controller-msg interpolator-msg)))
 
+(defmethod from-msg ((msg dlr_msgs-msg:rcu2tcu))
+  "Creates and returns an instance of cram-beasty:beasty-state filled with
+   relevant content from `msg'."
+  (with-fields (robot) msg
+    (with-fields (q power emergency) robot
+        (make-instance 'beasty-state
+                       :motor-power-on (motor-power-p power)
+                       :safety-released (safety-released-p emergency)
+                       :joint-values q))))
+
+(defun motor-power-p (motors)
+  "Checks whether all flags in vector `motors' indicate power-on."
+  (declare (type vector motors))
+  (every (lambda (motor) (> motor 0.0)) motors))
+
+(defun safety-released-p (safety-flags)
+  "Checks whether all flags in vector `safety-flags' indicated released safeties."
+  (declare (type vector safety-flags))
+  (every (lambda (flag) (> flag 0.0)) safety-flags))
+    
 (defmethod to-vector ((transform cl-transforms:transform))
   "Turns 'cl-transforms:transform' `transform' into row-ordered 16x1 double-array."
   (let ((array4x4 (cl-transforms:transform->matrix transform)))

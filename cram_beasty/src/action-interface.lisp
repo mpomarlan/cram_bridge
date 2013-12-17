@@ -39,8 +39,21 @@
    (session-id :initarg :session-id :accessor session-id :type number
                :documentation "ID of current communication session.")
    (cmd-id :initarg :cmd-id :accessor cmd-id :type number
-           :documentation "cmd-id to be used in the next goal."))
+           :documentation "cmd-id to be used in the next goal.")
+   (state-sub :initform nil :accessor state-sub
+              :documentation "Subscriber listening to state-topic of server.")
+   (state :initform (make-instance 'beasty-state) :accessor state :type beasty-state
+          :documentation "Last state reported from beasty controller."))
   (:documentation "Action-client interface with book-keeping for LWR controller Beasty."))
+
+(defclass beasty-state ()
+  ((motor-power-on :initarg :motor-power-on :reader motor-power-on :type boolean
+                   :documentation "Indicates whether Beasty has all motors powered on.")
+   (safety-released :initarg :safety-released :reader safety-released :type boolean
+                    :documentation "Indicates whether safety buttons are released.")
+   (joint-values :initarg :joint-values :reader joint-values
+                 :type vector :documentation "Current joint values of LWR arm."))
+  (:documentation "Representation of state reported from Beasty LWR controller."))
 
 (defun make-beasty-interface (action-name)
   "Creates a BEASTY interface. `action-name' is the name of the action used to create
@@ -50,10 +63,12 @@
     (actionlib:wait-for-server action-client 2.0)
     (multiple-value-bind (session-id cmd-id)
         (login-beasty action-client)
-      (make-instance 'beasty-interface 
-                     :action-client action-client
-                     :session-id session-id
-                     :cmd-id cmd-id))))
+      (let ((interface (make-instance 'beasty-interface 
+                                      :action-client action-client
+                                      :session-id session-id
+                                      :cmd-id cmd-id)))
+        (add-state-subscriber interface action-name)
+        interface))))
 
 (defun command-beasty (interface robot parameters safety)
   "Sends a command to beasty controller behind `interface' controlling `robot'. Uses can
@@ -73,6 +88,23 @@
         (with-fields (cmd_id) com
           (setf (cmd-id interface) (elt cmd_id (get-beasty-command-code
                                                 (infer-command-symbol parameters))))))))))
+
+(defun get-beasty-state (interface)
+  "Returns the current state of the Beasty controller serving `interface'."
+  (declare (type beasty-interface))
+  (state interface))
+
+(defun add-state-subscriber (interface namespace)
+  "Adds a beasty state-subscriber with topic `namespace'/state to `interface'."
+  (declare (type beasty-interface interface)
+           (type string namespace))
+  (let ((subscriber 
+          (roslisp:subscribe (concatenate 'string namespace "/state") 
+                             "dlr_msgs/rcu2tcu"
+                             (lambda (msg)
+                               (setf (state interface) (from-msg msg)))
+                             :max-queue-length 1)))
+    (setf (state-sub interface) subscriber)))
 
 (defun infer-command-symbol (parameters)
   "Infers the command type based on the type of `parameters'."

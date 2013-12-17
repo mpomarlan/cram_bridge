@@ -33,7 +33,7 @@
         #:common-lisp)
   (:export 
    ;; top-level interaction with beasty interface
-   :make-beasty-interface :command-beasty 
+   :make-beasty-interface :command-beasty :get-beasty-state
    ;; modelling of LWR robot for beasty
    :beasty-robot :simulation-flag :motor-power :tool-configuration :base-configuration
    :beasty-base :base-transform :base-acceleration :beasty-tool :ee-transform
@@ -43,4 +43,6 @@
    ;; commanding joint impedance parameters
    :joint-impedance-control-parameters :joint-goal :joint-stiffness :joint-damping
    ;; resetting the safety brakes of the LWR
-   :reset-safety-parameters))
+   :reset-safety-parameters
+   ;; state feedback coming from controller
+   :beasty-state :motor-power-on :safety-released :joint-values))
