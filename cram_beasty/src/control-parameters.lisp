@@ -29,9 +29,9 @@
 (in-package :cram-beasty)
 
 (defclass gravity-control-parameters ()
-  ((max-joint-vel :initform (make-array 7 :initial-element 1.0) :accessor max-joint-vel
+  ((max-joint-vel :initform (make-array 7 :initial-element 0.35) :accessor max-joint-vel
                   :type vector :documentation "Maximum joint velocities in rad/s.")
-   (max-joint-acc :initform (make-array 7 :initial-element 0.5) :accessor max-joint-acc
+   (max-joint-acc :initform (make-array 7 :initial-element 0.7) :accessor max-joint-acc
                   :type vector :documentation "Maximum joint accelerations in rad/s^2."))
   (:documentation "Class holding all parameters necessary to configure gravity compensation
     control mode of the Beasty controller."))
@@ -39,15 +39,15 @@
 (defclass joint-impedance-control-parameters ()
   ((joint-goal :initform (make-array 7 :initial-element 0.0) :accessor joint-goal
                :type vector :documentation "Joint-space goal vector in radians.")
-   (joint-stiffness :initform (make-array 7 :initial-element 100.0) 
+   (joint-stiffness :initform (make-array 7 :initial-element 20.0) 
                     :accessor joint-stiffness :type vector
                     :documentation "Joint stiffness vector. Range: 0...2000.")
    (joint-damping :initform (make-array 7 :initial-element 0.7) :accessor joint-damping
                   :type vector :documentation "Joint damping vector. Range 0...1.0. User
                   may select critically-damped behavior with a value of 0.7.")
-   (max-joint-vel :initform (make-array 7 :initial-element 1.0) :accessor max-joint-vel
+   (max-joint-vel :initform (make-array 7 :initial-element 0.35) :accessor max-joint-vel
                   :type vector :documentation "Maximum joint velocities in rad/s.")
-   (max-joint-acc :initform (make-array 7 :initial-element 0.5) :accessor max-joint-acc
+   (max-joint-acc :initform (make-array 7 :initial-element 0.7) :accessor max-joint-acc
                   :type vector :documentation "Maximum joint accelerations in rad/s^2."))
   (:documentation "Class holding all parameters necessary to configure joint impedance
    control mode of the Beasty controller."))
