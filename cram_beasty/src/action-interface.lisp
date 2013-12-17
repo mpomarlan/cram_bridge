@@ -77,7 +77,9 @@
 (defun infer-command-symbol (parameters)
   "Infers the command type based on the type of `parameters'."
   (etypecase parameters
-    (gravity-control-parameters :CHANGE_BEHAVIOUR)))
+    (gravity-control-parameters :CHANGE_BEHAVIOUR)
+    (joint-impedance-control-parameters :MOVETO)
+    (reset-safety-parameters :RESET_SAFETY)))
                            
 (defun make-parameter-msg (interface robot parameters safety)
   "Creates the appropriate parameter message to control `robot' behind `interface' to

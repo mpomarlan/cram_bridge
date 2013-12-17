@@ -67,6 +67,41 @@
                            :mode 5 ; JOINT-SCALING-INTERPOLATION
                            :dq_max (max-joint-vel params)
                            :ddq_max (max-joint-acc params)
+                           ;; sane values enforced by server
+                           :o_t_f (to-vector (cl-transforms:make-identity-transform))
+                           :o_t_via (to-vector (cl-transforms:make-identity-transform)))))
+    (values controller-msg interpolator-msg)))
+
+(defmethod to-msg ((params joint-impedance-control-parameters))
+  "Creates a 'dlr_msgs/tcu2rcu_Controller' and a 'dlr_msgs/tcu2rcu_Interpolator' message
+   using the data stored in `params' of type 'joint-impedance-control-parameters'."
+  (let ((controller-msg (roslisp:make-msg 
+                         "dlr_msgs/tcu2rcu_Controller" 
+                         :mode 4 ; JOINT-IMPEDANCE-MODE
+                         :k_theta (joint-stiffness params)
+                         :d_theta (joint-damping params)))
+        (interpolator-msg (roslisp:make-msg 
+                           "dlr_msgs/tcu2rcu_Interpolator"
+                           :mode 5 ; JOINT-SCALING-INTERPOLATION
+                           :dq_max (max-joint-vel params)
+                           :ddq_max (max-joint-acc params)
+                           :q_f (joint-goal params)
+                           ;; sane values enforced by server
+                           :o_t_f (to-vector (cl-transforms:make-identity-transform))
+                           :o_t_via (to-vector (cl-transforms:make-identity-transform)))))
+    (values controller-msg interpolator-msg)))
+
+(defmethod to-msg ((params reset-safety-parameters))
+  "Creates a 'dlr_msgs/tcu2rcu_Controller' and a 'dlr_msgs/tcu2rcu_Interpolator' message
+   using the data stored in `params' of type 'reset-safety-parameters'."
+  (let ((controller-msg (roslisp:make-msg 
+                         "dlr_msgs/tcu2rcu_Controller" 
+                         ;; sane values enforce by server
+                         :mode 4)) ; JOINT-IMPEDANCE-MODE
+        (interpolator-msg (roslisp:make-msg 
+                           "dlr_msgs/tcu2rcu_Interpolator"
+                           ;; sane values enforced by server
+                           :mode 5 ; JOINT-SCALING-INTERPOLATION
                            :o_t_f (to-vector (cl-transforms:make-identity-transform))
                            :o_t_via (to-vector (cl-transforms:make-identity-transform)))))
     (values controller-msg interpolator-msg)))
