@@ -45,13 +45,17 @@
                             :mode (if (simulation-flag robot) 1 0)
                             :power (if (motor-power robot)
                                        (make-array 7 :initial-element 1)
-                                       (make-array 6 :initial-element 0))))
+                                       (make-array 7 :initial-element 0))))
         (settings-msg
           (roslisp:make-msg "dlr_msgs/tcu2rcu_Settings"
                             :tcp_t_ee (to-vector (ee-transform (tool-configuration robot)))
                             :w_t_o (to-vector (base-transform (base-configuration robot)))
+                            ;; Cart. velocities for Cartesian velocity control are
+                            ;; interpreted w.r.t world-frame
                             :w_t_op (to-vector (cl-transforms:make-identity-transform))
+                            ;; Cartesian Impedances are interpreted w.r.t to EE frame
                             :ee_t_k (to-vector (cl-transforms:make-identity-transform))
+                            ;; sane value enforced by beasty
                             :ref_t_k (to-vector (cl-transforms:make-identity-transform))
                             :ml (mass (tool-configuration robot))
                             :ml_com (to-vector (com (tool-configuration robot)))
