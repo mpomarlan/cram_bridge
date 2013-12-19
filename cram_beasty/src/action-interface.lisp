@@ -43,7 +43,9 @@
    (state-sub :initform nil :accessor state-sub
               :documentation "Subscriber listening to state-topic of server.")
    (state :initform (make-instance 'beasty-state) :accessor state :type beasty-state
-          :documentation "Last state reported from beasty controller."))
+          :documentation "Last state reported from beasty controller.")
+   (robot :initform (make-instance 'beasty-robot) :accessor robot :type beasty-robot
+          :documentation "Robot representation of LWR controlled by this interface."))
   (:documentation "Action-client interface with book-keeping for LWR controller Beasty."))
 
 (defclass beasty-state ()
@@ -72,15 +74,14 @@
         (add-state-subscriber interface action-name)
         interface))))
 
-(defun command-beasty (interface robot parameters safety)
-  "Sends a command to beasty controller behind `interface' controlling `robot'. Uses can
-  alter motion command with `parameters' and `safety'."
-  (declare (type beasty-interface interface)
-           (type beasty-robot robot))
+(defun command-beasty (interface parameters safety)
+  "Sends a command to beasty controller behind `interface'. Users can alter motion command
+ with `parameters' and `safety'."
+  (declare (type beasty-interface interface))
   (let ((goal (actionlib:make-action-goal (action-client interface)
                 :command (get-beasty-command-code 
                           (infer-command-symbol parameters))
-                :parameters (make-parameter-msg interface robot parameters safety))))
+                :parameters (make-parameter-msg interface parameters safety))))
     (multiple-value-bind (result status)
         (actionlib:send-goal-and-wait (action-client interface) goal)
       (unless (equal :succeeded status)
@@ -116,13 +117,12 @@
     (cartesian-impedance-control-parameters :MOVETO)
     (reset-safety-parameters :RESET_SAFETY)))
                            
-(defun make-parameter-msg (interface robot parameters safety)
+(defun make-parameter-msg (interface parameters safety)
   "Creates the appropriate parameter message to control `robot' behind `interface' to
    perform motion specified by `parameters' with `safety'."
   (declare (type beasty-interface interface)
-           (type beasty-robot robot)
            (ignore safety))
-  (multiple-value-bind (robot-msg settings-msg) (to-msg robot)
+  (multiple-value-bind (robot-msg settings-msg) (to-msg (robot interface))
     (multiple-value-bind (controller-msg interpolator-msg) (to-msg parameters)
       (roslisp:make-msg 
        "dlr_msgs/tcu2rcu"
