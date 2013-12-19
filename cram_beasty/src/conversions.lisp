@@ -142,7 +142,7 @@
                        :motor-power-on (motor-power-p power)
                        :safety-released (safety-released-p emergency)
                        :joint-values q
-                       :tool-pose (to-transform o_t_x)))))
+                       :tcp-pose (to-transform o_t_x)))))
 
 (defun motor-power-p (motors)
   "Checks whether all flags in vector `motors' indicate power-on."

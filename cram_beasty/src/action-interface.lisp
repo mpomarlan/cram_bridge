@@ -53,8 +53,8 @@
                     :documentation "Indicates whether safety buttons are released.")
    (joint-values :initarg :joint-values :reader joint-values
                  :type vector :documentation "Current joint values of LWR arm.")
-   (tool-pose :initarg :tool-pose :reader tool-pose :type cl-transforms:transform
-              :documentation "Pose of tool frame w.r.t. to arm base frame."))
+   (tcp-pose :initarg :tcp-pose :reader tcp-pose :type cl-transforms:transform
+              :documentation "Pose of tcp frame w.r.t. to arm base frame."))
   (:documentation "Representation of state reported from Beasty LWR controller."))
 
 (defun make-beasty-interface (action-name)
