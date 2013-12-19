@@ -113,6 +113,7 @@
   (etypecase parameters
     (gravity-control-parameters :CHANGE_BEHAVIOUR)
     (joint-impedance-control-parameters :MOVETO)
+    (cartesian-impedance-control-parameters :MOVETO)
     (reset-safety-parameters :RESET_SAFETY)))
                            
 (defun make-parameter-msg (interface robot parameters safety)

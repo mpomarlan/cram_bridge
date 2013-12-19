@@ -95,6 +95,29 @@
                            :o_t_via (to-vector (cl-transforms:make-identity-transform)))))
     (values controller-msg interpolator-msg)))
 
+(defmethod to-msg ((params cartesian-impedance-control-parameters))
+  "Creates a 'dlr_msgs/tcu2rcu_Controller' and a 'dlr_msgs/tcu2rcu_Interpolator' message
+   using the data stored in `params' of type 'cartesian-impedance-control-parameters'."
+  (let ((controller-msg (roslisp:make-msg 
+                         "dlr_msgs/tcu2rcu_Controller" 
+                         :mode 2 ; CARTESIAN-IMPEDANCE-MODE
+                         :k_x (cart-stiffness params)
+                         :d_x (cart-damping params)
+                         :k_ns (nullspace-stiffness params)
+                         :xi_ns (nullspace-damping params)
+                         :w_ns_dir (to-vector (nullspace-dir params))
+                         :enable_ffwd t
+                         :dk_x (filter-gains params)))
+        (interpolator-msg (roslisp:make-msg 
+                           "dlr_msgs/tcu2rcu_Interpolator"
+                           :mode 4 ; CARTESIAN-RAMP
+                           :o_t_f (to-vector (goal-pose params))
+                           :dx_max (max-cart-vel params)
+                           :ddx_max (max-cart-acc params)
+                           ; sane values enforced by Beasty
+                           :o_t_via (to-vector (cl-transforms:make-identity-transform)))))
+    (values controller-msg interpolator-msg)))
+
 (defmethod to-msg ((params reset-safety-parameters))
   "Creates a 'dlr_msgs/tcu2rcu_Controller' and a 'dlr_msgs/tcu2rcu_Interpolator' message
    using the data stored in `params' of type 'reset-safety-parameters'."
