@@ -51,7 +51,9 @@
   (:documentation "Representation of base configuration of LWR controlled by Beasty."))
    
 (defclass beasty-tool ()
-  ((ee-transform :initform (cl-transforms:make-identity-transform)
+  ((ee-transform :initform (cl-transforms:make-transform 
+                            (cl-transforms:make-3d-vector 0 0 0.078)
+                            (cl-transforms:make-identity-rotation))             
                  :accessor ee-transform :type cl-transforms:transform
                  :documentation "Transform from TCP to EE. Note: TCP is located at the center of the last link (sphere) of the LWR III with the z-axis pointing in the direction to the flange. For q7 = 0 the y-axis points to the 6th joint.")
    (mass :initform 0.0 :accessor mass :type number
