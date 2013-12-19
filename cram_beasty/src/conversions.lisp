@@ -114,11 +114,12 @@
   "Creates and returns an instance of cram-beasty:beasty-state filled with
    relevant content from `msg'."
   (with-fields (robot) msg
-    (with-fields (q power emergency) robot
+    (with-fields (q power emergency o_t_x) robot
         (make-instance 'beasty-state
                        :motor-power-on (motor-power-p power)
                        :safety-released (safety-released-p emergency)
-                       :joint-values q))))
+                       :joint-values q
+                       :tool-pose (to-transform o_t_x)))))
 
 (defun motor-power-p (motors)
   "Checks whether all flags in vector `motors' indicate power-on."
@@ -140,3 +141,30 @@
 (defmethod to-vector ((point cl-transforms:3d-vector))
   "Turns 'cl-transforms:3d-vector' `point' into a regular array of size 3."
   (vector (cl-transforms:x point) (cl-transforms:y point) (cl-transforms:z point)))
+
+(defun to-transform (input-vector)
+  "Returns an instance of type 'cl-transforms:transforms' corresponding to the content
+ of `input-vector'. Where `input-vector' is a vector of length 12 expected to have the
+ following layout: #(rotation-matrix-in-row-major translation-vector)."
+           (declare (type (vector number 12) input-vector))
+           (let* ((rotation-vector (subseq input-vector 0 9))
+                  (translation-vector (subseq input-vector 9 12))
+                  (rotation-matrix 
+                    (make-array 
+                     '(3 3) 
+                     :initial-contents
+                     (loop for y from 0 below 3
+                           collecting (loop for x from 0 below 3
+                                            collecting (elt rotation-vector
+                                                            (+ x (* 3 y)))))))
+                  (quaternion (cl-transforms:matrix->quaternion rotation-matrix))
+                  (translation (to-point translation-vector)))
+             (cl-transforms:make-transform translation quaternion)))
+
+(defun to-point (input-vector)
+  "Returns an instance of type 'cl-transforms:3d-vector' corresponding to the content of
+`input-vector' which is expected to be a vector with 3 numbers."
+  (declare (type (vector number 3) input-vector))
+  (cl-transforms:make-3d-vector (elt input-vector 0) 
+                                (elt input-vector 1) 
+                                (elt input-vector 2)))
