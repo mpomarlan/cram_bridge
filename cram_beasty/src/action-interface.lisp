@@ -74,7 +74,7 @@
         (add-state-subscriber interface action-name)
         interface))))
 
-(defun command-beasty (interface parameters safety)
+(defun command-beasty (interface parameters &optional (safety nil))
   "Sends a command to beasty controller behind `interface'. Users can alter motion command
  with `parameters' and `safety'."
   (declare (type beasty-interface interface))
@@ -120,7 +120,7 @@ subscriber converts state-msg into an instance of class 'beasty-state' and saves
     (cartesian-impedance-control-parameters :MOVETO)
     (reset-safety-parameters :RESET_SAFETY)))
                            
-(defun make-parameter-msg (interface parameters safety)
+(defun make-parameter-msg (interface parameters &optional (safety nil))
   "Creates the appropriate parameter message to control `robot' behind `interface' to
    perform motion specified by `parameters' with `safety'."
   (declare (type beasty-interface interface)
