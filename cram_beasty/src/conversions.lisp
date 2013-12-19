@@ -133,10 +133,22 @@
     
 (defmethod to-vector ((transform cl-transforms:transform))
   "Turns 'cl-transforms:transform' `transform' into row-ordered 16x1 double-array."
-  (let ((array4x4 (cl-transforms:transform->matrix transform)))
-    (make-array (array-total-size array4x4)
-                :element-type (array-element-type array4x4)
-                :displaced-to array4x4)))
+  (let* ((array4x4 (cl-transforms:transform->matrix transform))
+         (array4x4t (make-array 
+                     '(4 4) 
+                     :initial-contents
+                     (loop for x from 0 below 4 collecting
+                                                (loop for y from 0 below 4 collecting
+                                                                           (aref array4x4 y x))))))
+    (make-array (array-total-size array4x4t)
+                :element-type (array-element-type array4x4t)
+                :displaced-to array4x4t)))
+
+(defmethod to-vector ((translation cl-transforms:3d-vector))
+  "Turns 'cl-transforms:3d-vector' `translation' into 3x1 array."
+  (vector (cl-transforms:x translation)
+          (cl-transforms:y translation)
+          (cl-transforms:z translation)))
 
 (defmethod to-vector ((point cl-transforms:3d-vector))
   "Turns 'cl-transforms:3d-vector' `point' into a regular array of size 3."
