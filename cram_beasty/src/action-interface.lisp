@@ -92,6 +92,11 @@
           (setf (cmd-id interface) (elt cmd_id (get-beasty-command-code
                                                 (infer-command-symbol parameters))))))))))
 
+(defun reset-beasty-safety (interface)
+  (declare (type beasty-interface))
+  (let ((reset-params (make-instance 'reset-safety-parameters)))
+    (command-beasty interface reset-params nil)))
+
 (defun add-state-subscriber (interface namespace)
   "Adds a beasty state-subscriber with topic `namespace'/state to `interface'."
   (declare (type beasty-interface interface)
