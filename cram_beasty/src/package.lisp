@@ -42,7 +42,11 @@
    :gravity-control-parameters :max-joint-vel :max-joint-acc
    ;; commanding joint impedance parameters
    :joint-impedance-control-parameters :joint-goal :joint-stiffness :joint-damping
+   ;; commanding cartesian impedance parameters
+   :cartesian-impedance-control-parameters :cart-stiffness :cart-damping
+   :nullspace-stiffness :nullspace-damping :nullspace-dir :filter-gains
+   :goal-pose :max-cart-vel :max-cart-acc
    ;; resetting the safety brakes of the LWR
    :reset-safety-parameters
    ;; state feedback coming from controller
-   :beasty-state :motor-power-on :safety-released :joint-values))
+   :beasty-state :motor-power-on :safety-released :joint-values :tcp-pose))
