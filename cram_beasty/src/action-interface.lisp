@@ -92,13 +92,16 @@
           (setf (cmd-id interface) (elt cmd_id (get-beasty-command-code
                                                 (infer-command-symbol parameters))))))))))
 
-(defun reset-beasty-safety (interface)
+(defun release-beasty-safety (interface)
+  "Releases the software safety buttolns of the beasty controller behind `interface'."
   (declare (type beasty-interface))
   (let ((reset-params (make-instance 'reset-safety-parameters)))
     (command-beasty interface reset-params nil)))
 
 (defun add-state-subscriber (interface namespace)
-  "Adds a beasty state-subscriber with topic `namespace'/state to `interface'."
+  "Adds a beasty state-subscriber with topic `namespace'/state to `interface'. Said 
+subscriber converts state-msg into an instance of class 'beasty-state' and saves it in the
+'state' slot of `interface'."
   (declare (type beasty-interface interface)
            (type string namespace))
   (let ((subscriber 
@@ -110,7 +113,7 @@
     (setf (state-sub interface) subscriber)))
 
 (defun infer-command-symbol (parameters)
-  "Infers the command type based on the type of `parameters'."
+  "Infers the RCUGoal-command type based on the type of `parameters'."
   (etypecase parameters
     (gravity-control-parameters :CHANGE_BEHAVIOUR)
     (joint-impedance-control-parameters :MOVETO)

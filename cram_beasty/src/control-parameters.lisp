@@ -85,4 +85,4 @@ impedance motion of Beasty, defined w.r.t. arm base. Order: t_x, t_y, t_z, r_x, 
    control mode of the Beasty controller."))
 
 (defclass reset-safety-parameters () ()
-  (:documentation "Class signalling to reset the safety brakes of a Beasty controller."))
+  (:documentation "Class to release the software safety flags of a Beasty controller."))
