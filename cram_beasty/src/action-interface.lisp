@@ -92,11 +92,6 @@
           (setf (cmd-id interface) (elt cmd_id (get-beasty-command-code
                                                 (infer-command-symbol parameters))))))))))
 
-(defun get-beasty-state (interface)
-  "Returns the current state of the Beasty controller serving `interface'."
-  (declare (type beasty-interface))
-  (state interface))
-
 (defun add-state-subscriber (interface namespace)
   "Adds a beasty state-subscriber with topic `namespace'/state to `interface'."
   (declare (type beasty-interface interface)
