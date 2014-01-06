@@ -27,6 +27,7 @@
 
 (in-package :cram-moveit)
 
+(defvar *move-group-action-client* nil)
 (defvar *planning-scene-publisher* nil
   "Publisher handle for the planning scene topic.")
 (defvar *attached-object-publisher* nil
@@ -55,7 +56,9 @@
   (setf *joint-states-subscriber*
         (roslisp:subscribe "/joint_states"
                            "sensor_msgs/JointState"
-                           #'joint-states-callback)))
+                           #'joint-states-callback))
+  (setf *move-group-action-client* (actionlib:make-action-client
+                                    "move_group" "moveit_msgs/MoveGroupAction")))
 
 (defun joint-states-callback (msg)
   (roslisp:with-fields (name position) msg
@@ -252,7 +255,7 @@
                    "moveit_msgs/MotionPlanRequest"
                    :group_name planning-group
                    :num_planning_attempts 1
-                   :allowed_planning_time 3.0
+                   :allowed_planning_time 3
                    :goal_constraints
                    (vector
                     (make-message
@@ -299,9 +302,9 @@
                         :y (tf:y (tf:orientation pose-stamped))
                         :z (tf:z (tf:orientation pose-stamped))
                         :w (tf:w (tf:orientation pose-stamped)))
-                       :absolute_x_axis_tolerance 0.001
-                       :absolute_y_axis_tolerance 0.001
-                       :absolute_z_axis_tolerance 0.001))))))
+                       :absolute_x_axis_tolerance 0.005
+                       :absolute_y_axis_tolerance 0.005
+                       :absolute_z_axis_tolerance 0.005))))))
            (touch-links-concat (concatenate 'vector allowed-collision-objects
                                             touch-links))
            (options
@@ -340,33 +343,52 @@
                                                  (cdr x))
                                        default-collision-entries)))
               :plan_only plan-only)))
-      (let ((move-group-action-client (actionlib:make-action-client
-                                       "move_group" "moveit_msgs/MoveGroupAction")))
-        (cond ((actionlib:wait-for-server move-group-action-client 5.0)
-               (cpl:with-failure-handling
-                   ((actionlib:server-lost (f)
-                      (declare (ignore f))
-                      (error 'planning-failed)))
-                 (let ((result (actionlib:call-goal
-                                move-group-action-client
-                                (actionlib:make-action-goal
-                                    move-group-action-client
-                                  :request mpreq
-                                  :planning_options options))))
-                   (roslisp:with-fields (error_code
-                                         trajectory_start
-                                         planned_trajectory) result
-                     (roslisp:with-fields (val) error_code
-                       (unless (eql val (roslisp-msg-protocol:symbol-code
-                                         'moveit_msgs-msg:moveiterrorcodes
-                                         :success))
-                         (signal-moveit-error val))
-                       (values trajectory_start planned_trajectory))))))
-              (t (error 'actionlib:server-lost)))))))
+      (cond ((actionlib:wait-for-server *move-group-action-client* 5.0)
+             (cpl:with-failure-handling
+                 ((actionlib:server-lost (f)
+                    (declare (ignore f))
+                    (error 'planning-failed)))
+               (let ((result (actionlib:call-goal
+                              *move-group-action-client*
+                              (actionlib:make-action-goal
+                                  *move-group-action-client*
+                                :request mpreq
+                                :planning_options options))))
+                 (roslisp:with-fields (error_code
+                                       trajectory_start
+                                       planned_trajectory) result
+                   (roslisp:with-fields (val) error_code
+                     (unless (eql val (roslisp-msg-protocol:symbol-code
+                                       'moveit_msgs-msg:moveiterrorcodes
+                                       :success))
+                       (signal-moveit-error val))
+                     (values trajectory_start planned_trajectory))))))
+            (t (error 'actionlib:server-lost))))))
+
+(defun compute-ik (link-name planning-group pose-stamped)
+  (let ((result (roslisp:call-service
+                 "/compute_ik"
+                 'moveit_msgs-srv:getpositionik
+                 :ik_request
+                 (make-message
+                  "moveit_msgs/PositionIKRequest"
+                  :group_name planning-group
+                  :ik_link_names (vector link-name)
+                  :pose_stamped_vector (vector (tf:pose-stamped->msg
+                                                pose-stamped))))))
+    (roslisp:with-fields (solution error_code) result
+      (roslisp:with-fields (val) error_code
+        (unless (eql val (roslisp-msg-protocol:symbol-code
+                          'moveit_msgs-msg:moveiterrorcodes
+                          :success))
+          (signal-moveit-error val))
+        solution))))
 
 (defun plan-link-movement (link-name planning-group pose-stamped
                            &key allowed-collision-objects
-                             touch-links default-collision-entries)
+                             touch-links default-collision-entries
+                             ignore-collisions
+                             destination-validity-only)
   (cpl:with-failure-handling
       ((moveit:no-ik-solution (f)
          (declare (ignore f))
@@ -386,14 +408,17 @@
        (moveit:goal-in-collision (f)
          (declare (ignore f))
          (return)))
-    (moveit:move-link-pose
-     link-name
-     planning-group pose-stamped
-     :allowed-collision-objects
-     allowed-collision-objects
-     :plan-only t
-     :touch-links touch-links
-     :default-collision-entries default-collision-entries)))
+    (cond (destination-validity-only
+           (compute-ik link-name planning-group pose-stamped))
+          (t (moveit:move-link-pose
+              link-name
+              planning-group pose-stamped
+              :allowed-collision-objects
+              allowed-collision-objects
+              :plan-only t
+              :touch-links touch-links
+              :default-collision-entries default-collision-entries
+              :ignore-collisions ignore-collisions)))))
 
 (defun pose-distance (link-frame pose-stamped)
   (tf:wait-for-transform

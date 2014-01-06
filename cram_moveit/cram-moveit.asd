@@ -38,12 +38,11 @@
                cram-plan-knowledge
                designators
                designators-ros
-               cljlo
-               cljlo-utils
                actionlib
                std_msgs-msg
                cram-plan-failures
-               moveit_msgs-msg)
+               moveit_msgs-msg
+               moveit_msgs-srv)
   :components
   ((:module "src"
     :components
