@@ -28,19 +28,23 @@
 
 (in-package :cl-user)
 
-(defpackage :cram-fccl
+(defpackage :cram-beasty
   (:use #:roslisp
-        #:common-lisp
-        ;; #:cram-feature-constraints
-        )
-  ;; (:export feature-constraints->config-msg
-  ;;          feature-constraints->command-msg
-  ;;          constraint-state-msg->feature-constraint-state
-  ;;          ensure-fccl-initialized
-  ;;          add-fccl-controller-interface 
-  ;;          get-fccl-controller-interface
-  ;;          remove-fccl-controller-interface
-  ;;          execute-constraints-motion
-  ;;          get-constraints-state-fluent
-  ;;          movement-id)
-  )
+        #:common-lisp)
+  (:export 
+   ;; top-level interaction with beasty interface
+   :make-beasty-interface :command-beasty :robot :state :release-beasty-safety
+   ;; modelling of LWR robot for beasty
+   :beasty-robot :simulation-flag :motor-power :tool-configuration :base-configuration
+   :beasty-base :base-transform :base-acceleration :beasty-tool :ee-transform
+   :mass :com
+   ;; commanding gravity compensation parameters
+   :gravity-control-parameters :max-joint-vel :max-joint-acc
+   ;; commanding joint impedance parameters
+   :joint-impedance-control-parameters :joint-goal :joint-stiffness :joint-damping
+   ;; commanding cartesian impedance parameters
+   :cartesian-impedance-control-parameters :cart-stiffness :cart-damping
+   :nullspace-stiffness :nullspace-damping :nullspace-dir :filter-gains
+   :goal-pose :max-cart-vel :max-cart-acc
+   ;; state feedback coming from controller
+   :beasty-state :motor-power-on :safety-released :joint-values :tcp-pose))

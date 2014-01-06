@@ -1,3 +1,4 @@
+
 ;;; Copyright (c) 2013, Georg Bartels <georg.bartels@cs.uni-bremen.de>
 ;;; All rights reserved.
 ;;;
@@ -26,21 +27,23 @@
 ;;; ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ;;; POSSIBILITY OF SUCH DAMAGE.
 
-(in-package :cl-user)
+(defsystem cram-beasty
+  :author "Georg Bartels <georg.bartels@cs.uni-bremen.de>"
+  :license "BSD"
+  :description "Interface package of CRAM to command Beasty LWR controllers."
 
-(defpackage :cram-fccl
-  (:use #:roslisp
-        #:common-lisp
-        ;; #:cram-feature-constraints
-        )
-  ;; (:export feature-constraints->config-msg
-  ;;          feature-constraints->command-msg
-  ;;          constraint-state-msg->feature-constraint-state
-  ;;          ensure-fccl-initialized
-  ;;          add-fccl-controller-interface 
-  ;;          get-fccl-controller-interface
-  ;;          remove-fccl-controller-interface
-  ;;          execute-constraints-motion
-  ;;          get-constraints-state-fluent
-  ;;          movement-id)
-  )
+  :depends-on (roslisp
+               cl-transforms
+               actionlib
+               dlr_msgs-msg)
+  :components
+  ((:module "src"
+    :components
+    ((:file "package")
+     (:file "beasty-robot" :depends-on ("package"))
+     (:file "control-parameters" :depends-on ("package"))
+     (:file "utils" :depends-on ("package"))
+     (:file "conversions" :depends-on ("package" "beasty-robot" "control-parameters"))
+     (:file "login" :depends-on ("package" "utils"))
+     (:file "action-interface" 
+      :depends-on ("package" "login" "beasty-robot" "control-parameters" "conversions"))))))

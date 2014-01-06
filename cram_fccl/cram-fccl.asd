@@ -32,14 +32,24 @@
   :description "Interface package of CRAM to communicate with feature constraints controllers in FCCL."
 
   :depends-on (roslisp
-               cram-feature-constraints
-               constraint_msgs-msg
+               actionlib
+               fccl_msgs-msg
                geometry_msgs-msg
-               cram-language)
+               std_msgs-msg
+               cl-transforms
+               ;; cram-feature-constraints
+               ;; constraint_msgs-msg
+               ;; geometry_msgs-msg
+               ;; cram-language
+               )
   :components
   ((:module "src"
     :components
     ((:file "package")
-     (:file "conversions" :depends-on ("package"))
-     (:file "publisher-interface" :depends-on ("package" "conversions"))
-     (:file "tests" :depends-on ("package" "conversions" "publisher-interface"))))))
+     (:file "datatypes" :depends-on ("package"))
+     (:file "conversions" :depends-on ("package" "datatypes"))
+     (:file "action-interface" :depends-on ("package" "datatypes" "conversions"))
+     (:file "samples" :depends-on ("package" "datatypes" "action-interface"))
+     ;; (:file "publisher-interface" :depends-on ("package" "conversions"))
+     ;; (:file "tests" :depends-on ("package" "conversions" "publisher-interface"))
+     ))))

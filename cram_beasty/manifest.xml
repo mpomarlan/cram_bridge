@@ -1,0 +1,13 @@
+<package>
+  <description brief="cram_beasty">
+     Interface package between CRAM and Beasty controllers for LWR arms.
+  </description>
+  <author>Georg Bartels</author>
+  <license>BSD</license>
+
+  <rosdep name="sbcl"/>
+  <depend package="roslisp"/>
+  <depend package="cl_transforms"/>
+  <depend package="actionlib_lisp"/>
+  <depend package="dlr_msgs"/>
+</package>

@@ -26,21 +26,10 @@
 ;;; ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ;;; POSSIBILITY OF SUCH DAMAGE.
 
-(in-package :cl-user)
+(in-package :cram-beasty)
 
-(defpackage :cram-fccl
-  (:use #:roslisp
-        #:common-lisp
-        ;; #:cram-feature-constraints
-        )
-  ;; (:export feature-constraints->config-msg
-  ;;          feature-constraints->command-msg
-  ;;          constraint-state-msg->feature-constraint-state
-  ;;          ensure-fccl-initialized
-  ;;          add-fccl-controller-interface 
-  ;;          get-fccl-controller-interface
-  ;;          remove-fccl-controller-interface
-  ;;          execute-constraints-motion
-  ;;          get-constraints-state-fluent
-  ;;          movement-id)
-  )
+(defun get-beasty-command-code (command-symbol)
+  "Returns the Beasty command-code defined in dlr_msgs/RCUGoal which corresponds to
+   `command-symbol'."
+  (declare (type symbol command-symbol))
+  (roslisp-msg-protocol:symbol-code 'dlr_msgs-msg:rcugoal command-symbol))
