@@ -78,7 +78,7 @@
   (dolist (desig result)
     (beliefstate:add-object-to-active-node
      desig :annotation "perception-result"))
-  (beliefstate:add-topic-image-to-active-node *kinect-topic-rgb*)
+  (beliefstate:add-topic-image-to-active-node cram-beliefstate::*kinect-topic-rgb*)
   (beliefstate:stop-node id :success (not (eql result nil))))
 
 
@@ -89,13 +89,13 @@
       (beliefstate:start-node
        "GRASP"
        `() 2)
-    (beliefstate:add-topic-image-to-active-node *kinect-topic-rgb*)
+    (beliefstate:add-topic-image-to-active-node cram-beliefstate::*kinect-topic-rgb*)
     (beliefstate:add-designator-to-active-node obj-desig
                                                :annotation "object-acted-on")))
 
 (defmethod hook-after-grasp :around (id success)
   (progn
-    (beliefstate:add-topic-image-to-active-node *kinect-topic-rgb*)
+    (beliefstate:add-topic-image-to-active-node cram-beliefstate::*kinect-topic-rgb*)
     (beliefstate:stop-node id :success success)))
 
 (defmethod hook-before-putdown :around (obj-desig loc-desig)
@@ -103,7 +103,7 @@
       (beliefstate:start-node
        "PUTDOWN"
        `() 2)
-    (beliefstate:add-topic-image-to-active-node *kinect-topic-rgb*)
+    (beliefstate:add-topic-image-to-active-node cram-beliefstate::*kinect-topic-rgb*)
     (beliefstate:add-designator-to-active-node
      obj-desig :annotation "object-acted-on")
     (beliefstate:add-designator-to-active-node
@@ -111,7 +111,7 @@
 
 (defmethod hook-after-putdown :around (id success)
   (progn
-    (beliefstate:add-topic-image-to-active-node *kinect-topic-rgb*)
+    (beliefstate:add-topic-image-to-active-node cram-beliefstate::*kinect-topic-rgb*)
     (beliefstate:stop-node id :success success)))
 
 (defmethod hook-before-move-arm :around (side pose-stamped

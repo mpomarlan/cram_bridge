@@ -40,7 +40,6 @@
   #:cut
   #:desig
   #:designators-ros
-  #:cljlo-utils
   #:roslisp
   #:cram-plan-failures)
   (:export
