@@ -136,15 +136,18 @@
 (defmethod from-msg ((msg dlr_msgs-msg:rcu2tcu))
   "Creates and returns an instance of cram-beasty:beasty-state filled with
    relevant content from `msg'."
-  (with-fields (robot) msg
+  (with-fields (robot safety) msg
     (with-fields (q power emergency o_t_x) robot
+      (with-fields (contact_joint collision_joint) safety
         (make-instance 'beasty-state
-                       :motor-power-on (motor-power-p power)
+                       :motor-power-on (motor-power-flags-on-p power)
                        :safety-released (safety-flags-released-p emergency)
                        :joint-values q
-                       :tcp-pose (to-transform o_t_x)))))
+                       :joint-contacts contact_joint ; TODO(Georg): implement me
+                       :joint-collisions (calculate-collision-joints collision_joint)
+                       :tcp-pose (to-transform o_t_x))))))
 
-(defun motor-power-p (motors)
+(defun motor-power-flags-on-p (motors)
   "Checks whether all flags in vector `motors' indicate power-on."
   (declare (type vector motors))
   (every (lambda (motor) (> motor 0.0)) motors))
@@ -153,6 +156,30 @@
   "Checks whether all flags in vector `safety-flags' indicated released safeties."
   (declare (type vector safety-flags))
   (every (lambda (flag) (> flag 0.0)) safety-flags))
+
+(defun calculate-collision-joints (joints &optional (joint-prefix "/left"))
+  "Returns vector of joint-names which have been reported as in collision. `joint' is
+ feedback vector provided by Beasty as 'collision-joint' in rcu2tcu_Safety, while string
+ `joint-prefix' is used to reconstruct the correct joint-names."
+  (declare (type vector joints)
+           (type string joint-prefix))
+  (coerce
+   (loop for i from 0 to (- (length joints) 1)
+         when (joint-collision-p (elt joints i))
+           collecting (construct-joint-name joint-prefix i))
+   'vector))
+  
+(defun construct-joint-name (joint-prefix joint-index)
+  "Returns the joint-name corresponding to joint with `joint-index' using `joint-prefix'.
+`joint-index' is supposed to be a number, and `joint-prefix' expected to be a string."
+  (declare (type string joint-prefix)
+           (type number joint-index))
+  (concatenate 'string joint-prefix "_arm_" (write-to-string joint-index) "_joint"))
+
+(defun joint-collision-p (joint)
+  "Checks whether `joint' reported from Beasty as 'collision_joint' indicates a collision."
+  (declare (type number joint))
+  (/= joint 0))
     
 (defmethod to-vector ((transform cl-transforms:transform))
   "Turns 'cl-transforms:transform' `transform' into row-ordered 16x1 double-array."

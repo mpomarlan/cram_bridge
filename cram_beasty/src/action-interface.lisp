@@ -57,7 +57,11 @@
    (joint-values :initarg :joint-values :reader joint-values
                  :type vector :documentation "Current joint values of LWR arm.")
    (tcp-pose :initarg :tcp-pose :reader tcp-pose :type cl-transforms:transform
-              :documentation "Pose of tcp frame w.r.t. to arm base frame."))
+              :documentation "Pose of tcp frame w.r.t. to arm base frame.")
+   (joint-contacts :initarg :joint-contacts :reader joint-contacts
+                   :type vector :documentation "Detected contacts per joint of LWR arm.")
+   (joint-collisions :initarg :joint-collisions :reader joint-collisions
+                     :type vector :documentation "Detected collisions per joint of LWR."))
   (:documentation "Representation of state reported from Beasty LWR controller."))
 
 (defun make-beasty-interface (action-name)
