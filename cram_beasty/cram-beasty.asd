@@ -32,6 +32,7 @@
   :description "Interface package of CRAM to command Beasty LWR controllers."
 
   :depends-on (roslisp
+               cram-language
                cl-transforms
                actionlib
                dlr_msgs-msg)

@@ -42,8 +42,9 @@
            :documentation "cmd-id to be used in the next goal.")
    (state-sub :initform nil :accessor state-sub
               :documentation "Subscriber listening to state-topic of server.")
-   (state :initform (make-instance 'beasty-state) :accessor state :type beasty-state
-          :documentation "Last state reported from beasty controller.")
+   (state :initform (cram-language:make-fluent :value (make-instance 'beasty-state))
+          :accessor state :type cram-language:value-fluent
+          :documentation "Fluent with last state reported from beasty controller.")
    (robot :initform (make-instance 'beasty-robot) :accessor robot :type beasty-robot
           :documentation "Robot representation of LWR controlled by this interface."))
   (:documentation "Action-client interface with book-keeping for LWR controller Beasty."))
@@ -101,7 +102,7 @@
 (defun safety-released-p (interface)
   "Checks whether the safety brakes of LWR arm behind `interface' are released."
   (declare (type beasty-interface interface))
-  (safety-released (state interface)))
+  (safety-released (cram-language:value (state interface))))
 
 (defun ensure-safety-released (interface)
   "Makes sure that the safety brakes of LWR arm behind `interface' are released."
@@ -111,7 +112,7 @@
 (defun motors-on-p (interface)
   "Checks whether the motors of LWR arm behind `interface' are powered on."
   (declare (type cram-beasty::beasty-interface interface))
-  (cram-beasty:motor-power-on (cram-beasty:state interface)))
+  (motor-power-on (cram-language:value (state interface))))
 
 (defun add-state-subscriber (interface namespace)
   "Adds a beasty state-subscriber with topic `namespace'/state to `interface'. Said 
@@ -123,7 +124,8 @@ subscriber converts state-msg into an instance of class 'beasty-state' and saves
           (roslisp:subscribe (concatenate 'string namespace "/state") 
                              "dlr_msgs/rcu2tcu"
                              (lambda (msg)
-                               (setf (state interface) (from-msg msg)))
+                               (setf (cram-language:value (state interface))
+                                     (from-msg msg)))
                              :max-queue-length 1)))
     (setf (state-sub interface) subscriber)))
 
