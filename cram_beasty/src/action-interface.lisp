@@ -35,13 +35,13 @@
 (defclass beasty-interface ()
   ((action-client :initarg :action-client :reader action-client 
                   :type actionlib::action-client
-                  :documentation "ROS action client to communicate with controller.")
+                  :documentation "For internal use. ROS action client to communicate with controller.")
    (session-id :initarg :session-id :accessor session-id :type number
-               :documentation "ID of current communication session.")
+               :documentation "For internal use. ID of current communication session.")
    (cmd-id :initarg :cmd-id :accessor cmd-id :type number
-           :documentation "cmd-id to be used in the next goal.")
+           :documentation "For internal use. cmd-id to be used in the next goal.")
    (state-sub :initform nil :accessor state-sub
-              :documentation "Subscriber listening to state-topic of server.")
+              :documentation "For internal use. Subscriber listening to state-topic of server.")
    (state :initform (cram-language:make-fluent :value (make-instance 'beasty-state))
           :accessor state :type cram-language:value-fluent
           :documentation "Fluent with last state reported from beasty controller.")
