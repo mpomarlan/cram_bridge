@@ -33,8 +33,8 @@
         #:common-lisp)
   (:export 
    ;; top-level interaction with beasty interface
-   :make-beasty-interface :command-beasty :robot :state :release-beasty-safety
-   :safety-released-p :ensure-safety-released :motors-on-p
+   :make-beasty-interface :beasty-interface :command-beasty :robot :state
+   :release-beasty-safety :safety-released-p :ensure-safety-released :motors-on-p
    ;; modelling of LWR robot for beasty
    :beasty-robot :simulation-flag :motor-power :tool-configuration :base-configuration
    :beasty-base :base-transform :base-acceleration :beasty-tool :ee-transform
