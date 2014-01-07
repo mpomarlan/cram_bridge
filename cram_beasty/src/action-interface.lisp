@@ -93,10 +93,20 @@
                                                 (infer-command-symbol parameters))))))))))
 
 (defun release-beasty-safety (interface)
-  "Releases the software safety buttolns of the beasty controller behind `interface'."
+  "Releases the software safety buttons of the beasty controller behind `interface'."
   (declare (type beasty-interface))
   (let ((reset-params (make-instance 'reset-safety-parameters)))
     (command-beasty interface reset-params nil)))
+
+(defun safety-released-p (interface)
+  "Checks whether the safety brakes of LWR arm behind `interface' are released."
+  (declare (type beasty-interface interface))
+  (safety-released (state interface)))
+
+(defun ensure-safety-released (interface)
+  "Makes sure that the safety brakes of LWR arm behind `interface' are released."
+  (unless (safety-released-p interface)
+    (release-beasty-safety interface)))
 
 (defun add-state-subscriber (interface namespace)
   "Adds a beasty state-subscriber with topic `namespace'/state to `interface'. Said 
