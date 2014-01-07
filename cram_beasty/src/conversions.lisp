@@ -140,7 +140,7 @@
     (with-fields (q power emergency o_t_x) robot
         (make-instance 'beasty-state
                        :motor-power-on (motor-power-p power)
-                       :safety-released (safety-released-p emergency)
+                       :safety-released (safety-flags-released-p emergency)
                        :joint-values q
                        :tcp-pose (to-transform o_t_x)))))
 
@@ -149,7 +149,7 @@
   (declare (type vector motors))
   (every (lambda (motor) (> motor 0.0)) motors))
 
-(defun safety-released-p (safety-flags)
+(defun safety-flags-released-p (safety-flags)
   "Checks whether all flags in vector `safety-flags' indicated released safeties."
   (declare (type vector safety-flags))
   (every (lambda (flag) (> flag 0.0)) safety-flags))
