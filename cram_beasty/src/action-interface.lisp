@@ -108,6 +108,11 @@
   (unless (safety-released-p interface)
     (release-beasty-safety interface)))
 
+(defun motors-on-p (interface)
+  "Checks whether the motors of LWR arm behind `interface' are powered on."
+  (declare (type cram-beasty::beasty-interface interface))
+  (cram-beasty:motor-power-on (cram-beasty:state interface)))
+
 (defun add-state-subscriber (interface namespace)
   "Adds a beasty state-subscriber with topic `namespace'/state to `interface'. Said 
 subscriber converts state-msg into an instance of class 'beasty-state' and saves it in the
