@@ -35,7 +35,8 @@
                cram-language
                cl-transforms
                actionlib
-               dlr_msgs-msg)
+               dlr_msgs-msg
+               visualization_msgs-msg)
   :components
   ((:module "src"
     :components

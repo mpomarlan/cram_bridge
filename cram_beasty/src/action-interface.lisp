@@ -28,6 +28,8 @@
 
 (in-package :cram-beasty)
 
+;;; MAIN DATA STRUCTURES EXPORTED TO THE USER
+
 (define-condition beasty-command-error (error)
   ((text :initarg :text :reader text))
   (:documentation "Condition signalling an error while commanding Beasty controller."))
@@ -42,6 +44,9 @@
            :documentation "For internal use. cmd-id to be used in the next goal.")
    (state-sub :initform nil :accessor state-sub
               :documentation "For internal use. Subscriber listening to state-topic of server.")
+   (visualization-pub :initarg :visualization-pub :accessor visualization-pub
+                      :type publication 
+                      :documentation "For internal use. Publisher for visualization.")
    (state :initform (cram-language:make-fluent :value (make-instance 'beasty-state))
           :accessor state :type cram-language:value-fluent
           :documentation "Fluent with last state reported from beasty controller.")
@@ -64,16 +69,24 @@
                      :type vector :documentation "Detected collisions per joint of LWR."))
   (:documentation "Representation of state reported from Beasty LWR controller."))
 
-(defun make-beasty-interface (action-name)
+;;; EXPORTED INTERFACE METHODS
+
+(defun make-beasty-interface (action-name &optional (visualization-on t))
   "Creates a BEASTY interface. `action-name' is the name of the action used to create
-   the ROS action-client and will also be used to identify the BEASTY interface."
-  (declare (type string action-name))
-  (let ((action-client (actionlib:make-action-client action-name "dlr_msgs/RCUAction")))
+   the ROS action-client and will also be used to identify the BEASTY interface.
+   `visualization-on' is a boolean flag to trigger publishing of visualization markers."
+  (declare (type string action-name)
+           (type boolean visualization-on))
+  (let ((action-client (actionlib:make-action-client action-name "dlr_msgs/RCUAction"))
+        (visualization-pub 
+          (when visualization-on
+            (advertise "visualization_marker_array" "visualization_msgs/MarkerArray"))))
     (actionlib:wait-for-server action-client 2.0)
     (multiple-value-bind (session-id cmd-id)
         (login-beasty action-client)
       (let ((interface (make-instance 'beasty-interface 
                                       :action-client action-client
+                                      :visualization-pub visualization-pub
                                       :session-id session-id
                                       :cmd-id cmd-id)))
         (add-state-subscriber interface action-name)
@@ -118,6 +131,8 @@
   (declare (type cram-beasty::beasty-interface interface))
   (motor-power-on (cram-language:value (state interface))))
 
+;;; SOME INTERNAL AUXILIARY METHODS
+
 (defun add-state-subscriber (interface namespace)
   "Adds a beasty state-subscriber with topic `namespace'/state to `interface'. Said 
 subscriber converts state-msg into an instance of class 'beasty-state' and saves it in the
@@ -129,7 +144,10 @@ subscriber converts state-msg into an instance of class 'beasty-state' and saves
                              "dlr_msgs/rcu2tcu"
                              (lambda (msg)
                                (setf (cram-language:value (state interface))
-                                     (from-msg msg)))
+                                     (from-msg msg))
+                               ;; TODO(Georg): Visualization should be triggered by change
+                               ;;              to state-fluent. Move this away from here..
+                               (visualize-collisions interface))
                              :max-queue-length 1)))
     (setf (state-sub interface) subscriber)))
 
@@ -160,3 +178,55 @@ subscriber converts state-msg into an instance of class 'beasty-state' and saves
        :controller controller-msg
        :interpolator interpolator-msg
        :settings settings-msg))))
+
+;;; PUBLISHING OF VISUALIZATION MARKERS
+;;; TODO(Georg): move this into a separate file
+
+(defun visualize-collisions (interface)
+  "Visualizes collisions reported in feedback of beasty `interface' by publishing a red
+ sperical marker at every joint which is in collision."
+  (declare (type beasty-interface interface))
+  ;; Note: If the user specified 'no-visualization' the publisher object is 'nil'.
+  (when (visualization-pub interface)
+    (let ((collision-markers 
+            (create-collision-markers
+             (joint-collisions (cram-language:value (state interface))))))
+      ;; only publish if there is something to publish
+      (when (> (length collision-markers) 0)
+        (publish (visualization-pub interface)
+                 (make-msg "visualization_msgs/MarkerArray" :markers collision-markers))))))
+  
+(defun create-collision-markers (collision-joints)
+  "Returns vector of collision markers for joints which are in collision. 
+ `joint-collisions' is a vector expected to be joint collision feedback comming from
+ Beasty, while `joint-prefix' is a string."
+  (declare (type vector collision-joints))
+  (map 'vector #'make-red-sphere-msg collision-joints))
+
+;; TODO(Georg): extend with namespace to discriminate btw. arms
+(defun make-red-sphere-msg (joint-name)
+  "Creates a red sphere marker for joint with `joint-name' located at the corresponding
+ link of the kinematic chain. Joint names are expect to match *_<joint-number>_joint."
+  (declare (type string joint-name))
+  (let ((frame-id (get-joint-frame joint-name))
+        (joint-index (get-joint-index joint-name)))
+    (make-msg "visualization_msgs/Marker"
+              :header (make-msg "std_msgs/Header" :frame_id frame-id :stamp (ros-time))
+              :type 2 :action 0 :lifetime 5.0 :id joint-index
+              :color (make-msg "std_msgs/ColorRGBA" :r 1.0 :g 0.0 :b 0.0 :a 0.7)
+              :scale (make-msg "geometry_msgs/Vector3" :x 0.2 :y 0.2 :z 0.2))))
+
+(defun get-joint-index (joint-name)
+  "Parses `joint-name' which is expected to match pattern *arm_<index>_* for the index of
+ the joint and returns it as number."
+  (declare (type string joint-name))
+  (multiple-value-bind (joint-index string-position)
+      (parse-integer (remove-if-not #'digit-char-p joint-name))
+    (declare (ignore string-position))
+    joint-index))
+
+(defun get-joint-frame (joint-name)
+  "Returns the corresponding tf link-name for joint with `joint-name' of pattern
+ *joint by replacing 'joint' with 'link'."
+  (declare (type string joint-name))
+  (concatenate 'string (subseq joint-name 0 (search "joint" joint-name)) "link"))
