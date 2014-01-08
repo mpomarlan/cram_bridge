@@ -28,8 +28,6 @@
 (in-package :cram-moveit)
 
 (defvar *move-group-action-client* nil)
-(defvar *planning-scene-publisher* nil
-  "Publisher handle for the planning scene topic.")
 (defvar *attached-object-publisher* nil
   "Publisher handle for attaching and detaching collicion objects through /attached_collision_object.")
 (defvar *joint-states-fluent* nil
@@ -368,7 +366,7 @@
 (defun compute-ik (link-name planning-group pose-stamped)
   (let ((result (roslisp:call-service
                  "/compute_ik"
-                 'moveit_msgs-srv:getpositionik
+                 "moveit_msgs/GetPositionIK"
                  :ik_request
                  (make-message
                   "moveit_msgs/PositionIKRequest"
