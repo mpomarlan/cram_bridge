@@ -50,6 +50,8 @@
 (defvar *known-collision-objects* nil
   "List of collision object instances registered with the CRAM/MoveIt!
 bridge.")
+(defvar *planning-scene-publisher* nil
+  "Publisher handle for the planning scene topic.")
 
 (defgeneric register-collision-object (object &rest rest))
 
