@@ -46,7 +46,8 @@
    (state :initform (cram-language:make-fluent :value (make-instance 'beasty-state))
           :accessor state :type cram-language:value-fluent
           :documentation "Fluent with last state reported from beasty controller.")
-   (robot :initform (make-instance 'beasty-robot) :accessor robot :type beasty-robot
+   (robot :initform (make-instance 'beasty-robot) :initarg :robot :accessor robot
+          :type beasty-robot
           :documentation "Robot representation of LWR controlled by this interface."))
   (:documentation "Action-client interface with book-keeping for LWR controller Beasty."))
 
@@ -129,33 +130,35 @@ impedance motion of Beasty, defined w.r.t. arm base. Order: t_x, t_y, t_z, r_x, 
 ;;; ROBOT MODELLING
 
 (defclass beasty-robot ()
-  ((simulation-flag :initform t :accessor simulation-flag :type boolean
+  ((simulation-flag :initform t :initarg :simulation-flag :accessor simulation-flag
+                    :type boolean
                     :documentation "Indicates simulated robot. 'nil' for real robot.")
-   (motor-power :initform nil :accessor motor-power :type boolean
+   (motor-power :initform nil :initarg :motor-power :accessor motor-power :type boolean
                 :documentation "Flag for power of motors. nil=power-off, t:power-on.")
-   (tool-configuration :initform (make-instance 'beasty-tool) 
+   (tool-configuration :initform (make-instance 'beasty-tool) :initarg :tool-configuration
                        :accessor tool-configuration :type beasty-tool
                        :documentation "Description of the EE mounted on the arm.")
-   (base-configuration :initform (make-instance 'beasty-base) 
+   (base-configuration :initform (make-instance 'beasty-base) :initarg :base-configuration
                        :accessor base-configuration :type beasty-base
                        :documentation "Description of the mounting of the arm's base."))
   (:documentation "Representation of LWR robot for Beasty controller."))
 
 (defclass beasty-base ()
-  ((base-transform :initform (cl-transforms:make-identity-transform)
-                   :accessor base-transform :type cl-transforms:transform
+  ((base-transform :initform (cl-transforms:make-identity-transform) 
+                   :initarg :base-transform :accessor base-transform
+                   :type cl-transforms:transform
                    :documentation "Transform from World to Base. Note: Base is located in the base of the LWR with z-axis pointing to 1st joint and the x-axis pointing to the cable connection. World may be chosen arbitrarily.")
-   (base-acceleration :initform (make-array 6 :initial-element 0)
-                      :accessor base-acceleration :type vector
+   (base-acceleration :initform (make-array 6 :initial-element 0) 
+                      :initarg :base-acceleration :accessor base-acceleration :type vector
                       :documentation "6-dimensional Cart. acceleration acting on the base of the robot."))
   (:documentation "Representation of base configuration of LWR controlled by Beasty."))
 
 (defclass beasty-tool ()
-  ((ee-transform :initform (cl-transforms:make-identity-transform)
+  ((ee-transform :initform (cl-transforms:make-identity-transform) :initarg :ee-transform
                  :accessor ee-transform :type cl-transforms:transform
                  :documentation "Transform from TCP to EE. Note: TCP is located at the center of the last link (sphere) of the LWR III with the z-axis pointing in the direction to the flange. For q7 = 0 the y-axis points to the 6th joint.")
-   (mass :initform 0.0 :accessor mass :type number
+   (mass :initform 0.0 :initarg :mass :accessor mass :type number
          :documentation "Mass in kg of the EE (incl. load).")
-   (com :initform (cl-transforms:make-identity-vector) :accessor com 
+   (com :initform (cl-transforms:make-identity-vector) :initarg :com :accessor com 
         :type cl-transforms:3d-vector :documentation "Center of mass of EE w.r.t. to TCP."))
   (:documentation "Representation of tool mounted on LWR controlled by Beasty."))
