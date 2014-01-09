@@ -39,7 +39,7 @@
 
 (defun init-moveit-bridge ()
   "Sets up the basic action client communication handles for the
-  MoveIt! framework and registers known conditions."
+MoveIt! framework and registers known conditions."
   (register-known-moveit-errors)
   (setf *planning-scene-publisher*
         (roslisp:advertise
@@ -364,6 +364,11 @@
             (t (error 'actionlib:server-lost))))))
 
 (defun compute-ik (link-name planning-group pose-stamped)
+  "Computes an inverse kinematics solution (if possible) of the given
+kinematics goal (given the link name `link-name' to position, the
+`planning-group' to take into consideration, and the final goal pose
+`pose-stamped' for the given link). Returns the final joint state on
+success, and `nil' otherwise."
   (let ((result (roslisp:call-service
                  "/compute_ik"
                  "moveit_msgs/GetPositionIK"
@@ -387,6 +392,14 @@
                              touch-links default-collision-entries
                              ignore-collisions
                              destination-validity-only)
+  "Plans the movement of link `link-name' to given goal-pose
+`pose-stamped', taking the planning group `planning-group' into
+consideration. Returns the proposed trajectory, and final joint state
+on finding a valid motion plan for the given configuration from the
+current configuration. If the flag `destination-validity-only' is set,
+only the final state (but not the motion path trajectory in between)
+is returned. Setting this flag also speeds up the process very much,
+as only the final configuration IK is generated."
   (cpl:with-failure-handling
       ((moveit:no-ik-solution (f)
          (declare (ignore f))
@@ -419,6 +432,9 @@
               :ignore-collisions ignore-collisions)))))
 
 (defun pose-distance (link-frame pose-stamped)
+  "Returns the distance of stamped pose `pose-stamped' from the origin
+coordinates of link `link-frame'. This can be for example used for
+checking how far away a given grasp pose is from the gripper frame."
   (tf:wait-for-transform
    *tf* :timeout 5.0
         :time (tf:stamp pose-stamped)
@@ -427,5 +443,5 @@
   (let ((transformed-pose-stamped (tf:transform-pose
                                    *tf* :pose pose-stamped
                                         :target-frame link-frame)))
-    (tf:v-dist (tf:make-identity-vector) (tf:origin
-                                          transformed-pose-stamped))))
+    (tf:v-dist (tf:make-identity-vector)
+               (tf:origin transformed-pose-stamped))))
