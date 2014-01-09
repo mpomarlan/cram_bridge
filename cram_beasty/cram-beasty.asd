@@ -45,6 +45,7 @@
      (:file "control-parameters" :depends-on ("package"))
      (:file "utils" :depends-on ("package"))
      (:file "conversions" :depends-on ("package" "beasty-robot" "control-parameters"))
-     (:file "login" :depends-on ("package" "utils"))
+     (:file "user-management" :depends-on ("package" "utils"))
      (:file "action-interface" 
-      :depends-on ("package" "login" "beasty-robot" "control-parameters" "conversions"))))))
+      :depends-on ("package" "user-management" "beasty-robot"
+                             "control-parameters" "conversions"))))))
