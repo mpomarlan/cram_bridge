@@ -116,9 +116,9 @@
                            :o_t_via (to-vector (cl-transforms:make-identity-transform)))))
     (values controller-msg interpolator-msg)))
 
-(defmethod to-msg ((params reset-safety-parameters))
+(defmethod to-msg ((params reset-emergency-parameters))
   "Creates a 'dlr_msgs/tcu2rcu_Controller' and a 'dlr_msgs/tcu2rcu_Interpolator' message
-   using the data stored in `params' of type 'reset-safety-parameters'."
+   using the data stored in `params' of type 'reset-emergency-parameters'."
   (let ((controller-msg (roslisp:make-msg 
                          "dlr_msgs/tcu2rcu_Controller" 
                          ;; sane values enforce by server
@@ -139,8 +139,7 @@
       (with-fields (contact_joint collision_joint) safety
         (make-instance 'beasty-state
                        :motor-power-on (motor-power-flags-on-p power)
-                       ;; TODO(Georg): rename into emergency-released
-                       :safety-released (safety-flags-released-p emergency)
+                       :emergency-released (emergency-flags-released-p emergency)
                        :joint-values q
                        :joint-contacts contact_joint ; TODO(Georg): implement me
                        :joint-collisions (calculate-collision-joints collision_joint)
@@ -151,10 +150,11 @@
   (declare (type vector motors))
   (every (lambda (motor) (> motor 0.0)) motors))
 
-(defun safety-flags-released-p (safety-flags)
-  "Checks whether all flags in vector `safety-flags' indicated released safeties."
-  (declare (type vector safety-flags))
-  (every (lambda (flag) (> flag 0.0)) safety-flags))
+(defun emergency-flags-released-p (emergency-flags)
+  "Checks whether all flags in vector `emergency-flags' indicate released emergency
+ buttons."
+  (declare (type vector emergency-flags))
+  (every (lambda (flag) (> flag 0.0)) emergency-flags))
 
 (defun calculate-collision-joints (joints &optional (joint-prefix "/left"))
   "Returns vector of joint-names which have been reported as in collision. `joint' is

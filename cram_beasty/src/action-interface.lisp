@@ -76,21 +76,21 @@
           (setf (cmd-id interface) (elt cmd_id (get-beasty-command-code
                                                 (infer-command-symbol parameters))))))))))
 
-(defun release-beasty-safety (interface)
-  "Releases the software safety buttons of the beasty controller behind `interface'."
+(defun release-beasty-emergency (interface)
+  "Releases the software emergency buttons of the beasty controller behind `interface'."
   (declare (type beasty-interface))
-  (let ((reset-params (make-instance 'reset-safety-parameters)))
+  (let ((reset-params (make-instance 'reset-emergency-parameters)))
     (command-beasty interface reset-params nil)))
 
-(defun safety-released-p (interface)
-  "Checks whether the safety brakes of LWR arm behind `interface' are released."
+(defun emergency-released-p (interface)
+  "Checks whether the emergency buttons of LWR arm behind `interface' are released."
   (declare (type beasty-interface interface))
-  (safety-released (cram-language:value (state interface))))
+  (emergency-released (cram-language:value (state interface))))
 
-(defun ensure-safety-released (interface)
-  "Makes sure that the safety brakes of LWR arm behind `interface' are released."
-  (unless (safety-released-p interface)
-    (release-beasty-safety interface)))
+(defun ensure-emergency-released (interface)
+  "Makes sure that the emergency buttons of LWR arm behind `interface' are released."
+  (unless (emergency-released-p interface)
+    (release-beasty-emergency interface)))
 
 (defun motors-on-p (interface)
   "Checks whether the motors of LWR arm behind `interface' are powered on."
@@ -123,7 +123,7 @@ subscriber converts state-msg into an instance of class 'beasty-state' and saves
     (gravity-control-parameters :CHANGE_BEHAVIOUR)
     (joint-impedance-control-parameters :MOVETO)
     (cartesian-impedance-control-parameters :MOVETO)
-    (reset-safety-parameters :RESET_SAFETY)))
+    (reset-emergency-parameters :CHANGE_BEHAVIOUR)))
                            
 (defun make-parameter-msg (interface parameters &optional (safety nil))
   "Creates the appropriate parameter message to control `robot' behind `interface' to

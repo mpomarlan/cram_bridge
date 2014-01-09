@@ -34,7 +34,7 @@
   (:export 
    ;; top-level interaction with beasty interface
    :make-beasty-interface :beasty-interface :command-beasty :robot :state
-   :release-beasty-safety :safety-released-p :ensure-safety-released :motors-on-p
+   :emergency-released-p :motors-on-p
    ;; modelling of LWR robot for beasty
    :beasty-robot :simulation-flag :tool-configuration :base-configuration
    :beasty-base :base-transform :base-acceleration :beasty-tool :ee-transform
@@ -48,4 +48,4 @@
    :nullspace-stiffness :nullspace-damping :nullspace-dir :filter-gains
    :goal-pose :max-cart-vel :max-cart-acc
    ;; state feedback coming from controller
-   :beasty-state :motor-power-on :safety-released :joint-values :tcp-pose))
+   :beasty-state :motor-power-on :emergency-released :joint-values :tcp-pose))

@@ -54,8 +54,9 @@
 (defclass beasty-state ()
   ((motor-power-on :initarg :motor-power-on :reader motor-power-on :type boolean
                    :documentation "Indicates whether Beasty has all motors powered on.")
-   (safety-released :initarg :safety-released :reader safety-released :type boolean
-                    :documentation "Indicates whether safety buttons are released.")
+   (emergency-released :initarg :emergency-released :reader emergency-released
+                       :type boolean
+                       :documentation "Indicates whether emergency switch is released.")
    (joint-values :initarg :joint-values :reader joint-values
                  :type vector :documentation "Current joint values of LWR arm.")
    (tcp-pose :initarg :tcp-pose :reader tcp-pose :type cl-transforms:transform
@@ -124,8 +125,8 @@ impedance motion of Beasty, defined w.r.t. arm base. Order: t_x, t_y, t_z, r_x, 
   (:documentation "Class holding all parameters necessary to configure Cartesian impedance 
    control mode of the Beasty controller."))
 
-(defclass reset-safety-parameters () ()
-  (:documentation "Class to release the software safety flags of a Beasty controller."))
+(defclass reset-emergency-parameters () ()
+  (:documentation "Class to release the software emergency buttons of a Beasty controller."))
 
 ;;; ROBOT MODELLING
 
