@@ -133,8 +133,6 @@ impedance motion of Beasty, defined w.r.t. arm base. Order: t_x, t_y, t_z, r_x, 
   ((simulation-flag :initform t :initarg :simulation-flag :accessor simulation-flag
                     :type boolean
                     :documentation "Indicates simulated robot. 'nil' for real robot.")
-   (motor-power :initform nil :initarg :motor-power :accessor motor-power :type boolean
-                :documentation "Flag for power of motors. nil=power-off, t:power-on.")
    (tool-configuration :initform (make-instance 'beasty-tool) :initarg :tool-configuration
                        :accessor tool-configuration :type beasty-tool
                        :documentation "Description of the EE mounted on the arm.")

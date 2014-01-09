@@ -43,9 +43,7 @@
   (let ((robot-msg
           (roslisp:make-msg "dlr_msgs/tcu2rcu_Robot"
                             :mode (if (simulation-flag robot) 1 0)
-                            :power (if (motor-power robot)
-                                       (make-array 7 :initial-element 1)
-                                       (make-array 7 :initial-element 0))))
+                            :power (make-array 7 :initial-element 1)))
         (settings-msg
           (roslisp:make-msg "dlr_msgs/tcu2rcu_Settings"
                             :tcp_t_ee (to-vector (ee-transform (tool-configuration robot)))
@@ -141,6 +139,7 @@
       (with-fields (contact_joint collision_joint) safety
         (make-instance 'beasty-state
                        :motor-power-on (motor-power-flags-on-p power)
+                       ;; TODO(Georg): rename into emergency-released
                        :safety-released (safety-flags-released-p emergency)
                        :joint-values q
                        :joint-contacts contact_joint ; TODO(Georg): implement me
