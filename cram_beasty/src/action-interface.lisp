@@ -34,11 +34,13 @@
 
 ;;; EXPORTED INTERFACE METHODS
 
-(defun make-beasty-interface (action-name &optional (visualization-on t))
+(defun make-beasty-interface (action-name robot &optional (visualization-on t))
   "Creates a BEASTY interface. `action-name' is the name of the action used to create
-   the ROS action-client and will also be used to identify the BEASTY interface.
+   the ROS action-client and will also be used to identify the BEASTY interface. `robot'
+   is expected to be an instance of 'beasty-robot' modelling the setup of the LWR arm.
    `visualization-on' is a boolean flag to trigger publishing of visualization markers."
   (declare (type string action-name)
+           (type beasty-robot robot)
            (type boolean visualization-on))
   (let ((action-client (actionlib:make-action-client action-name "dlr_msgs/RCUAction"))
         (visualization-pub 
@@ -51,7 +53,8 @@
                                       :action-client action-client
                                       :visualization-pub visualization-pub
                                       :session-id session-id
-                                      :cmd-id cmd-id)))
+                                      :cmd-id cmd-id
+                                      :robot robot)))
         (add-state-subscriber interface action-name)
         interface))))
 
