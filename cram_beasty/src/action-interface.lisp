@@ -28,46 +28,9 @@
 
 (in-package :cram-beasty)
 
-;;; MAIN DATA STRUCTURES EXPORTED TO THE USER
-
 (define-condition beasty-command-error (error)
   ((text :initarg :text :reader text))
   (:documentation "Condition signalling an error while commanding Beasty controller."))
-
-(defclass beasty-interface ()
-  ((action-client :initarg :action-client :reader action-client 
-                  :type actionlib::action-client
-                  :documentation "For internal use. ROS action client to communicate with controller.")
-   (session-id :initarg :session-id :accessor session-id :type number
-               :documentation "For internal use. ID of current communication session.")
-   (cmd-id :initarg :cmd-id :accessor cmd-id :type number
-           :documentation "For internal use. cmd-id to be used in the next goal.")
-   (state-sub :initform nil :accessor state-sub
-              :documentation "For internal use. Subscriber listening to state-topic of server.")
-   (visualization-pub :initarg :visualization-pub :accessor visualization-pub
-                      :type publication 
-                      :documentation "For internal use. Publisher for visualization.")
-   (state :initform (cram-language:make-fluent :value (make-instance 'beasty-state))
-          :accessor state :type cram-language:value-fluent
-          :documentation "Fluent with last state reported from beasty controller.")
-   (robot :initform (make-instance 'beasty-robot) :accessor robot :type beasty-robot
-          :documentation "Robot representation of LWR controlled by this interface."))
-  (:documentation "Action-client interface with book-keeping for LWR controller Beasty."))
-
-(defclass beasty-state ()
-  ((motor-power-on :initarg :motor-power-on :reader motor-power-on :type boolean
-                   :documentation "Indicates whether Beasty has all motors powered on.")
-   (safety-released :initarg :safety-released :reader safety-released :type boolean
-                    :documentation "Indicates whether safety buttons are released.")
-   (joint-values :initarg :joint-values :reader joint-values
-                 :type vector :documentation "Current joint values of LWR arm.")
-   (tcp-pose :initarg :tcp-pose :reader tcp-pose :type cl-transforms:transform
-              :documentation "Pose of tcp frame w.r.t. to arm base frame.")
-   (joint-contacts :initarg :joint-contacts :reader joint-contacts
-                   :type vector :documentation "Detected contacts per joint of LWR arm.")
-   (joint-collisions :initarg :joint-collisions :reader joint-collisions
-                     :type vector :documentation "Detected collisions per joint of LWR."))
-  (:documentation "Representation of state reported from Beasty LWR controller."))
 
 ;;; EXPORTED INTERFACE METHODS
 
