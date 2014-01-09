@@ -217,16 +217,24 @@ subscriber converts state-msg into an instance of class 'beasty-state' and saves
               :scale (make-msg "geometry_msgs/Vector3" :x 0.2 :y 0.2 :z 0.2))))
 
 (defun get-joint-index (joint-name)
-  "Parses `joint-name' which is expected to match pattern *arm_<index>_* for the index of
- the joint and returns it as number."
+  "Parses `joint-name' which is expected to match pattern *<index>* for the index of the
+ joint and returns it as number."
   (declare (type string joint-name))
   (multiple-value-bind (joint-index string-position)
-      (parse-integer (remove-if-not #'digit-char-p joint-name))
+      (parse-integer (remove-if-not #'digit-char-p joint-name) :junk-allowed t)
     (declare (ignore string-position))
     joint-index))
 
 (defun get-joint-frame (joint-name)
   "Returns the corresponding tf link-name for joint with `joint-name' of pattern
- *joint by replacing 'joint' with 'link'."
+ *<index>*_joint by replacing 'joint' with 'link', and incrementing 'index'."
   (declare (type string joint-name))
-  (concatenate 'string (subseq joint-name 0 (search "joint" joint-name)) "link"))
+  (let ((joint-index (get-joint-index joint-name)))
+    (when joint-index
+      (let* ((joint-index-position (search (write-to-string joint-index) joint-name))
+             (prefix (subseq joint-name 0 joint-index-position))
+             (postfix (subseq joint-name (incf joint-index-position) (length joint-name)))
+             (inc-joint-name
+               (concatenate 'string prefix (write-to-string (incf joint-index)) postfix)))
+        (concatenate 'string (subseq inc-joint-name 0 
+                                     (search "joint" inc-joint-name)) "link")))))
