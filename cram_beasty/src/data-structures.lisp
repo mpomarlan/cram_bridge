@@ -126,7 +126,12 @@ impedance motion of Beasty, defined w.r.t. arm base. Order: t_x, t_y, t_z, r_x, 
    control mode of the Beasty controller."))
 
 (defclass reset-emergency-parameters () ()
-  (:documentation "Class to release the software emergency buttons of a Beasty controller."))
+  (:documentation "For internal use. Class to release the software emergency buttons of a
+   Beasty controller."))
+
+(defclass hard-stop-parameters () ()
+  (:documentation "Class to command complete stop of the arm _with_ kicking in of the
+   brakes. NOTE: This is brutal when done during motion."))
 
 ;;; ROBOT MODELLING
 
@@ -139,7 +144,9 @@ impedance motion of Beasty, defined w.r.t. arm base. Order: t_x, t_y, t_z, r_x, 
                        :documentation "Description of the EE mounted on the arm.")
    (base-configuration :initform (make-instance 'beasty-base) :initarg :base-configuration
                        :accessor base-configuration :type beasty-base
-                       :documentation "Description of the mounting of the arm's base."))
+                       :documentation "Description of the mounting of the arm's base.")
+   (emergency-released-flag :initform nil :accessor emergency-released-flag :type boolean
+                            :documentation "For internal use. Flag indicating whether software emergency buttons should be released."))
   (:documentation "Representation of LWR robot for Beasty controller."))
 
 (defclass beasty-base ()

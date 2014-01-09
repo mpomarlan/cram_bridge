@@ -43,7 +43,9 @@
   (let ((robot-msg
           (roslisp:make-msg "dlr_msgs/tcu2rcu_Robot"
                             :mode (if (simulation-flag robot) 1 0)
-                            :power (make-array 7 :initial-element 1)))
+                            :power (if (emergency-released-flag robot)
+                                        (make-array 7 :initial-element 1)
+                                        (make-array 7 :initial-element 0))))
         (settings-msg
           (roslisp:make-msg "dlr_msgs/tcu2rcu_Settings"
                             :tcp_t_ee (to-vector (ee-transform (tool-configuration robot)))
@@ -119,6 +121,21 @@
 (defmethod to-msg ((params reset-emergency-parameters))
   "Creates a 'dlr_msgs/tcu2rcu_Controller' and a 'dlr_msgs/tcu2rcu_Interpolator' message
    using the data stored in `params' of type 'reset-emergency-parameters'."
+  (let ((controller-msg (roslisp:make-msg 
+                         "dlr_msgs/tcu2rcu_Controller" 
+                         ;; sane values enforce by server
+                         :mode 4)) ; JOINT-IMPEDANCE-MODE
+        (interpolator-msg (roslisp:make-msg 
+                           "dlr_msgs/tcu2rcu_Interpolator"
+                           ;; sane values enforced by server
+                           :mode 5 ; JOINT-SCALING-INTERPOLATION
+                           :o_t_f (to-vector (cl-transforms:make-identity-transform))
+                           :o_t_via (to-vector (cl-transforms:make-identity-transform)))))
+    (values controller-msg interpolator-msg)))
+
+(defmethod to-msg ((params hard-stop-parameters))
+  "Creates a 'dlr_msgs/tcu2rcu_Controller' and a 'dlr_msgs/tcu2rcu_Interpolator' message
+   using the data stored in `params' of type 'complete-stop-parameters'."
   (let ((controller-msg (roslisp:make-msg 
                          "dlr_msgs/tcu2rcu_Controller" 
                          ;; sane values enforce by server

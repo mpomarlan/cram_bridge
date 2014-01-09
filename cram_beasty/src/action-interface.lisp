@@ -58,6 +58,13 @@
         (add-state-subscriber interface action-name)
         interface))))
 
+(defun cleanup-beasty-interface (interface)
+  "Kicks in the brakes of the LWR behind `interface' and logouts out of beasty. NOTE: This
+ is brutal on the arm when called during motion!"
+  (declare (type beasty-interface))
+  (command-beasty interface (make-instance 'hard-stop-parameters))
+  (logout-beasty interface))
+
 (defun command-beasty (interface parameters &optional (safety nil))
   "Sends a command to beasty controller behind `interface'. Users can alter motion command
  with `parameters' and `safety'."
@@ -123,13 +130,15 @@ subscriber converts state-msg into an instance of class 'beasty-state' and saves
     (gravity-control-parameters :CHANGE_BEHAVIOUR)
     (joint-impedance-control-parameters :MOVETO)
     (cartesian-impedance-control-parameters :MOVETO)
-    (reset-emergency-parameters :CHANGE_BEHAVIOUR)))
+    (reset-emergency-parameters :CHANGE_BEHAVIOUR)
+    (hard-stop-parameters :STOP)))
                            
 (defun make-parameter-msg (interface parameters &optional (safety nil))
   "Creates the appropriate parameter message to control `robot' behind `interface' to
    perform motion specified by `parameters' with `safety'."
   (declare (type beasty-interface interface)
            (ignore safety))
+  (ensure-correct-emergency-status (robot interface) parameters)
   (multiple-value-bind (robot-msg settings-msg) (to-msg (robot interface))
     (multiple-value-bind (controller-msg interpolator-msg) (to-msg parameters)
       (roslisp:make-msg 
@@ -144,6 +153,12 @@ subscriber converts state-msg into an instance of class 'beasty-state' and saves
        :controller controller-msg
        :interpolator interpolator-msg
        :settings settings-msg))))
+
+(defun ensure-correct-emergency-status (robot parameters)
+  "Sets the 'emergency-released-flag' of `robot' to 'nil' if `parameters' is of type
+ 'hard-stop-paramterers', else sets it to 't'."
+  (declare (type beasty-robot robot))
+  (setf (emergency-released-flag robot) (not (typep parameters 'hard-stop-parameters))))
 
 ;;; PUBLISHING OF VISUALIZATION MARKERS
 ;;; TODO(Georg): move this into a separate file
