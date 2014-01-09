@@ -34,9 +34,9 @@
 (defparameter *beasty-user-pwd* 1234
   "User Password for server.")
 
-(define-condition beasty-login-error (error)
+(define-condition beasty-user-management-error (error)
   ((test :initarg :text :reader text))
-  (:documentation "Error signalling error during login into Beasty controller."))
+  (:documentation "Error signalling error during login or logout of Beasty controller."))
 
 (defun login-beasty (action-client &optional (user-id *beasty-user-id*)
                                      (user-pwd *beasty-user-pwd*))
@@ -49,7 +49,7 @@
       (actionlib:send-goal-and-wait action-client 
                                     (make-login-goal action-client user-id user-pwd))
     (unless (equal :succeeded status)
-      (error 'beasty-login-error :text "Login into BEASTY controller failed."))
+      (error 'beasty-user-management-error :text "Login into BEASTY controller failed."))
     (with-fields (state) result
       (with-fields (com) state
         (with-fields (session_id cmd_id) com
@@ -69,3 +69,26 @@
                        :user_id user-id
                        :user_pwd user-pwd
                        :command (get-beasty-command-code :LOGIN)))))
+
+(defun logout-beasty (interface)
+  "Logs out of beasty controller behind `interface'."
+  (declare (type beasty-interface interface))
+  (multiple-value-bind (result status)
+      (actionlib:send-goal-and-wait (action-client interface) (make-logout-goal interface))
+    (declare (ignore result))
+    (unless (equal :succeeded status)
+      (error 'beasty-user-management-error :text "Logout of BEASTY controller failed."))))
+
+(defun make-logout-goal (interface)
+  "Generates an action-goal asking for logout from beasty controller behind `interface'."
+  (declare (type beasty-interface interface))
+  (actionlib:make-action-goal
+      (action-client interface)
+    :command (get-beasty-command-code :LOGOUT)
+    :parameters (roslisp:make-msg 
+                 "dlr_msgs/tcu2rcu"
+                 :com (roslisp:make-msg 
+                       "dlr_msgs/tcu2rcu_Com"
+                       :command (get-beasty-command-code :LOGOUT)
+                       :cmd_id (cmd-id interface)
+                       :session_id (session-id interface)))))
