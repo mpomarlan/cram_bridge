@@ -193,7 +193,7 @@ subscriber converts state-msg into an instance of class 'beasty-state' and saves
         (joint-index (get-joint-index joint-name)))
     (make-msg "visualization_msgs/Marker"
               :header (make-msg "std_msgs/Header" :frame_id frame-id :stamp (ros-time))
-              :type 2 :action 0 :lifetime 5.0 :id joint-index
+              :type 2 :action 0 :lifetime 1.0 :id joint-index
               :color (make-msg "std_msgs/ColorRGBA" :r 1.0 :g 0.0 :b 0.0 :a 0.7)
               :scale (make-msg "geometry_msgs/Vector3" :x 0.2 :y 0.2 :z 0.2))))
 
