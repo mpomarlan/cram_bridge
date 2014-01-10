@@ -67,6 +67,16 @@
                      :type vector :documentation "Detected collisions per joint of LWR."))
   (:documentation "Representation of state reported from Beasty LWR controller."))
 
+(defclass collision ()
+  ((joint-name :initarg :joint-name :reader joint-name :type string
+               :documentation "Name of the joint reporting the collision.")
+   (collision-type :initarg :collision-type :reader collision-type :type symbol
+                   :documentation "Symbol denoting the collision type.")
+   (link-name :initarg :link-name :reader link-name :type string
+              :documentation "Name of the link next to the joint which reported
+              the collision. Use for visualization with markers."))
+  (:documentation "Representation of a collision reported from the controller."))
+  
 ;;; CONTROLLER PARAMETERS
 
 (defclass gravity-control-parameters ()

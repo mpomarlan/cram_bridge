@@ -38,7 +38,7 @@
    ;; modelling of LWR robot for beasty
    :beasty-robot :simulation-flag :tool-configuration :base-configuration
    :beasty-base :base-transform :base-acceleration :beasty-tool :ee-transform
-   :mass :com
+   :mass :com :collision :joint-name :collision-type :link-name
    ;; commanding gravity compensation parameters
    :gravity-control-parameters :max-joint-vel :max-joint-acc
    ;; commanding joint impedance parameters
