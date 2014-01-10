@@ -133,10 +133,6 @@ impedance motion of Beasty, defined w.r.t. arm base. Order: t_x, t_y, t_z, r_x, 
   (:documentation "Class holding all parameters necessary to configure Cartesian impedance 
    control mode of the Beasty controller."))
 
-(defclass reset-emergency-parameters () ()
-  (:documentation "For internal use. Class to release the software emergency buttons of a
-   Beasty controller."))
-
 (defclass safety-reset () ()
   (:documentation "For internal use. Class to reset safety parameters."))
 

@@ -118,22 +118,7 @@
                            :o_t_via (to-vector (cl-transforms:make-identity-transform)))))
     (values controller-msg interpolator-msg)))
 
-;; TODO(Georg): the next three are identical; find a way to re-use the methods.
-(defmethod to-msg ((params reset-emergency-parameters))
-  "Creates a 'dlr_msgs/tcu2rcu_Controller' and a 'dlr_msgs/tcu2rcu_Interpolator' message
-   using the data stored in `params' of type 'reset-emergency-parameters'."
-  (let ((controller-msg (roslisp:make-msg 
-                         "dlr_msgs/tcu2rcu_Controller" 
-                         ;; sane values enforce by server
-                         :mode 4)) ; JOINT-IMPEDANCE-MODE
-        (interpolator-msg (roslisp:make-msg 
-                           "dlr_msgs/tcu2rcu_Interpolator"
-                           ;; sane values enforced by server
-                           :mode 5 ; JOINT-SCALING-INTERPOLATION
-                           :o_t_f (to-vector (cl-transforms:make-identity-transform))
-                           :o_t_via (to-vector (cl-transforms:make-identity-transform)))))
-    (values controller-msg interpolator-msg)))
-
+;; TODO(Georg): the next two are identical; find a way to re-use the methods.
 (defmethod to-msg ((params hard-stop-parameters))
   "Creates a 'dlr_msgs/tcu2rcu_Controller' and a 'dlr_msgs/tcu2rcu_Interpolator' message
    using the data stored in `params' of type 'complete-stop-parameters'."
