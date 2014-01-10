@@ -43,7 +43,8 @@
     ((:file "package")
      (:file "data-structures" :depends-on ("package"))
      (:file "conversions" :depends-on ("package" "data-structures"))
+     (:file "visualization" :depends-on ("package" "data-structures"))
      (:file "utils" :depends-on ("package"))
      (:file "user-management" :depends-on ("package" "utils"))
      (:file "action-interface" 
-      :depends-on ("package" "user-management" "data-structures" "conversions"))))))
+      :depends-on ("package" "user-management" "data-structures" "conversions" "visualization"))))))
