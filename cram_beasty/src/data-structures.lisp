@@ -61,8 +61,6 @@
                  :type vector :documentation "Current joint values of LWR arm.")
    (tcp-pose :initarg :tcp-pose :reader tcp-pose :type cl-transforms:transform
               :documentation "Pose of tcp frame w.r.t. to arm base frame.")
-   (joint-contacts :initarg :joint-contacts :reader joint-contacts
-                   :type vector :documentation "Detected contacts per joint of LWR arm.")
    (joint-collisions :initarg :joint-collisions :reader joint-collisions
                      :type vector :documentation "Detected collisions per joint of LWR."))
   (:documentation "Representation of state reported from Beasty LWR controller."))
@@ -139,10 +137,15 @@ impedance motion of Beasty, defined w.r.t. arm base. Order: t_x, t_y, t_z, r_x, 
   (:documentation "For internal use. Class to release the software emergency buttons of a
    Beasty controller."))
 
+(defclass safety-reset () ()
+  (:documentation "For internal use. Class to reset safety parameters."))
+
 (defclass hard-stop-parameters () ()
   (:documentation "Class to command complete stop of the arm _with_ kicking in of the
    brakes. NOTE: This is brutal when done during motion."))
 
+(defclass safety-settings () ()
+  (:documentation "Class representing the safety settings to be used for the current goal."))
 ;;; ROBOT MODELLING
 
 (defclass beasty-robot ()

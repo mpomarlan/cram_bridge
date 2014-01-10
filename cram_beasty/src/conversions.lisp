@@ -118,6 +118,7 @@
                            :o_t_via (to-vector (cl-transforms:make-identity-transform)))))
     (values controller-msg interpolator-msg)))
 
+;; TODO(Georg): the next three are identical; find a way to re-use the methods.
 (defmethod to-msg ((params reset-emergency-parameters))
   "Creates a 'dlr_msgs/tcu2rcu_Controller' and a 'dlr_msgs/tcu2rcu_Interpolator' message
    using the data stored in `params' of type 'reset-emergency-parameters'."
@@ -147,6 +148,32 @@
                            :o_t_f (to-vector (cl-transforms:make-identity-transform))
                            :o_t_via (to-vector (cl-transforms:make-identity-transform)))))
     (values controller-msg interpolator-msg)))
+
+(defmethod to-msg ((params safety-reset))
+  "Creates a 'dlr_msgs/tcu2rcu_Controller' and a 'dlr_msgs/tcu2rcu_Interpolator' message
+   using the data stored in `params' of type 'safety-reset'."
+  (let ((controller-msg (roslisp:make-msg 
+                         "dlr_msgs/tcu2rcu_Controller" 
+                         ;; sane values enforce by server
+                         :mode 4)) ; JOINT-IMPEDANCE-MODE
+        (interpolator-msg (roslisp:make-msg 
+                           "dlr_msgs/tcu2rcu_Interpolator"
+                           ;; sane values enforced by server
+                           :mode 5 ; JOINT-SCALING-INTERPOLATION
+                           :o_t_f (to-vector (cl-transforms:make-identity-transform))
+                           :o_t_via (to-vector (cl-transforms:make-identity-transform)))))
+    (values controller-msg interpolator-msg)))
+
+(defmethod to-msg ((params safety-settings))
+  "Creates a 'dlr_msgs/tcu2rcu_Safety' message using the data stored in `params' of type
+ 'safety-settings'."
+  (declare (ignore params))
+  (roslisp:make-msg 
+   "dlr_msgs/tcu2rcu_Safety"
+   :contact (roslisp:make-msg "dlr_msgs/tcu2rcu_Contact"
+                              ;; TODO(Georg): make this a global parameter
+                              ;; TODO(Georg): add strategy vector
+                              :threshold #(0.08 0.15 0.25 0.35 0.35 0.35 0.35 0.35))))
 
 (defmethod from-msg ((msg dlr_msgs-msg:rcu2tcu))
   "Creates and returns an instance of cram-beasty:beasty-state filled with
@@ -183,6 +210,39 @@
          when (joint-collision-p (elt joints i))
            collecting (construct-joint-name joint-prefix i))
    'vector))
+
+(defun calculate-collision-joints2 (joints &optional (prefix "/left"))
+  "Returns vector of joint-collisions which have been reported as in collision. `joints' is
+ feedback vector provided by Beasty as 'contact-joint' in rcu2tcu_Safety, while string
+ `joint-prefix' is used to reconstruct the correct joint- and link-names."
+  (declare (type vector joints)
+           (type string prefix))
+  (flet ((collision-p (joint)
+           (declare (type number joint))
+           (/= joint 0))
+         (get-joint-name (prefix index)
+           (declare (type string prefix)
+                    (type number index))
+           (concatenate 'string prefix "_arm_" (write-to-string index) "_joint"))
+         (get-link-name (prefix index)
+           (declare (type string prefix)
+                    (type number index))
+           (concatenate 'string prefix "_arm_" (write-to-string (incf index)) "_link"))
+         (get-collision-type (collision)
+           (ecase collision
+             (0 :NONE)
+             (1 :CONTACT)
+             (2 :LIGHT-COLLISION)
+             (3 :STRONG-COLLISION)
+             (4 :SEVERE-COLLISION))))
+    (map 'vector #'identity
+         (loop for i from 0 to (- (length joints) 1)
+               when (collision-p (elt joints i))
+                 collecting (make-instance 
+                             'collision
+                             :joint-name (get-joint-name prefix i)
+                             :link-name (get-link-name prefix i)
+                             :collision-type (get-collision-type (elt joints i)))))))
   
 (defun construct-joint-name (joint-prefix joint-index)
   "Returns the joint-name corresponding to joint with `joint-index' using `joint-prefix'.

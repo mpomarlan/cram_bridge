@@ -65,10 +65,13 @@
   (command-beasty interface (make-instance 'hard-stop-parameters))
   (logout-beasty interface))
 
-(defun command-beasty (interface parameters &optional (safety nil))
+(defun command-beasty (interface parameters 
+                       &optional (safety (make-instance 'safety-settings)))
   "Sends a command to beasty controller behind `interface'. Users can alter motion command
  with `parameters' and `safety'."
-  (declare (type beasty-interface interface))
+  (declare (type beasty-interface interface)
+           (type safety-settings safety))
+  (reset-safety interface safety)
   (let ((goal (actionlib:make-action-goal (action-client interface)
                 :command (get-beasty-command-code 
                           (infer-command-symbol parameters))
@@ -104,6 +107,25 @@
   (declare (type cram-beasty::beasty-interface interface))
   (motor-power-on (cram-language:value (state interface))))
 
+(defun reset-safety (interface safety)
+  ;; TODO(Georg): refactor this because it has big overlap with command-beasty, login, logout
+  (declare (type beasty-interface interface)
+           (type safety-settings interface))
+  (let* ((params (make-instance 'safety-reset))
+         (goal (actionlib:make-action-goal (action-client interface)
+                 :command (get-beasty-command-code 
+                           (infer-command-symbol params))
+                 :parameters (make-parameter-msg interface params safety))))
+    (multiple-value-bind (result status)
+        (actionlib:send-goal-and-wait (action-client interface) goal)
+      (unless (equal :succeeded status)
+        (error 'beasty-command-error :test "Error commanding beasty action interface."))
+      (with-fields (state) result
+      (with-fields (com) state
+        (with-fields (cmd_id) com
+          (setf (cmd-id interface) 
+                (elt cmd_id (get-beasty-command-code (infer-command-symbol params))))))))))
+
 ;;; SOME INTERNAL AUXILIARY METHODS
 
 (defun add-state-subscriber (interface namespace)
@@ -131,13 +153,14 @@ subscriber converts state-msg into an instance of class 'beasty-state' and saves
     (joint-impedance-control-parameters :MOVETO)
     (cartesian-impedance-control-parameters :MOVETO)
     (reset-emergency-parameters :CHANGE_BEHAVIOUR)
-    (hard-stop-parameters :STOP)))
+    (hard-stop-parameters :STOP)
+    (safety-reset :RESET_SAFETY)))
                            
-(defun make-parameter-msg (interface parameters &optional (safety nil))
+(defun make-parameter-msg (interface parameters safety)
   "Creates the appropriate parameter message to control `robot' behind `interface' to
    perform motion specified by `parameters' with `safety'."
   (declare (type beasty-interface interface)
-           (ignore safety))
+           (type safety-settings safety))
   (ensure-correct-emergency-status (robot interface) parameters)
   (multiple-value-bind (robot-msg settings-msg) (to-msg (robot interface))
     (multiple-value-bind (controller-msg interpolator-msg) (to-msg parameters)
@@ -152,7 +175,8 @@ subscriber converts state-msg into an instance of class 'beasty-state' and saves
        :robot robot-msg
        :controller controller-msg
        :interpolator interpolator-msg
-       :settings settings-msg))))
+       :settings settings-msg
+       :safety (to-msg safety)))))
 
 (defun ensure-correct-emergency-status (robot parameters)
   "Sets the 'emergency-released-flag' of `robot' to 'nil' if `parameters' is of type
