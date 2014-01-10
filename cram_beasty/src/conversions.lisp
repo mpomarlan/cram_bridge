@@ -153,13 +153,12 @@
    relevant content from `msg'."
   (with-fields (robot safety) msg
     (with-fields (q power emergency o_t_x) robot
-      (with-fields (contact_joint collision_joint) safety
+      (with-fields (contact_joint) safety
         (make-instance 'beasty-state
                        :motor-power-on (motor-power-flags-on-p power)
                        :emergency-released (emergency-flags-released-p emergency)
                        :joint-values q
-                       :joint-contacts contact_joint ; TODO(Georg): implement me
-                       :joint-collisions (calculate-collision-joints collision_joint)
+                       :joint-collisions (calculate-collision-joints contact_joint)
                        :tcp-pose (to-transform o_t_x))))))
 
 (defun motor-power-flags-on-p (motors)
