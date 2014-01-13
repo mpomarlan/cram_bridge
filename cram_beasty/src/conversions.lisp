@@ -28,6 +28,10 @@
 
 (in-package :cram-beasty)
 
+(define-condition beasty-conversion-error (error)
+  ((text :initarg :text :reader text))
+  (:documentation "Condition signalling an error in ROS message creation for Beasty controller."))
+
 (defgeneric to-msg (data)
   (:documentation "Creates the ROS message corresponding to lisp-data `data'."))
 
@@ -152,13 +156,26 @@
 (defmethod to-msg ((params safety-settings))
   "Creates a 'dlr_msgs/tcu2rcu_Safety' message using the data stored in `params' of type
  'safety-settings'."
-  (declare (ignore params))
+  (unless (safety-settings-valid-p params)
+    (error 'beasty-conversion-error :test "Provided safety settings were not valid."))
   (roslisp:make-msg 
    "dlr_msgs/tcu2rcu_Safety"
    :contact (roslisp:make-msg "dlr_msgs/tcu2rcu_Contact"
+                              :strategy ;(convert-strategy-vector (strategies params))
+                              (make-array 8 :initial-element 0)
                               ;; TODO(Georg): make this a global parameter
-                              ;; TODO(Georg): add strategy vector
-                              :threshold #(0.08 0.15 0.25 0.35 0.35 0.35 0.35 0.35))))
+                              :threshold 
+                              ;#(0.08 0.15 0.25 0.35 0.0 0.0 0.0 0.0)
+                              (make-array 8 :initial-element 0)
+)))
+
+(defun convert-strategy-vector (strategies)
+  (declare (type hash-table strategies))
+  (let ((result (make-array 8 :initial-element 0)))
+    (loop for collision being the hash-key in strategies using (hash-value reaction) do
+      (setf (elt result (gethash collision *collision-index-map*)) 
+            (gethash reaction *reaction-code-map*)))
+    result))
 
 (defmethod from-msg ((msg dlr_msgs-msg:rcu2tcu))
   "Creates and returns an instance of cram-beasty:beasty-state filled with
@@ -173,17 +190,20 @@
                        :joint-collisions (calculate-collision-joints contact_joint)
                        :tcp-pose (to-transform o_t_x))))))
 
+;; TODO(Georg): move this into corresponding from-msg
 (defun motor-power-flags-on-p (motors)
   "Checks whether all flags in vector `motors' indicate power-on."
   (declare (type vector motors))
   (every (lambda (motor) (> motor 0.0)) motors))
 
+;; TODO(Georg): move this into corresponding from-msg
 (defun emergency-flags-released-p (emergency-flags)
   "Checks whether all flags in vector `emergency-flags' indicate released emergency
  buttons."
   (declare (type vector emergency-flags))
   (every (lambda (flag) (> flag 0.0)) emergency-flags))
 
+;; TODO(Georg): remove this
 (defun calculate-collision-joints (joints &optional (joint-prefix "/left"))
   "Returns vector of joint-names which have been reported as in collision. `joint' is
  feedback vector provided by Beasty as 'collision-joint' in rcu2tcu_Safety, while string
@@ -214,6 +234,7 @@
                     (type number index))
            (concatenate 'string prefix "_arm_" (write-to-string (incf index)) "_link"))
          (get-collision-type (collision)
+           ;; TODO(Georg): use collision-symbol-map for this
            (ecase collision
              (0 :NONE)
              (1 :CONTACT)
@@ -229,6 +250,7 @@
                              :link-name (get-link-name prefix i)
                              :collision-type (get-collision-type (elt joints i)))))))
   
+;; TODO(Georg): remove this
 (defun construct-joint-name (joint-prefix joint-index)
   "Returns the joint-name corresponding to joint with `joint-index' using `joint-prefix'.
 `joint-index' is supposed to be a number, and `joint-prefix' expected to be a string."
@@ -236,6 +258,7 @@
            (type number joint-index))
   (concatenate 'string joint-prefix "_arm_" (write-to-string joint-index) "_joint"))
 
+;; TODO(Georg): remove this
 (defun joint-collision-p (joint)
   "Checks whether `joint' reported from Beasty as 'collision_joint' indicates a collision."
   (declare (type number joint))
