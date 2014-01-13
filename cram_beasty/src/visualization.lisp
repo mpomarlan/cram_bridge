@@ -50,6 +50,7 @@
   (map 'vector #'make-red-sphere-msg collision-joints))
 
 ;; TODO(Georg): extend with namespace to discriminate btw. arms
+;; TODO(Georg): support more colors
 (defun make-red-sphere-msg (joint-name)
   "Creates a red sphere marker for joint with `joint-name' located at the corresponding
  link of the kinematic chain. Joint names are expect to match *_<joint-number>_joint."
