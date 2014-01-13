@@ -29,13 +29,40 @@
 (in-package :cram-beasty)
 
 (defparameter *collision-types* 
-  (list :CONTACT :LIGHT-COLLISION :STRONG-COLLISION :SEVERE-COLLISION)
+  (list :NO-COLLISION :CONTACT :LIGHT-COLLISION :STRONG-COLLISION :SEVERE-COLLISION)
   "List of symbols denoting all types of collisions beasty can report back.")
 
 (defparameter *reaction-types*
   (list :IGNORE :ZERO-G :JOINT-IMP :SOFT-STOP :HARD-STOP)
   "List of symbols denoting all safety reactions beasty can exhibit.")
-  
+
+(defparameter *collision-index-map*
+  (let ((collisions (make-hash-table)))
+    (setf (gethash :NO-COLLISION collisions) 0)
+    (setf (gethash :CONTACT collisions) 1)
+    (setf (gethash :LIGHT-COLLISION collisions) 2)
+    (setf (gethash :STRONG-COLLISION collisions) 3)
+    (setf (gethash :SEVERE-COLLISION collisions) 4)
+    collisions)
+  "Map to look up index of collision types (symbols) in beasty vector.")
+
+(defparameter *collision-symbol-map*
+  (let ((map (make-hash-table)))
+    (loop for k being the hash-key in *collision-index-map* using (hash-value v) do
+      (setf (gethash v map) k))
+    map)
+  "Map to look up collision types (symbols) given their index in a beasty vector.")
+
+(defparameter *reaction-code-map*
+  (let ((map (make-hash-table)))
+    (setf (gethash :IGNORE map) 0)
+    (setf (gethash :SOFT-STOP map) 1)
+    (setf (gethash :HARD-STOP map) 2)
+    (setf (gethash :JOINT-IMP map) 3)
+    (setf (gethash :ZERO-G map) 4)
+    map)
+  "Map to lookup the beasty code for reaction strategies (symbols).")
+
 (defun make-safety-settings ()
   "Creates an empty instance of type 'safety-settings':"
   (make-instance 'safety-settings))
@@ -99,5 +126,6 @@
   "Checks whether the beasty 'safety-settings' `settings' are valid, i.e. cover all possible
  collisions and use known reaction types."
   (declare (type safety-settings settings))
-  (and (safety-settings-has-all-collisions-p settings)
+  (and (> 9 (hash-table-count (strategies settings)))
+       (safety-settings-has-all-collisions-p settings)
        (all-strategies-valid-p settings)))
