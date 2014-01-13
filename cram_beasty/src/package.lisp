@@ -50,4 +50,11 @@
    ;; commanding a complete stop with brakes kicking in
    :hard-stop-parameters
    ;; state feedback coming from controller
-   :beasty-state :motor-power-on :emergency-released :joint-values :tcp-pose))
+   :beasty-state :motor-power-on :emergency-released :joint-values :tcp-pose
+   ;; safety settings
+   :make-safety-settings :set-safety-strategy :remove-safety-strategy
+   :safety-settings-valid-p 
+   ;; collision types
+   :CONTACT :LIGHT-COLLISION :STRONG-COLLISION :SEVERE-COLLISION
+   ;; reaction types
+   :IGNORE :ZERO-G :JOINT-IMP :SOFT-STOP :HARD-STOP))

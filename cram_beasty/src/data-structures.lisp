@@ -140,8 +140,16 @@ impedance motion of Beasty, defined w.r.t. arm base. Order: t_x, t_y, t_z, r_x, 
   (:documentation "Class to command complete stop of the arm _with_ kicking in of the
    brakes. NOTE: This is brutal when done during motion."))
 
-(defclass safety-settings () ()
+(defclass safety-settings ()
+  ((strategies :initform (make-hash-table) :accessor strategies
+               :type hash-table
+               :documentation "Hash-table holding the safety strategies definitions. The
+ following keys which correspond to detected collisions _have_ to be provided: :CONTACT,
+ :LIGHT-COLLISION, :STRONG-COLLISION, SEVERE-COLLISION. The following values for selecting
+ collision reactions are currently supported: :IGNORE, :ZERO-G, :JOINT-IMP, :SOFT-STOP,
+ :HARD-STOP:"))
   (:documentation "Class representing the safety settings to be used for the current goal."))
+
 ;;; ROBOT MODELLING
 
 (defclass beasty-robot ()

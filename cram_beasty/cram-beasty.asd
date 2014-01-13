@@ -42,6 +42,7 @@
     :components
     ((:file "package")
      (:file "data-structures" :depends-on ("package"))
+     (:file "safety-settings" :depends-on ("package" "data-structures"))
      (:file "conversions" :depends-on ("package" "data-structures"))
      (:file "visualization" :depends-on ("package" "data-structures"))
      (:file "utils" :depends-on ("package"))
