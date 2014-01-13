@@ -86,8 +86,9 @@
     control mode of the Beasty controller."))
 
 (defclass joint-impedance-control-parameters ()
-  ((joint-goal :initform (make-array 7 :initial-element 0.0) :accessor joint-goal
-               :type vector :documentation "Joint-space goal vector in radians.")
+  ((joint-goal :initform (make-array 7 :initial-element 0.0) :initarg :joint-goal
+               :accessor joint-goal :type vector
+               :documentation "Joint-space goal vector in radians.")
    (joint-stiffness :initform (make-array 7 :initial-element 20.0) 
                     :accessor joint-stiffness :type vector
                     :documentation "Joint stiffness vector. Range: 0...2000.")
@@ -141,8 +142,14 @@ impedance motion of Beasty, defined w.r.t. arm base. Order: t_x, t_y, t_z, r_x, 
    brakes. NOTE: This is brutal when done during motion."))
 
 (defclass safety-settings ()
-  ((strategies :initform (make-hash-table) :accessor strategies
-               :type hash-table
+  ((strategies :initform (let ((default (make-hash-table)))
+                           (setf (gethash :NO-COLLISION default) :IGNORE)
+                           (setf (gethash :CONTACT default) :IGNORE)
+                           (setf (gethash :LIGHT-COLLISION default) :JOINT-IMP)
+                           (setf (gethash :STRONG-COLLISION default) :SOFT-STOP)
+                           (setf (gethash :SEVERE-COLLISION default) :HARD-STOP)
+                           default)
+               :accessor strategies :type hash-table
                :documentation "Hash-table holding the safety strategies definitions. The
  following keys which correspond to detected collisions _have_ to be provided: :CONTACT,
  :LIGHT-COLLISION, :STRONG-COLLISION, SEVERE-COLLISION. The following values for selecting
