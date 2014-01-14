@@ -165,6 +165,8 @@
                               :threshold *default-thresholds*)))
 
 (defun convert-strategy-vector (strategies)
+  "Iterates over all strategy entries in hash-table `strategies' and transforms them into a
+ vector of numbers. The format corresponds to the expectations of beasty in 'tcu2rcu...'."
   (declare (type hash-table strategies))
   (let ((result (make-array 8 :initial-element 0)))
     (loop for collision being the hash-key in strategies using (hash-value reaction) do
