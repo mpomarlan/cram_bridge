@@ -231,13 +231,12 @@
                     (type number index))
            (concatenate 'string prefix "_arm_" (write-to-string (incf index)) "_link"))
          (get-collision-type (collision)
-           ;; TODO(Georg): use collision-symbol-map for this
-           (ecase collision
-             (0 :NONE)
-             (1 :CONTACT)
-             (2 :LIGHT-COLLISION)
-             (3 :STRONG-COLLISION)
-             (4 :SEVERE-COLLISION))))
+           (multiple-value-bind (collision-type bound-p)
+               (gethash collision *collision-symbol-map*)
+             (if bound-p
+                 collision-type
+                 (error 'beasty-conversion-error 
+                        :text "Beasty reported unknown collision type.")))))
     (map 'vector #'identity
          (loop for i from 0 to (- (length joints) 1)
                when (collision-p (elt joints i))
