@@ -88,14 +88,6 @@
   (when (has-collision-type-p settings collision-type)
     (remhash collision-type (strategies settings))))
 
-(defun safety-settings-has-all-collisions-p (settings)
-  "Checks whether `settings' has reaction specified for all possible collision types."
-  (declare (type safety-settings settings))
-  (every 
-   (lambda (collision-type) 
-     (has-collision-type-p settings collision-type))
-   *collision-types*))
-
 (defun collision-type-valid-p (collision-type)
   "Checks whether the symbol `collision-type' denotes an exisiting type of collision."
   (declare (type symbol collision-type))
@@ -126,5 +118,4 @@
  collisions and use known reaction types."
   (declare (type safety-settings settings))
   (and (> 9 (hash-table-count (strategies settings)))
-       (safety-settings-has-all-collisions-p settings)
        (all-strategies-valid-p settings)))
