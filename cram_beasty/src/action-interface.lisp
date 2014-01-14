@@ -43,6 +43,7 @@
            (type beasty-robot robot)
            (type boolean visualization-on))
   (let ((action-client (actionlib:make-action-client action-name "dlr_msgs/RCUAction"))
+        ;; TODO(Georg): get this out of here!
         (visualization-pub 
           (when visualization-on
             (advertise "visualization_marker_array" "visualization_msgs/MarkerArray"))))
