@@ -68,9 +68,24 @@
  :STRONG-COLLISION, :SEVERE-COLLISION, and 4x off. Values are in percent of maximum torque
  per joint.")
 
-(defun make-safety-settings ()
-  "Creates an empty instance of type 'safety-settings':"
-  (make-instance 'safety-settings))
+(defparameter *default-safety-settings*
+  (make-safety-settings
+   (list
+    (cons :CONTACT :IGNORE)
+    (cons :LIGHT-COLLISION :JOINT-IMP)
+    (cons :STRONG-COLLISION :SOFT-STOP)
+    (cons :SEVERE-COLLISION :HARD-STOP)))
+  "Default safety settings for beasty controller.")
+
+(defun make-safety-settings (&optional initial-settings)
+  "Creates an instance of type 'safety-settings'. `initial-settings' is an optional list
+ of strategies to initialize the data-structure. Each strategy has to be a cons-cell, with
+ first a symbol denoting the collision-type and then a symbol for the reaction-type."
+  (declare (type list initial-settings))
+  (let ((settings (make-instance 'safety-settings)))
+    (loop for setting in initial-settings do
+      (set-safety-strategy settings (first setting) (rest setting)))
+    settings))
 
 (defun has-collision-type-p (settings collision-type)
   "Checks whether `settings' holds a specification on how to react to `collision-type'."

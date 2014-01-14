@@ -142,14 +142,7 @@ impedance motion of Beasty, defined w.r.t. arm base. Order: t_x, t_y, t_z, r_x, 
    brakes. NOTE: This is brutal when done during motion."))
 
 (defclass safety-settings ()
-  ((strategies :initform (let ((default (make-hash-table)))
-                           (setf (gethash :NO-COLLISION default) :IGNORE)
-                           (setf (gethash :CONTACT default) :IGNORE)
-                           (setf (gethash :LIGHT-COLLISION default) :JOINT-IMP)
-                           (setf (gethash :STRONG-COLLISION default) :SOFT-STOP)
-                           (setf (gethash :SEVERE-COLLISION default) :HARD-STOP)
-                           default)
-               :accessor strategies :type hash-table
+  ((strategies :initform (make-hash-table) :accessor strategies :type hash-table
                :documentation "Hash-table holding the safety strategies definitions. The
  following keys which correspond to detected collisions _have_ to be provided: :CONTACT,
  :LIGHT-COLLISION, :STRONG-COLLISION, SEVERE-COLLISION. The following values for selecting
