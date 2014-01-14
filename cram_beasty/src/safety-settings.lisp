@@ -38,11 +38,10 @@
 
 (defparameter *collision-index-map*
   (let ((collisions (make-hash-table)))
-    (setf (gethash :NO-COLLISION collisions) 0)
-    (setf (gethash :CONTACT collisions) 1)
-    (setf (gethash :LIGHT-COLLISION collisions) 2)
-    (setf (gethash :STRONG-COLLISION collisions) 3)
-    (setf (gethash :SEVERE-COLLISION collisions) 4)
+    (setf (gethash :CONTACT collisions) 0)
+    (setf (gethash :LIGHT-COLLISION collisions) 1)
+    (setf (gethash :STRONG-COLLISION collisions) 2)
+    (setf (gethash :SEVERE-COLLISION collisions) 3)
     collisions)
   "Map to look up index of collision types (symbols) in beasty vector.")
 
