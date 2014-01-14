@@ -157,7 +157,7 @@
   "Creates a 'dlr_msgs/tcu2rcu_Safety' message using the data stored in `params' of type
  'safety-settings'."
   (unless (safety-settings-valid-p params)
-    (error 'beasty-conversion-error :test "Provided safety settings were not valid."))
+    (error 'beasty-conversion-error :text "Provided safety settings were not valid."))
   (roslisp:make-msg 
    "dlr_msgs/tcu2rcu_Safety"
    :contact (roslisp:make-msg "dlr_msgs/tcu2rcu_Contact"
