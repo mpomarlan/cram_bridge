@@ -161,13 +161,8 @@
   (roslisp:make-msg 
    "dlr_msgs/tcu2rcu_Safety"
    :contact (roslisp:make-msg "dlr_msgs/tcu2rcu_Contact"
-                              :strategy ;(convert-strategy-vector (strategies params))
-                              (make-array 8 :initial-element 0)
-                              ;; TODO(Georg): make this a global parameter
-                              :threshold 
-                              ;#(0.08 0.15 0.25 0.35 0.0 0.0 0.0 0.0)
-                              (make-array 8 :initial-element 0)
-)))
+                              :strategy (convert-strategy-vector (strategies params))
+                              :threshold *default-thresholds*)))
 
 (defun convert-strategy-vector (strategies)
   (declare (type hash-table strategies))

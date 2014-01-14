@@ -62,6 +62,12 @@
     map)
   "Map to lookup the beasty code for reaction strategies (symbols).")
 
+(defparameter *default-thresholds*
+  #(0.05 0.1 0.15 0.2 0.0 0.0 0.0 0.0)
+  "Default collision detection thresholds for (in that order) :CONTACT, :LIGHT-COLLISION,
+ :STRONG-COLLISION, :SEVERE-COLLISION, and 4x off. Values are in percent of maximum torque
+ per joint.")
+
 (defun make-safety-settings ()
   "Creates an empty instance of type 'safety-settings':"
   (make-instance 'safety-settings))
