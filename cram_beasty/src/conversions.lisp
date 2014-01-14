@@ -200,20 +200,7 @@
   (declare (type vector emergency-flags))
   (every (lambda (flag) (> flag 0.0)) emergency-flags))
 
-;; TODO(Georg): remove this
-(defun calculate-collision-joints (joints &optional (joint-prefix "/left"))
-  "Returns vector of joint-names which have been reported as in collision. `joint' is
- feedback vector provided by Beasty as 'collision-joint' in rcu2tcu_Safety, while string
- `joint-prefix' is used to reconstruct the correct joint-names."
-  (declare (type vector joints)
-           (type string joint-prefix))
-  (coerce
-   (loop for i from 0 to (- (length joints) 1)
-         when (joint-collision-p (elt joints i))
-           collecting (construct-joint-name joint-prefix i))
-   'vector))
-
-(defun calculate-collision-joints2 (joints &optional (prefix "/left"))
+(defun calculate-collision-joints (joints &optional (prefix "/left"))
   "Returns vector of joint-collisions which have been reported as in collision. `joints' is
  feedback vector provided by Beasty as 'contact-joint' in rcu2tcu_Safety, while string
  `joint-prefix' is used to reconstruct the correct joint- and link-names."
@@ -246,20 +233,6 @@
                              :link-name (get-link-name prefix i)
                              :collision-type (get-collision-type (elt joints i)))))))
   
-;; TODO(Georg): remove this
-(defun construct-joint-name (joint-prefix joint-index)
-  "Returns the joint-name corresponding to joint with `joint-index' using `joint-prefix'.
-`joint-index' is supposed to be a number, and `joint-prefix' expected to be a string."
-  (declare (type string joint-prefix)
-           (type number joint-index))
-  (concatenate 'string joint-prefix "_arm_" (write-to-string joint-index) "_joint"))
-
-;; TODO(Georg): remove this
-(defun joint-collision-p (joint)
-  "Checks whether `joint' reported from Beasty as 'collision_joint' indicates a collision."
-  (declare (type number joint))
-  (/= joint 0))
-    
 (defmethod to-vector ((transform cl-transforms:transform))
   "Turns 'cl-transforms:transform' `transform' into row-ordered 16x1 double-array."
   (let* ((array4x4 (cl-transforms:transform->matrix transform))

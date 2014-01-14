@@ -28,6 +28,16 @@
 
 (in-package :cram-beasty)
 
+(defparameter *red-color*
+  (make-msg "std_msgs/ColorRGBA" :r 1.0 :g 0.0 :b 0.0 :a 0.7)
+  "For internal use. ROS message representing the color red.")
+
+(defparameter *collision-lifetime* 1.0
+  "Lifetime of markers visualizing detected collisions.")
+
+(defparameter *collision-marker-size* 0.2
+  "Size of sphere visualizing detected collisions.")
+
 (defun visualize-collisions (interface)
   "Visualizes collisions reported in feedback of beasty `interface' by publishing a red
  sperical marker at every joint which is in collision."
@@ -42,26 +52,34 @@
         (publish (visualization-pub interface)
                  (make-msg "visualization_msgs/MarkerArray" :markers collision-markers))))))
 
-(defun create-collision-markers (collision-joints)
+(defun create-collision-markers (collisions)
   "Returns vector of collision markers for joints which are in collision. 
- `joint-collisions' is a vector expected to be joint collision feedback comming from
- Beasty, while `joint-prefix' is a string."
-  (declare (type vector collision-joints))
-  (map 'vector #'make-red-sphere-msg collision-joints))
+ `collisions' is a vector expected to be joint collision feedback comming from
+ Beasty."
+  (declare (type vector collisions))
+  (map 'vector #'make-collision-marker collisions))
 
-;; TODO(Georg): extend with namespace to discriminate btw. arms
-;; TODO(Georg): support more colors
-(defun make-red-sphere-msg (joint-name)
-  "Creates a red sphere marker for joint with `joint-name' located at the corresponding
- link of the kinematic chain. Joint names are expect to match *_<joint-number>_joint."
-  (declare (type string joint-name))
-  (let ((frame-id (get-joint-frame joint-name))
-        (joint-index (get-joint-index joint-name)))
-    (make-msg "visualization_msgs/Marker"
-              :header (make-msg "std_msgs/Header" :frame_id frame-id :stamp (ros-time))
-              :type 2 :action 0 :lifetime 1.0 :id joint-index
-              :color (make-msg "std_msgs/ColorRGBA" :r 1.0 :g 0.0 :b 0.0 :a 0.7)
-              :scale (make-msg "geometry_msgs/Vector3" :x 0.2 :y 0.2 :z 0.2))))
+(defun make-collision-marker (collision)
+  "Creates a visualization marker-msg for the `collision' of type `collision'."
+  (declare (type collision collision))
+  (make-sphere-msg 
+   (link-name collision) 
+   *collision-marker-size*
+   (get-joint-index (joint-name collision)) 
+   *collision-lifetime*
+   *red-color*))
+
+(defun make-sphere-msg (frame-id radius id lifetime color)
+  "Create a visualization marker for a sphere at `frame-id', with `radius' and `color'. 
+ The marker will be shown for `lifetime' seconds and get `id' to discriminate it from
+ other markers."
+  (declare (type string frame-id)
+           (type number radius id lifetime)
+           (type std_msgs-msg:COLORRGBA color))
+  (make-msg "visualization_msgs/Marker"
+            :header (make-msg "std_msgs/Header" :frame_id frame-id :stamp (ros-time))
+            :type 2 :action 0 :lifetime lifetime :id id :color color
+            :scale (make-msg "geometry_msgs/Vector3" :x radius :y radius :z radius)))
 
 (defun get-joint-index (joint-name)
   "Parses `joint-name' which is expected to match pattern *<index>* for the index of the
@@ -71,17 +89,3 @@
       (parse-integer (remove-if-not #'digit-char-p joint-name) :junk-allowed t)
     (declare (ignore string-position))
     joint-index))
-
-(defun get-joint-frame (joint-name)
-  "Returns the corresponding tf link-name for joint with `joint-name' of pattern
- *<index>*_joint by replacing 'joint' with 'link', and incrementing 'index'."
-  (declare (type string joint-name))
-  (let ((joint-index (get-joint-index joint-name)))
-    (when joint-index
-      (let* ((joint-index-position (search (write-to-string joint-index) joint-name))
-             (prefix (subseq joint-name 0 joint-index-position))
-             (postfix (subseq joint-name (incf joint-index-position) (length joint-name)))
-             (inc-joint-name
-               (concatenate 'string prefix (write-to-string (incf joint-index)) postfix)))
-        (concatenate 'string (subseq inc-joint-name 0 
-                                     (search "joint" inc-joint-name)) "link")))))
