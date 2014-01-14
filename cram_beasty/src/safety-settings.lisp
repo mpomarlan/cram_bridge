@@ -68,14 +68,12 @@
  :STRONG-COLLISION, :SEVERE-COLLISION, and 4x off. Values are in percent of maximum torque
  per joint.")
 
-(defparameter *default-safety-settings*
-  (make-safety-settings
-   (list
-    (cons :CONTACT :IGNORE)
-    (cons :LIGHT-COLLISION :JOINT-IMP)
-    (cons :STRONG-COLLISION :SOFT-STOP)
-    (cons :SEVERE-COLLISION :HARD-STOP)))
-  "Default safety settings for beasty controller.")
+(defun set-safety-strategy (settings collision-type reaction-type)
+  "Sets the strategy to react to `collision-type' with `reaction-type' in beasty parameter
+ `settings' which is of type 'safety-settings'."
+  (declare (type safety-settings settings)
+           (type symbol collision-type reaction-type))
+  (setf (gethash collision-type (strategies settings)) reaction-type))
 
 (defun make-safety-settings (&optional initial-settings)
   "Creates an instance of type 'safety-settings'. `initial-settings' is an optional list
@@ -87,6 +85,15 @@
       (set-safety-strategy settings (first setting) (rest setting)))
     settings))
 
+(defparameter *default-safety-settings*
+  (make-safety-settings
+   (list
+    (cons :CONTACT :IGNORE)
+    (cons :LIGHT-COLLISION :JOINT-IMP)
+    (cons :STRONG-COLLISION :SOFT-STOP)
+    (cons :SEVERE-COLLISION :HARD-STOP)))
+  "Default safety settings for beasty controller.")
+
 (defun has-collision-type-p (settings collision-type)
   "Checks whether `settings' holds a specification on how to react to `collision-type'."
   (declare (type safety-settings settings)
@@ -94,13 +101,6 @@
   (multiple-value-bind (value present) (gethash collision-type (strategies settings))
     (declare (ignore value))
     present))
-
-(defun set-safety-strategy (settings collision-type reaction-type)
-  "Sets the strategy to react to `collision-type' with `reaction-type' in beasty parameter
- `settings' which is of type 'safety-settings'."
-  (declare (type safety-settings settings)
-           (type symbol collision-type reaction-type))
-  (setf (gethash collision-type (strategies settings)) reaction-type))
 
 (defun remove-safety-strategy (settings collision-type)
   "Removes a specified reaction to `collision-type' from `settings'."
