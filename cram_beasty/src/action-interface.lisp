@@ -87,6 +87,8 @@
 ;;; SOME INTERNAL AUXILIARY METHODS
 
 (defun send-cancelable-goal-to-beasty (interface goal-msg command-code)
+  "Sends `goal-msg' to server behind `interface-msg'. `command-code' is command code used
+ when creating `goal-msg'. Goal can be cancel at any time by calling 'cancel-goal'."
   (declare (type beasty-interface interface)
            (type dlr_msgs-msg:rcugoal goal-msg)
            (type number command-code))
@@ -100,6 +102,8 @@
     (send-non-cancelable-goal-to-beasty interface goal-msg command-code)))
 
 (defun send-non-cancelable-goal-to-beasty (interface goal-msg command-code)
+  "Sends `goal-msg' to server behind `interface-msg'. `command-code' is command code used
+ when creating `goal-msg'. Goal cannot be cancel from outside."
   (declare (type beasty-interface interface)
            (type dlr_msgs-msg:rcugoal goal-msg)
            (type number command-code))
@@ -110,6 +114,8 @@
     (update-cmd-id interface result command-code)))
 
 (defun update-cmd-id (interface result-msg command-code)
+  "Updates the command-id kept in `interface' as reported from beasty in `result-msg'.
+ `command-code' is command code used when creating the original goal-msg."
   (declare (type beasty-interface interface)
            (type dlr_msgs-msg:rcuresult result-msg)
            (type number command-code))
