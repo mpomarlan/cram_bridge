@@ -84,16 +84,6 @@
   (declare (type beasty-interface interface))
   (setf (cancel-request interface) t))
 
-(defun emergency-released-p (interface)
-  "Checks whether the emergency buttons of LWR arm behind `interface' are released."
-  (declare (type beasty-interface interface))
-  (emergency-released (cram-language:value (state interface))))
-
-(defun motors-on-p (interface)
-  "Checks whether the motors of LWR arm behind `interface' are powered on."
-  (declare (type cram-beasty::beasty-interface interface))
-  (motor-power-on (cram-language:value (state interface))))
-
 ;;; SOME INTERNAL AUXILIARY METHODS
 
 (defun update-cmd-id (interface result-msg command-code)

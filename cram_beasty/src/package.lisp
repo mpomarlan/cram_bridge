@@ -34,7 +34,7 @@
   (:export 
    ;; top-level interaction with beasty interface
    :make-beasty-interface :cleanup-beasty-interface :beasty-interface :command-beasty
-   :cancel-command :robot :state :emergency-released-p :motors-on-p
+   :cancel-command :robot :state
    ;; modelling of LWR robot for beasty
    :beasty-robot :simulation-flag :tool-configuration :base-configuration
    :beasty-base :base-transform :base-acceleration :beasty-tool :ee-transform
