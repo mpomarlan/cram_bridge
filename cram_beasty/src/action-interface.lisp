@@ -77,7 +77,7 @@
          (goal (actionlib:make-action-goal (action-client interface)
                  :command command-code
                  :parameters (make-parameter-msg interface parameters safety))))
-    (send-goal-to-beasty interface goal command-code)))
+    (send-cancelable-goal-to-beasty interface goal command-code)))
 
 (defun cancel-command (interface)
   "Cancels current goal executed by `interface'. Is ignored if there is no current goal."
@@ -86,16 +86,7 @@
 
 ;;; SOME INTERNAL AUXILIARY METHODS
 
-(defun update-cmd-id (interface result-msg command-code)
-  (declare (type beasty-interface interface)
-           (type dlr_msgs-msg:rcuresult result-msg)
-           (type number command-code))
-  (with-fields (state) result-msg
-    (with-fields (com) state
-      (with-fields (cmd_id) com
-        (setf (cmd-id interface) (elt cmd_id command-code))))))
-  
-(defun send-goal-to-beasty (interface goal-msg command-code)
+(defun send-cancelable-goal-to-beasty (interface goal-msg command-code)
   (declare (type beasty-interface interface)
            (type dlr_msgs-msg:rcugoal goal-msg)
            (type number command-code))
@@ -106,12 +97,27 @@
                      (when (cancel-request interface)
                        (invoke-restart 'actionlib:abort-goal)
                        (setf (cancel-request interface) nil)))))
-    (multiple-value-bind (result status)
+    (send-non-cancelable-goal-to-beasty interface goal-msg command-code)))
+
+(defun send-non-cancelable-goal-to-beasty (interface goal-msg command-code)
+  (declare (type beasty-interface interface)
+           (type dlr_msgs-msg:rcugoal goal-msg)
+           (type number command-code))
+  (multiple-value-bind (result status)
         (actionlib:send-goal-and-wait (action-client interface) goal-msg)
       (unless (equal :succeeded status)
         (error 'beasty-command-error :test "Error commanding beasty action interface."))
-      (update-cmd-id interface result command-code))))
+    (update-cmd-id interface result command-code)))
 
+(defun update-cmd-id (interface result-msg command-code)
+  (declare (type beasty-interface interface)
+           (type dlr_msgs-msg:rcuresult result-msg)
+           (type number command-code))
+  (with-fields (state) result-msg
+    (with-fields (com) state
+      (with-fields (cmd_id) com
+        (setf (cmd-id interface) (elt cmd_id command-code))))))
+  
 (defun add-state-subscriber (interface namespace)
   "Adds a beasty state-subscriber with topic `namespace'/state to `interface'. Said 
 subscriber converts state-msg into an instance of class 'beasty-state' and saves it in the
@@ -176,4 +182,4 @@ subscriber converts state-msg into an instance of class 'beasty-state' and saves
          (goal (actionlib:make-action-goal (action-client interface)
                  :command command-code
                  :parameters (make-parameter-msg interface params safety))))
-    (send-goal-to-beasty interface goal command-code)))
+    (send-non-cancelable-goal-to-beasty interface goal command-code)))
