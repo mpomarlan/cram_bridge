@@ -80,7 +80,7 @@
     (send-cancelable-goal-to-beasty interface goal command-code)))
 
 (defun cancel-command (interface)
-  "Cancels current goal executed by `interface'. Is ignored if there is no current goal."
+  "Cancels current goal executed by `interface'. Ignored if there is no cancelable goal."
   (declare (type beasty-interface interface))
   (setf (cancel-request interface) t))
 
