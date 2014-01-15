@@ -178,20 +178,12 @@ subscriber converts state-msg into an instance of class 'beasty-state' and saves
   (setf (emergency-released-flag robot) (not (typep parameters 'hard-stop-parameters))))  
 
 (defun reset-safety (interface safety)
-  ;; TODO(Georg): refactor this because it has big overlap with command-beasty, login, logout
   (declare (type beasty-interface interface)
            (type safety-settings interface))
   (let* ((params (make-instance 'safety-reset))
+         ;; TODO(Georg): refactor this into a method which returns command-code and goal
+         (command-code (get-beasty-command-code (infer-command-symbol params)))
          (goal (actionlib:make-action-goal (action-client interface)
-                 :command (get-beasty-command-code 
-                           (infer-command-symbol params))
+                 :command command-code
                  :parameters (make-parameter-msg interface params safety))))
-    (multiple-value-bind (result status)
-        (actionlib:send-goal-and-wait (action-client interface) goal)
-      (unless (equal :succeeded status)
-        (error 'beasty-command-error :test "Error commanding beasty action interface."))
-      (with-fields (state) result
-      (with-fields (com) state
-        (with-fields (cmd_id) com
-          (setf (cmd-id interface) 
-                (elt cmd_id (get-beasty-command-code (infer-command-symbol params))))))))))
+    (send-goal-to-beasty interface goal command-code)))
