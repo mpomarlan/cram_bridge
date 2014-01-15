@@ -180,6 +180,8 @@ subscriber converts state-msg into an instance of class 'beasty-state' and saves
   (setf (emergency-released-flag robot) (not (typep parameters 'hard-stop-parameters))))  
 
 (defun reset-safety (interface safety)
+  "Resets the safety state of beasty controller behind `interface', i.e. deactivates
+ reflexxes. Also sets the current safety settings of the controller to `safety'."
   (declare (type beasty-interface interface)
            (type safety-settings interface))
   (let* ((params (make-instance 'safety-reset))
