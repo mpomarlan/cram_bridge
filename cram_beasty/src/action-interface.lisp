@@ -73,19 +73,16 @@
   (declare (type beasty-interface interface)
            (type safety-settings safety))
   (reset-safety interface safety)
-  (let ((goal (actionlib:make-action-goal (action-client interface)
-                :command (get-beasty-command-code 
-                          (infer-command-symbol parameters))
-                :parameters (make-parameter-msg interface parameters safety))))
-    (multiple-value-bind (result status)
-        (actionlib:send-goal-and-wait (action-client interface) goal)
-      (unless (equal :succeeded status)
-        (error 'beasty-command-error :test "Error commanding beasty action interface."))
-      (with-fields (state) result
-      (with-fields (com) state
-        (with-fields (cmd_id) com
-          (setf (cmd-id interface) (elt cmd_id (get-beasty-command-code
-                                                (infer-command-symbol parameters))))))))))
+  (let* ((command-code (get-beasty-command-code (infer-command-symbol parameters)))
+         (goal (actionlib:make-action-goal (action-client interface)
+                 :command command-code
+                 :parameters (make-parameter-msg interface parameters safety))))
+    (send-goal-to-beasty interface goal command-code)))
+
+(defun cancel-command (interface)
+  "Cancels current goal executed by `interface'. Is ignored if there is no current goal."
+  (declare (type beasty-interface interface))
+  (setf (cancel-request interface) t))
 
 (defun emergency-released-p (interface)
   "Checks whether the emergency buttons of LWR arm behind `interface' are released."
@@ -98,6 +95,32 @@
   (motor-power-on (cram-language:value (state interface))))
 
 ;;; SOME INTERNAL AUXILIARY METHODS
+
+(defun update-cmd-id (interface result-msg command-code)
+  (declare (type beasty-interface interface)
+           (type dlr_msgs-msg:rcuresult result-msg)
+           (type number command-code))
+  (with-fields (state) result-msg
+    (with-fields (com) state
+      (with-fields (cmd_id) com
+        (setf (cmd-id interface) (elt cmd_id command-code))))))
+  
+(defun send-goal-to-beasty (interface goal-msg command-code)
+  (declare (type beasty-interface interface)
+           (type dlr_msgs-msg:rcugoal goal-msg)
+           (type number command-code))
+  (setf (cancel-request interface) nil)
+  (handler-bind ((actionlib:feedback-signal 
+                   (lambda (fb-signal) 
+                     (declare (ignore fb-signal))
+                     (when (cancel-request interface)
+                       (invoke-restart 'actionlib:abort-goal)
+                       (setf (cancel-request interface) nil)))))
+    (multiple-value-bind (result status)
+        (actionlib:send-goal-and-wait (action-client interface) goal-msg)
+      (unless (equal :succeeded status)
+        (error 'beasty-command-error :test "Error commanding beasty action interface."))
+      (update-cmd-id interface result command-code))))
 
 (defun add-state-subscriber (interface namespace)
   "Adds a beasty state-subscriber with topic `namespace'/state to `interface'. Said 

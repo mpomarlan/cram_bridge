@@ -48,7 +48,9 @@
           :documentation "Fluent with last state reported from beasty controller.")
    (robot :initform (make-instance 'beasty-robot) :initarg :robot :accessor robot
           :type beasty-robot
-          :documentation "Robot representation of LWR controlled by this interface."))
+          :documentation "Robot representation of LWR controlled by this interface.")
+   (cancel-request :initform nil :accessor cancel-request :type boolean
+                   :documentation "For internal use. Flag to cancel current goal."))
   (:documentation "Action-client interface with book-keeping for LWR controller Beasty."))
 
 (defclass beasty-state ()
