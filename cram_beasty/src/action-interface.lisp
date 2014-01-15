@@ -159,19 +159,20 @@ subscriber converts state-msg into an instance of class 'beasty-state' and saves
   (ensure-correct-emergency-status (robot interface) parameters)
   (multiple-value-bind (robot-msg settings-msg) (to-msg (robot interface))
     (multiple-value-bind (controller-msg interpolator-msg) (to-msg parameters)
-      (roslisp:make-msg 
-       "dlr_msgs/tcu2rcu"
-       :com (roslisp:make-msg 
-             "dlr_msgs/tcu2rcu_Com"
-             :command (get-beasty-command-code 
-                       (infer-command-symbol parameters))
-             :cmd_id (cmd-id interface)
-             :session_id (session-id interface))
-       :robot robot-msg
-       :controller controller-msg
-       :interpolator interpolator-msg
-       :settings settings-msg
-       :safety (to-msg safety)))))
+      (let ((safety-msg (to-msg safety)))
+        (roslisp:make-msg 
+         "dlr_msgs/tcu2rcu"
+         :com (roslisp:make-msg 
+               "dlr_msgs/tcu2rcu_Com"
+               :command (get-beasty-command-code 
+                         (infer-command-symbol parameters))
+               :cmd_id (cmd-id interface)
+               :session_id (session-id interface))
+         :robot robot-msg
+         :controller controller-msg
+         :interpolator interpolator-msg
+         :settings settings-msg
+         :safety safety-msg)))))
 
 (defun ensure-correct-emergency-status (robot parameters)
   "Sets the 'emergency-released-flag' of `robot' to 'nil' if `parameters' is of type
