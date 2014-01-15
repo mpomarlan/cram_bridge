@@ -109,9 +109,10 @@
            (type number command-code))
   (multiple-value-bind (result status)
         (actionlib:send-goal-and-wait (action-client interface) goal-msg)
-      (unless (equal :succeeded status)
+      (unless (or (equal :succeeded status) (equal :aborted status))
         (error 'beasty-command-error :test "Error commanding beasty action interface."))
-    (update-cmd-id interface result command-code)))
+    (when result
+      (update-cmd-id interface result command-code))))
 
 (defun update-cmd-id (interface result-msg command-code)
   "Updates the command-id kept in `interface' as reported from beasty in `result-msg'.
