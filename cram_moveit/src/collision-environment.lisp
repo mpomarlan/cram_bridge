@@ -9,9 +9,9 @@
 ;;;     * Redistributions in binary form must reproduce the above copyright
 ;;;       notice, this list of conditions and the following disclaimer in the
 ;;;       documentation and/or other materials provided with the distribution.
-;;;     * Neither the name of the Universitaet Bremen nor the names of its contributors 
-;;;       may be used to endorse or promote products derived from this software 
-;;;       without specific prior written permission.
+;;;     * Neither the name of the Universitaet Bremen nor the names of its
+;;;       contributors may be used to endorse or promote products derived from
+;;;       this software without specific prior written permission.
 ;;; 
 ;;; THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 ;;; AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
@@ -149,17 +149,7 @@ bridge.")
     (unless (or primitive-shapes mesh-shapes plane-shapes)
       (cpl:fail 'no-collision-shapes-defined))
     (flet* ((resolve-pose (pose-msg)
-              (let ((pm (or pose-msg (tf:pose->msg pose-stamped))))
-                (cond ((tf:wait-for-transform *tf*
-                                              :timeout 5.0
-                                              :source-frame "/map"
-                                              :target-frame "/odom_combined")
-                       (tf:pose->msg (tf:transform-pose
-                                      *tf* :pose (tf:pose->pose-stamped
-                                                  "/map" 0.0
-                                                  (tf:msg->pose pm))
-                                           :target-frame "/odom_combined")))
-                      (t pm))))
+              (or pose-msg (tf:pose->msg pose-stamped)))
             (pose-present (object)
               (and (listp object) (cdr object)))
             (resolve-object (obj)
@@ -276,13 +266,14 @@ bridge.")
             (mesh-shapes (slot-value col-obj 'mesh-shapes))
             (plane-shapes (slot-value col-obj 'plane-shapes))
             (time (roslisp:ros-time)))
-        (unless (tf:wait-for-transform
-                 *tf*
-                 :timeout 5.0
-                 :time time
-                 :source-frame (tf:frame-id current-pose-stamped)
-                 :target-frame target-link)
-          (cpl:fail 'pose-not-transformable-into-link))
+        (roslisp:ros-info (moveit) "Transforming link from ~a into ~a"
+                          (tf:frame-id current-pose-stamped)
+                          target-link)
+        (tf:wait-for-transform
+         *tf*
+         :time time
+         :source-frame (tf:frame-id current-pose-stamped)
+         :target-frame target-link)
         (let* ((pose-in-link (tf:transform-pose
                               *tf*
                               :pose (tf:copy-pose-stamped
