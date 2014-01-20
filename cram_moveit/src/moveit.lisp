@@ -164,8 +164,8 @@ MoveIt! framework and registers known conditions."
          (mpreq (make-message
                  "moveit_msgs/MotionPlanRequest"
                  :group_name planning-group
-                 :num_planning_attempts 1
-                 :allowed_planning_time 3.0
+                 :num_planning_attempts 5
+                 :allowed_planning_time 5.0
                  :goal_constraints
                  (vector
                   (make-message
@@ -363,6 +363,19 @@ MoveIt! framework and registers known conditions."
                      (values trajectory_start planned_trajectory))))))
             (t (error 'actionlib:server-lost))))))
 
+(defun execute-trajectory (trajectory &key (wait-for-execution t))
+  (let ((result (call-service "/execute_kinematic_path"
+                              'moveit_msgs-srv:ExecuteKnownTrajectory
+                              :trajectory trajectory
+                              :wait_for_execution wait-for-execution)))
+    (roslisp:with-fields (error_code) result
+      (roslisp:with-fields (val) error_code
+        (unless (eql val (roslisp-msg-protocol:symbol-code
+                          'moveit_msgs-msg:moveiterrorcodes
+                          :success))
+          (signal-moveit-error val))))
+    t))
+
 (defun compute-ik (link-name planning-group pose-stamped)
   "Computes an inverse kinematics solution (if possible) of the given
 kinematics goal (given the link name `link-name' to position, the
@@ -386,6 +399,21 @@ success, and `nil' otherwise."
                           :success))
           (signal-moveit-error val))
         solution))))
+
+(defun plan-link-movements (link-name planning-group poses-stamped
+                            &key allowed-collision-objects
+                              touch-links default-collision-entries
+                              ignore-collisions
+                              destination-validity-only)
+  (every (lambda (pose-stamped)
+           (plan-link-movement
+            link-name planning-group pose-stamped
+            :allowed-collision-objects allowed-collision-objects
+            :touch-links touch-links
+            :default-collision-entries default-collision-entries
+            :ignore-collisions ignore-collisions
+            :destination-validity-only destination-validity-only))
+         poses-stamped))
 
 (defun plan-link-movement (link-name planning-group pose-stamped
                            &key allowed-collision-objects
@@ -445,3 +473,19 @@ checking how far away a given grasp pose is from the gripper frame."
                                         :target-frame link-frame)))
     (tf:v-dist (tf:make-identity-vector)
                (tf:origin transformed-pose-stamped))))
+
+(defun motion-length (link-name planning-group pose-stamped
+                        &key allowed-collision-objects)
+  (when (tf:wait-for-transform
+         *tf*
+         :time (tf:stamp pose-stamped)
+         :timeout 5.0
+         :source-frame (tf:frame-id pose-stamped)
+         :target-frame "torso_lift_link")
+    (let ((state-0 (moveit:plan-link-movement
+                    link-name planning-group pose-stamped
+                    :allowed-collision-objects
+                    allowed-collision-objects
+                    :destination-validity-only t)))
+      (when state-0
+        (pose-distance link-name pose-stamped)))))

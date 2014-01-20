@@ -46,6 +46,7 @@
    ;; Functions
    move-link-pose
    plan-link-movement
+   plan-link-movements
    init-moveit-bridge
    pose-distance
    add-collision-object
@@ -63,6 +64,7 @@
    get-joint-value
    set-collision-object-pose
    compute-ik
+   execute-trajectory
    ;; Conditions
    moveit-failure
    planning-failed
