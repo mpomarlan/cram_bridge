@@ -59,7 +59,7 @@
    (emergency-released :initarg :emergency-released :reader emergency-released
                        :type boolean
                        :documentation "Indicates whether emergency switch is released.")
-   (joint-values :initarg :joint-values :reader joint-values
+   (joint-values :initarg :joint-values :initform #() :reader joint-values
                  :type vector :documentation "Current joint values of LWR arm.")
    (tcp-pose :initarg :tcp-pose :reader tcp-pose :type cl-transforms:transform
               :documentation "Pose of tcp frame w.r.t. to arm base frame.")
