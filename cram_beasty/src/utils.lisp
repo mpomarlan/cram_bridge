@@ -39,7 +39,8 @@
  symbol of the strongest type of collision detected. If nothing detected, :NO-CONTACT will
  be returned."
   (declare (type beasty-state state))
-  (let ((collisions (joint-collisions state)))
+  (let ((collisions 
+          (if (slot-boundp state 'joint-collisions) (joint-collisions state) nil)))
     (labels ((collision-symbol->number (collision)
                (case collision
                  (:NO-CONTACT 0)
