@@ -53,8 +53,8 @@
    :beasty-state :motor-power-on :emergency-released :joint-values :tcp-pose
    :get-strongest-collision
    ;; safety settings
-   :make-safety-settings :set-safety-strategy :remove-safety-strategy
-   :safety-settings-valid-p 
+   :make-safety-settings :store-reflex :remove-reflex :safety-settings-valid-p
+   :make-beasty-reflex
    ;; collision types
    :NO-COLLISION :CONTACT :LIGHT-COLLISION :STRONG-COLLISION :SEVERE-COLLISION
    ;; reaction types

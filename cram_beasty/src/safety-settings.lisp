@@ -68,47 +68,6 @@
  :STRONG-COLLISION, :SEVERE-COLLISION, and 4x off. Values are in percent of maximum torque
  per joint.")
 
-(defun set-safety-strategy (settings collision-type reaction-type)
-  "Sets the strategy to react to `collision-type' with `reaction-type' in beasty parameter
- `settings' which is of type 'safety-settings'."
-  (declare (type safety-settings settings)
-           (type symbol collision-type reaction-type))
-  (setf (gethash collision-type (strategies settings)) reaction-type))
-
-(defun make-safety-settings (&optional initial-settings)
-  "Creates an instance of type 'safety-settings'. `initial-settings' is an optional list
- of strategies to initialize the data-structure. Each strategy has to be a cons-cell, with
- first a symbol denoting the collision-type and then a symbol for the reaction-type."
-  (declare (type list initial-settings))
-  (let ((settings (make-instance 'safety-settings)))
-    (loop for setting in initial-settings do
-      (set-safety-strategy settings (first setting) (rest setting)))
-    settings))
-
-(defparameter *default-safety-settings*
-  (make-safety-settings
-   (list
-    (cons :CONTACT :IGNORE)
-    (cons :LIGHT-COLLISION :JOINT-IMP)
-    (cons :STRONG-COLLISION :SOFT-STOP)
-    (cons :SEVERE-COLLISION :HARD-STOP)))
-  "Default safety settings for beasty controller.")
-
-(defun has-collision-type-p (settings collision-type)
-  "Checks whether `settings' holds a specification on how to react to `collision-type'."
-  (declare (type safety-settings settings)
-           (type symbol collision-type))
-  (multiple-value-bind (value present) (gethash collision-type (strategies settings))
-    (declare (ignore value))
-    present))
-
-(defun remove-safety-strategy (settings collision-type)
-  "Removes a specified reaction to `collision-type' from `settings'."
-  (declare (type safety-settings settings)
-           (type symbol collision-type))
-  (when (has-collision-type-p settings collision-type)
-    (remhash collision-type (strategies settings))))
-
 (defun collision-type-valid-p (collision-type)
   "Checks whether the symbol `collision-type' denotes an exisiting type of collision."
   (declare (type symbol collision-type))
@@ -119,24 +78,76 @@
   (declare (type symbol reaction-type))
   (member reaction-type *reaction-types*))
 
-(defun strategy-valid-p (collision-type reaction-type)
+(defun reflex-content-valid-p (collision-type reaction-type)
   "Checks whether the symbols `collision-type' and `reaction-type' form a valid collision
- strategy specification."
+ strategy specification, i.e. beasty reflex."
   (declare (type symbol collision-type reaction-type))
   (and (collision-type-valid-p collision-type)
        (reaction-type-valid-p reaction-type)))
 
-(defun all-strategies-valid-p (settings)
-  "Checks whether all strategies defined in `settings' are valid."
+(defun make-beasty-reflex (collision reaction)
+  "Creates an instance of class 'beasty-reflex' if symbol `collision' denotes a valid type
+ of collision, and `reaction' denotes a valid type of reaction."
+  (declare (type symbol collision reaction))
+  (when (reflex-content-valid-p collision reaction)
+    (make-instance 'beasty-reflex :collision-type collision :reaction-type reaction)))
+
+(defun store-reflex (settings reflex)
+  "Associates 'collision-type' of `reflex' with `reflex' in beasty parameter `settings'
+ which is of type 'safety-settings'."
+  (declare (type safety-settings settings)
+           (type beasty-reflex reflex))
+  (setf (gethash (collision-type reflex) (reflexes settings)) reflex))
+
+(defun make-safety-settings (&optional reflexes)
+  "Creates an instance of type 'safety-settings'. `reflexes' is an optional list of objects
+ of type 'beasty-reflexes' which indicate how the control shall react to collisions."
+  (declare (type list reflexes))
+  (let ((settings (make-instance 'safety-settings)))
+    (loop for reflex in reflexes do
+      (store-reflex settings reflex))
+    settings))
+
+(defparameter *default-safety-settings*
+  (make-safety-settings
+   (list
+    (make-beasty-reflex :CONTACT :IGNORE)
+    (make-beasty-reflex :LIGHT-COLLISION :JOINT-IMP)
+    (make-beasty-reflex :STRONG-COLLISION :SOFT-STOP)
+    (make-beasty-reflex :SEVERE-COLLISION :HARD-STOP)))
+  "Default safety settings for beasty controller.")
+
+(defun has-collision-type-p (settings collision-type)
+  "Checks whether `settings' holds a specification on how to react to `collision-type'."
+  (declare (type safety-settings settings)
+           (type symbol collision-type))
+  (multiple-value-bind (value present) (gethash collision-type (reflexes settings))
+    (declare (ignore value))
+    present))
+
+(defun remove-reflex (settings collision-type)
+  "Removes a specified reflex associated with `collision-type' from `settings'."
+  (declare (type safety-settings settings)
+           (type symbol collision-type))
+  (when (has-collision-type-p settings collision-type)
+    (remhash collision-type (reflexes settings))))
+
+(defun reflex-valid-p (reflex)
+  "Checks whether `reflex' of type 'beasty-reflex' is valid."
+  (declare (type beasty-reflex reflex))
+  (reflex-content-valid-p (collision-type reflex) (reaction-type reflex)))
+
+(defun all-reflexes-valid-p (settings)
+  "Checks whether all reflexes stored in `settings' are valid."
   (declare (type safety-settings settings))
   (every 
    #'identity
-   (loop for k being the hash-key in (strategies settings) using (hash-value v)
-         collect (strategy-valid-p k v))))
+   (loop for collision being the hash-key in (reflexes settings) using (hash-value reflex)
+         collect (and (reflex-valid-p reflex) (eql collision (collision-type reflex))))))
 
 (defun safety-settings-valid-p (settings)
-  "Checks whether the beasty 'safety-settings' `settings' are valid, i.e. cover all possible
- collisions and use known reaction types."
+  "Checks whether the beasty 'safety-settings' `settings' are valid, i.e. whether all
+ reflexes in slot 'reflexes' are valid."
   (declare (type safety-settings settings))
-  (and (> 9 (hash-table-count (strategies settings)))
-       (all-strategies-valid-p settings)))
+  (and (> 9 (hash-table-count (reflexes settings)))
+       (all-reflexes-valid-p settings)))

@@ -124,7 +124,8 @@
    (filter-gains :initform (make-array 6 :initial-element 0.0) :accessor filter-gains
                  :type vector :documentation "Gains for filtering of cartesian-stiffnesses.
 Range for positions: 0..400000. Range for orientations: 0..40000.")
-   (goal-pose :initform (cl-transforms:make-identity-transform) :accessor goal-pose
+   (goal-pose :initform (cl-transforms:make-identity-transform) :initarg :goal-pose
+              :accessor goal-pose
               :type cl-transforms:transform :documentation "Goal pose for EE frame of
  Cartesian impedance motion of Beasty, defined w.r.t. base frame of LWR.")
    (max-cart-vel :initform (vector 0.1 0.1 0.1 0.3 0.3 0.3) :accessor max-cart-vel
@@ -144,13 +145,25 @@ impedance motion of Beasty, defined w.r.t. arm base. Order: t_x, t_y, t_z, r_x, 
    brakes. NOTE: This is brutal when done during motion."))
 
 (defclass safety-settings ()
-  ((strategies :initform (make-hash-table) :accessor strategies :type hash-table
-               :documentation "Hash-table holding the safety strategies definitions. The
+  ((reflexes :initform (make-hash-table) :accessor reflexes :type hash-table
+               :documentation "Hash-table holding the reflex strategy definitions. The
  following keys which correspond to detected collisions _have_ to be provided: :CONTACT,
- :LIGHT-COLLISION, :STRONG-COLLISION, SEVERE-COLLISION. The following values for selecting
- collision reactions are currently supported: :IGNORE, :ZERO-G, :JOINT-IMP, :SOFT-STOP,
- :HARD-STOP:"))
+ :LIGHT-COLLISION, :STRONG-COLLISION, SEVERE-COLLISION. Values are expected to be instances
+ of type 'beasty-reflex'. The following reaction-types for in reflexes are currently
+ supported: :IGNORE, :ZERO-G, :JOINT-IMP, :SOFT-STOP, :HARD-STOP:"))
   (:documentation "Class representing the safety settings to be used for the current goal."))
+
+(defclass beasty-reflex ()
+  ((collision-type :initarg :collision-type :initform :NO-CONTACT :accessor collision-type
+                   :type symbol 
+                   :documentation "Symbol denoting the type of collision which triggers the
+ reflex.")
+   (reaction-type :initarg :reaction-type :initform :IGNORE :accessor reaction-type
+                  :type symbol 
+                  :documentation "Symbol denoting the type of reaction which executed by
+ the reflex."))
+  (:documentation "Representation of a single Beasty reflex which is a reaction triggered
+ by detected collision."))
 
 ;;; ROBOT MODELLING
 

@@ -161,7 +161,7 @@
   (roslisp:make-msg 
    "dlr_msgs/tcu2rcu_Safety"
    :contact (roslisp:make-msg "dlr_msgs/tcu2rcu_Contact"
-                              :strategy (convert-strategy-vector (strategies params))
+                              :strategy (convert-strategy-vector (reflexes params))
                               :threshold *default-thresholds*)))
 
 (defun convert-strategy-vector (strategies)
@@ -169,9 +169,9 @@
  vector of numbers. The format corresponds to the expectations of beasty in 'tcu2rcu...'."
   (declare (type hash-table strategies))
   (let ((result (make-array 8 :initial-element 0)))
-    (loop for collision being the hash-key in strategies using (hash-value reaction) do
+    (loop for collision being the hash-key in strategies using (hash-value reflex) do
       (setf (elt result (gethash collision *collision-index-map*)) 
-            (gethash reaction *reaction-code-map*)))
+            (gethash (reaction-type reflex) *reaction-code-map*)))
     result))
 
 (defmethod from-msg ((msg dlr_msgs-msg:rcu2tcu))
