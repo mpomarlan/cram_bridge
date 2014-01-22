@@ -34,7 +34,7 @@
   (:export 
    ;; top-level interaction with beasty interface
    :make-beasty-interface :cleanup-beasty-interface :beasty-interface :command-beasty
-   :cancel-command :robot :state
+   :cancel-command :robot :state :stop-beasty
    ;; modelling of LWR robot for beasty
    :beasty-robot :simulation-flag :tool-configuration :base-configuration
    :beasty-base :base-transform :base-acceleration :beasty-tool :ee-transform
@@ -42,7 +42,8 @@
    ;; commanding gravity compensation parameters
    :gravity-control-parameters :max-joint-vel :max-joint-acc
    ;; commanding joint impedance parameters
-   :joint-impedance-control-parameters :joint-goal :joint-stiffness :joint-damping
+   :make-joint-impedance-goal :joint-impedance-control-parameters :joint-goal
+   :joint-stiffness :joint-damping
    ;; commanding cartesian impedance parameters
    :cartesian-impedance-control-parameters :cart-stiffness :cart-damping
    :nullspace-stiffness :nullspace-damping :nullspace-dir :filter-gains

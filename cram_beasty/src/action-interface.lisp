@@ -84,6 +84,24 @@
   (declare (type beasty-interface interface))
   (setf (cancel-request interface) t))
 
+(defun stop-beasty (interface)
+  "Stops the beasty-controlled LWR behind `interface' by sending a soft joint-impedance
+ goal for the current configuration reported by the controller."
+  (declare (type beasty-interface interface))
+  (cancel-command interface)
+  (let ((identity-goal (make-joint-impedance-goal 
+                        :joint-goal (joint-values (cpl:value (state interface))))))
+    (command-beasty interface identity-goal)))
+
+(defun make-joint-impedance-goal (&key (joint-goal (make-array 7 :initial-element 0))
+                                    (max-joint-vel (make-array 7 :initial-element 1))
+                                    (max-joint-acc (make-array 7 :initial-element 0.5)))
+  (make-instance
+   'joint-impedance-control-parameters
+   :joint-goal joint-goal
+   :max-joint-vel max-joint-vel
+   :max-joint-acc max-joint-acc))
+
 ;;; SOME INTERNAL AUXILIARY METHODS
 
 (defun send-cancelable-goal-to-beasty (interface goal-msg command-code)
