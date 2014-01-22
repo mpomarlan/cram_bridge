@@ -67,7 +67,7 @@
   (logout-beasty interface))
 
 (defun command-beasty (interface parameters 
-                       &optional (safety (make-instance 'safety-settings)))
+                       &optional (safety *default-safety-settings*))
   "Sends a command to beasty controller behind `interface'. Users can alter motion command
  with `parameters' and `safety'."
   (declare (type beasty-interface interface)
@@ -109,8 +109,7 @@
            (type number command-code))
   (multiple-value-bind (result status)
         (actionlib:send-goal-and-wait (action-client interface) goal-msg)
-      (unless (or (equal :succeeded status) (equal :aborted status))
-        (error 'beasty-command-error :test "Error commanding beasty action interface."))
+    (declare (ignore status)) ; TODO(Georg): think about a good low-level interface
     (when result
       (update-cmd-id interface result command-code))))
 
