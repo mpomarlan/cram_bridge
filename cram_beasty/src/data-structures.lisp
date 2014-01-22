@@ -97,10 +97,12 @@
    (joint-damping :initform (make-array 7 :initial-element 0.7) :accessor joint-damping
                   :type vector :documentation "Joint damping vector. Range 0...1.0. User
                   may select critically-damped behavior with a value of 0.7.")
-   (max-joint-vel :initform (make-array 7 :initial-element 0.35) :accessor max-joint-vel
-                  :type vector :documentation "Maximum joint velocities in rad/s.")
-   (max-joint-acc :initform (make-array 7 :initial-element 0.7) :accessor max-joint-acc
-                  :type vector :documentation "Maximum joint accelerations in rad/s^2."))
+   (max-joint-vel :initform (make-array 7 :initial-element 0.35) :initarg :max-joint-vel
+                  :accessor max-joint-vel :type vector
+                  :documentation "Maximum joint velocities in rad/s.")
+   (max-joint-acc :initform (make-array 7 :initial-element 0.7) :initarg :max-joint-acc
+                  :accessor max-joint-acc :type vector
+                  :documentation "Maximum joint accelerations in rad/s^2."))
   (:documentation "Class holding all parameters necessary to configure joint impedance
    control mode of the Beasty controller."))
 
