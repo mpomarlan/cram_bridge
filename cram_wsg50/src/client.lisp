@@ -28,7 +28,7 @@
 
 (in-package :cram-wsg50)
 
-(defclass wsg50-interface ()
+(defclass wsg50-interface () ;; TODO(Georg): add type-declarations
   ((open-client :initarg :open-client :accessor open-client
                  :documentation "ROS service client to command the gripper to open its
                  fingers.")
@@ -36,5 +36,18 @@
                  :documentation "ROS service client to command the gripper to close its
                  fingers.")
    (homing-client :initarg :homing-client :accessor homing-client
-                  :documentation "ROS service client to home the gripper."))
+                  :documentation "ROS service client to home the gripper.")
+   (status-subscriber :accessor status-subscriber
+                      :documentation "ROS topic subscriber to status topic of gripper.")
+   (status :accessor status :type wsg50-status
+           :documentation "For internal use. Last reported status of gripper."))
   (:documentation "ROS Interface talking to Schunk WSG50 gripper controller."))
+
+(defclass wsg50-status ()
+  ((width :initarg :width :reader width :type number
+          :documentation "Width opening of Schunk WSG50 gripper.")
+   (max-acc :initarg :max-acc :reader max-acc :type number
+            :documentation "Maximum acceleration setting of Schunk WSG50 gripper.")
+   (max-force :initarg :max-force :reader max-force :type number
+              :documentation "Maximum force setting of Schunk WSG50 gripper."))
+  (:documentation "For internal use. Gripper status of Schunk WSG50."))
