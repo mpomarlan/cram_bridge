@@ -70,5 +70,8 @@
 ;;; INTERNAL AUXILIARY FUNCTIONS
 
 (defun error-code-fine-p (error-code)
+  "Internal helper predicate to check whether `error-code' returned from servers running
+ Schunk WSG50 gripper indicated successful execution. Returns 't' in case of success, and
+ 'nil' in case of an error."
   (declare (type number error-code))
   (eql error-code *no-error-occured-code*))
