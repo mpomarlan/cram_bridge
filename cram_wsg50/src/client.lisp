@@ -28,16 +28,16 @@
 
 (in-package :cram-wsg50)
 
-(defclass wsg50-interface () ;; TODO(Georg): add type-declarations
-  ((open-client :initarg :open-client :accessor open-client
+(defclass wsg50-interface ()
+  ((open-client :initarg :open-client :accessor open-client :type service-client
                  :documentation "ROS service client to command the gripper to open its
                  fingers.")
-   (close-client :initarg :close-client :accessor close-client
+   (close-client :initarg :close-client :accessor close-client :type service-client
                  :documentation "ROS service client to command the gripper to close its
                  fingers.")
-   (homing-client :initarg :homing-client :accessor homing-client
+   (homing-client :initarg :homing-client :accessor homing-client :type service-client
                   :documentation "ROS service client to home the gripper.")
-   (status-subscriber :accessor status-subscriber
+   (status-subscriber :accessor status-subscriber :type subscriber
                       :documentation "ROS topic subscriber to status topic of gripper.")
    (status :accessor status :type wsg50-status
            :documentation "For internal use. Last reported status of gripper."))
