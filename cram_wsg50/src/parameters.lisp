@@ -31,5 +31,10 @@
 (defparameter *default-speed* 30
   "Default speed setting for opening and closing of Schunk WSG50 gripper.")
 
-(defparameter *complete-open-width* 110
-  "Width corresponding to a maximally opened gripper for Schunk WSG50.")
+(defparameter *completely-open-width* 110
+  "Width corresponding to a completely opened gripper for Schunk WSG50.")
+(defparameter *completely-closed-width* 0
+  "Width corresponding to a completely closed gripper for Schunk WSG50.")
+
+(defparameter *no-error-occured-code* 0
+  "Calls to the WSG50 gripper return error codes. This one signals success.")

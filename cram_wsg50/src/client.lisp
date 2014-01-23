@@ -31,5 +31,8 @@
 (defclass wsg50-interface ()
   ((open-client :initarg :open-client :accessor open-client
                  :documentation "ROS service client to command the gripper to open its
+                 fingers.")
+   (close-client :initarg :close-client :accessor close-client
+                 :documentation "ROS service client to command the gripper to close its
                  fingers."))
   (:documentation "ROS Interface talking to Schunk WSG50 gripper controller."))

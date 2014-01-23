@@ -28,15 +28,43 @@
 
 (in-package :cram-wsg50)
 
+;;; EXPORTED INTERFACE
+
 (defun make-wsg50-interface (namespace)
   "Creates and returns an instance of type 'wsg50-interface':"
   (declare (type string namespace))
   (let* ((open-service-name (concatenate 'string namespace "/release"))
-         (open-client (make-service-client open-service-name "wsg_50_common/Move")))
-  (make-instance 'wsg50-interface :open-client open-client)))
+         (close-service-name (concatenate 'string namespace "/grasp"))
+         (open-client (make-service-client open-service-name "wsg_50_common/Move"))
+         (close-client (make-service-client close-service-name "wsg_50_common/Move")))
+  (make-instance 'wsg50-interface :open-client open-client :close-client close-client)))
 
-(defun open-gripper (interface &key (width *complete-open-width*) (speed *default-speed*))
+(defun open-gripper (interface &key (width *completely-open-width*) (speed *default-speed*))
   (declare (type wsg50-interface interface))
   (with-fields (error)
       (call-service (open-client interface) :width width :speed speed)
-    error))
+    (unless (error-code-fine-p error)
+      (error 'wsg50-command-error 
+             :test "An error occured during opening of gripper."
+             :error-code error))))
+
+(defun close-gripper (interface &key (width *completely-closed-width*)
+                                  (speed *default-speed*))
+  (declare (type wsg50-interface interface))
+  (with-fields (error)
+      (call-service (close-client interface) :width width :speed speed)
+    (unless (error-code-fine-p error)
+      (error 'wsg50-command-error 
+             :text "An error occured during closing of gripper."
+             :error-code error))))
+
+(define-condition wsg50-command-error (error)
+  ((text :initarg :text :reader text)
+   (error-code :initarg :error-code :reader error-code))
+  (:documentation "Condition signalling an error commanding Schunk WSG50 gripper."))
+
+;;; INTERNAL AUXILIARY FUNCTIONS
+
+(defun error-code-fine-p (error-code)
+  (declare (type number error-code))
+  (eql error-code *no-error-occured-code*))
