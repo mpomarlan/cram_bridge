@@ -50,7 +50,11 @@
           :type beasty-robot
           :documentation "Robot representation of LWR controlled by this interface.")
    (cancel-request :initform nil :accessor cancel-request :type boolean
-                   :documentation "For internal use. Flag to cancel current goal."))
+                   :documentation "For internal use. Flag to cancel current goal.")
+   (execution-lock :initform (make-mutex :name (string (gensym "BEASTY-LOCK-")))
+                   :accessor execution-lock :type mutex
+                   :documentation "For internal use. Mutex to guard execution of one single
+                   goal only. Also used to wait on goal when cancelling."))
   (:documentation "Action-client interface with book-keeping for LWR controller Beasty."))
 
 (defclass beasty-state ()

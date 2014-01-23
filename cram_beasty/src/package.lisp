@@ -30,7 +30,8 @@
 
 (defpackage :cram-beasty
   (:use #:roslisp
-        #:common-lisp)
+        #:common-lisp
+        #:sb-thread)
   (:export 
    ;; top-level interaction with beasty interface
    :make-beasty-interface :cleanup-beasty-interface :beasty-interface :command-beasty

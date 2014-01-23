@@ -72,26 +72,30 @@
  with `parameters' and `safety'."
   (declare (type beasty-interface interface)
            (type safety-settings safety))
-  (reset-safety interface safety)
-  (let* ((command-code (get-beasty-command-code (infer-command-symbol parameters)))
-         (goal (actionlib:make-action-goal (action-client interface)
-                 :command command-code
-                 :parameters (make-parameter-msg interface parameters safety))))
-    (send-cancelable-goal-to-beasty interface goal command-code)))
-
+  (with-recursive-lock ((execution-lock interface))
+    (reset-safety interface safety)
+    (let* ((command-code (get-beasty-command-code (infer-command-symbol parameters)))
+           (goal (actionlib:make-action-goal (action-client interface)
+                   :command command-code
+                   :parameters (make-parameter-msg interface parameters safety))))
+      (send-cancelable-goal-to-beasty interface goal command-code))))
+  
 (defun cancel-command (interface)
   "Cancels current goal executed by `interface'. Ignored if there is no cancelable goal."
   (declare (type beasty-interface interface))
-  (setf (cancel-request interface) t))
+  (setf (cancel-request interface) t)
+  ;; wait on goal-mutex to become free, i.e. goal to be cancelled
+  (with-recursive-lock ((execution-lock interface)) nil))
 
 (defun stop-beasty (interface)
   "Stops the beasty-controlled LWR behind `interface' by sending a soft joint-impedance
  goal for the current configuration reported by the controller."
   (declare (type beasty-interface interface))
   (cancel-command interface)
-  (let ((identity-goal (make-joint-impedance-goal 
-                        :joint-goal (joint-values (cpl:value (state interface))))))
-    (command-beasty interface identity-goal)))
+  (with-recursive-lock ((execution-lock interface))
+    (let ((identity-goal (make-joint-impedance-goal 
+                          :joint-goal (joint-values (cpl:value (state interface))))))
+      (command-beasty interface identity-goal))))
 
 (defun make-joint-impedance-goal (&key (joint-goal (make-array 7 :initial-element 0))
                                     (max-joint-vel (make-array 7 :initial-element 1))
@@ -115,6 +119,7 @@
                    (lambda (fb-signal) 
                      (declare (ignore fb-signal))
                      (when (cancel-request interface)
+                       (format t "CANCEL!.~%")
                        (invoke-restart 'actionlib:abort-goal)
                        (setf (cancel-request interface) nil)))))
     (send-non-cancelable-goal-to-beasty interface goal-msg command-code)))
@@ -125,11 +130,12 @@
   (declare (type beasty-interface interface)
            (type dlr_msgs-msg:rcugoal goal-msg)
            (type number command-code))
-  (multiple-value-bind (result status)
+  (with-recursive-lock ((execution-lock interface))
+    (multiple-value-bind (result status)
         (actionlib:send-goal-and-wait (action-client interface) goal-msg)
-    (declare (ignore status)) ; TODO(Georg): think about a good low-level interface
-    (when result
-      (update-cmd-id interface result command-code))))
+      (declare (ignore status)) ; TODO(Georg): think about a good low-level interface
+      (when result
+        (update-cmd-id interface result command-code)))))
 
 (defun update-cmd-id (interface result-msg command-code)
   "Updates the command-id kept in `interface' as reported from beasty in `result-msg'.
