@@ -33,7 +33,8 @@
 
   :depends-on (roslisp
                wsg_50_common-msg
-               wsg_50_common-srv)
+               wsg_50_common-srv
+               std_srvs-srv)
   :components
   ((:module "src"
     :components

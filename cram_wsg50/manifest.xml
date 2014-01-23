@@ -10,7 +10,7 @@
   <rosdep name="sbcl"/>
   <depend package="roslisp"/>
   <depend package="wsg_50_common"/>
-
+  <depend package="std_srvs"/>
 </package>
 
 

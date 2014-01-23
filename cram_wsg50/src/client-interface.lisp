@@ -35,9 +35,14 @@
   (declare (type string namespace))
   (let* ((open-service-name (concatenate 'string namespace "/release"))
          (close-service-name (concatenate 'string namespace "/grasp"))
+         (homing-service-name (concatenate 'string namespace "/homing"))
          (open-client (make-service-client open-service-name "wsg_50_common/Move"))
-         (close-client (make-service-client close-service-name "wsg_50_common/Move")))
-  (make-instance 'wsg50-interface :open-client open-client :close-client close-client)))
+         (close-client (make-service-client close-service-name "wsg_50_common/Move"))
+         (homing-client (make-service-client homing-service-name "std_srvs/Empty")))
+  (make-instance 'wsg50-interface 
+                 :open-client open-client 
+                 :close-client close-client
+                 :homing-client homing-client)))
 
 (defun open-gripper (interface &key (width *completely-open-width*) (speed *default-speed*))
   "Opens the Schunk WSG50 gripper behind `interface' width a set-point of `width' (in mm),
@@ -61,6 +66,11 @@
       (error 'wsg50-command-error 
              :text "An error occured during closing of gripper."
              :error-code error))))
+
+(defun home-gripper (interface)
+  "Commands Schunk WSG50 gripper behind `interface' to home."
+  (declare (type wsg50-interface interface))
+  (call-service (homing-client interface)))
 
 (define-condition wsg50-command-error (error)
   ((text :initarg :text :reader text)

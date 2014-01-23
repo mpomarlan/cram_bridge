@@ -31,5 +31,5 @@
 (defpackage :cram-wsg50
   (:use #:roslisp
         #:common-lisp)
-  (:export :make-wsg50-interface :open-gripper :close-gripper :wsg50-command-error
-           :text :name))
+  (:export :make-wsg50-interface :open-gripper :close-gripper :home-gripper
+           :wsg50-command-error :text :name))
