@@ -28,7 +28,7 @@
 
 (in-package :cram-wsg50)
 
-(defparameter *default-speed* 30
+(defparameter *default-speed* 400
   "Default speed (in mm/s) for opening and closing of Schunk WSG50 gripper.")
 (defparameter *default-acceleration* 700
   "Default acceleration (in mm/s2) for opening and closing of Schunk WSG50 gripper.")
