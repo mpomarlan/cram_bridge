@@ -48,9 +48,15 @@
                  :documentation "For internal use. ROS service client to set the max force
                  employed by the gripper.")
    (status :accessor status :type wsg50-status
-           :documentation "For internal use. Last reported status of gripper."))
-  ;; TODO(Georg): add lock for commanding the gripper
-  ;; TODO(Georg): add lock for status of gripper
+           :documentation "For internal use. Last reported status of gripper.")
+   (command-lock :initform (make-mutex :name (string (gensym "WSG50-COMMAND-LOCK-")))
+                 :accessor command-lock :type mutex
+                 :documentation "For internal use. Mutex to guard commanding WSG50 gripper
+                 to ensure one command at a time.")
+   (status-lock :initform (make-mutex :name (string (gensym "WSG50-STATUS-LOCK-")))
+                 :accessor status-lock :type mutex
+                 :documentation "For internal use. Mutex to guard update of status of WSG50
+                 gripper to ensure consistent i/o."))
   (:documentation "For internal use. ROS Interface talking to Schunk WSG50 gripper controller."))
 
 (defclass wsg50-status ()
