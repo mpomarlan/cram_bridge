@@ -1,13 +1,15 @@
 <package>
   <description brief="cram_wsg50">
 
-     cram_wsg50
+     CRAM interface package to command Schunk WSG50 gripper.
 
   </description>
-  <author>Georg</author>
+  <author>Georg Bartels</author>
   <license>BSD</license>
-  <review status="unreviewed" notes=""/>
-  <url>http://ros.org/wiki/cram_wsg50</url>
+
+  <rosdep name="sbcl"/>
+  <depend package="roslisp"/>
+  <depend package="wsg_50_common"/>
 
 </package>
 
