@@ -29,12 +29,16 @@
 (in-package :cram-wsg50)
 
 (defparameter *default-speed* 30
-  "Default speed setting for opening and closing of Schunk WSG50 gripper.")
+  "Default speed (in mm/s) for opening and closing of Schunk WSG50 gripper.")
+(defparameter *default-acceleration* 700
+  "Default acceleration (in mm/s2) for opening and closing of Schunk WSG50 gripper.")
+(defparameter *default-force* 15
+  "Default force (in N) for opening and closing of Schunk WSG50 gripper.")
 
 (defparameter *completely-open-width* 110
-  "Width corresponding to a completely opened gripper for Schunk WSG50.")
+  "Width (in mm) corresponding to a completely opened gripper for Schunk WSG50.")
 (defparameter *completely-closed-width* 0
-  "Width corresponding to a completely closed gripper for Schunk WSG50.")
+  "Width (in mm) corresponding to a completely closed gripper for Schunk WSG50.")
 
 (defparameter *no-error-occured-code* 0
   "Calls to the WSG50 gripper return error codes. This one signals success.")
