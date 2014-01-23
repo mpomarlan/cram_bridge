@@ -38,10 +38,19 @@
    (homing-client :initarg :homing-client :accessor homing-client :type service-client
                   :documentation "For internal use. ROS service client to home the gripper.")
    (status-subscriber :accessor status-subscriber :type subscriber
-                      :documentation "FOr internal use. ROS topic subscriber to status
+                      :documentation "For internal use. ROS topic subscriber to status
                       topic of gripper.")
+   (acceleration-client :initarg :acceleration-client :accessor acceleration-client
+                        :type service-client
+                        :documentation "For internal use. ROS service client to set the max
+                        acceleration employed by the gripper.")
+   (force-client :initarg :force-client :accessor force-client :type service-client
+                 :documentation "For internal use. ROS service client to set the max force
+                 employed by the gripper.")
    (status :accessor status :type wsg50-status
            :documentation "For internal use. Last reported status of gripper."))
+  ;; TODO(Georg): add lock for commanding the gripper
+  ;; TODO(Georg): add lock for status of gripper
   (:documentation "For internal use. ROS Interface talking to Schunk WSG50 gripper controller."))
 
 (defclass wsg50-status ()

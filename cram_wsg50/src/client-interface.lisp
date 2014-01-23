@@ -37,20 +37,30 @@
          (close-service-name (concatenate 'string namespace "/grasp"))
          (homing-service-name (concatenate 'string namespace "/homing"))
          (status-topic-name (concatenate 'string namespace "/status"))
+         (acc-service-name (concatenate 'string namespace "/set_acceleration"))
+         (force-service-name (concatenate 'string namespace "/set_force"))
          (open-client (make-service-client open-service-name "wsg_50_common/Move"))
          (close-client (make-service-client close-service-name "wsg_50_common/Move"))
-         (homing-client (make-service-client homing-service-name "std_srvs/Empty")))
+         (homing-client (make-service-client homing-service-name "std_srvs/Empty"))
+         (acc-client (make-service-client acc-service-name "wsg_50_common/Conf"))
+         (force-client (make-service-client force-service-name "wsg_50_common/Conf")))
     (let ((interface (make-instance 'wsg50-interface 
                                     :open-client open-client 
                                     :close-client close-client
-                                    :homing-client homing-client)))
+                                    :homing-client homing-client
+                                    :acceleration-client acc-client
+                                    :force-client force-client)))
       (add-status-subscriber interface status-topic-name)
       interface)))
 
-(defun open-gripper (interface &key (width *completely-open-width*) (speed *default-speed*))
+(defun open-gripper (interface &key (width *completely-open-width*) (speed *default-speed*)
+                                 (acceleration *default-acceleration*)
+                                 (force *default-force*))
   "Opens the Schunk WSG50 gripper behind `interface' width a set-point of `width' (in mm),
  and a speed of `speed' (mm/s). Might throw a condition of type 'wsg50-command-error'."
   (declare (type wsg50-interface interface))
+  (ensure-acceleration interface acceleration)
+  (ensure-force interface force)
   (with-fields (error)
       (call-service (open-client interface) :width width :speed speed)
     (unless (error-code-fine-p error)
@@ -59,10 +69,14 @@
              :error-code error))))
 
 (defun close-gripper (interface &key (width *completely-closed-width*)
-                                  (speed *default-speed*))
+                                  (speed *default-speed*) 
+                                  (acceleration *default-acceleration*)
+                                  (force *default-force*))
   "Closes the Schunk WSG50 gripper behind `interface' width a set-point of `width' (in mm),
  and a speed of `speed' (mm/s). Might throw a condition of type 'wsg50-command-error'."
   (declare (type wsg50-interface interface))
+  (ensure-acceleration interface acceleration)
+  (ensure-force interface force)
   (with-fields (error)
       (call-service (close-client interface) :width width :speed speed)
     (unless (error-code-fine-p error)
@@ -108,3 +122,42 @@
   (declare (type wsg_50_common-msg:Status msg))
   (with-fields (width acc force) msg
     (make-instance 'wsg50-status :width width :max-acc acc :max-force force)))
+
+(defun ensure-acceleration (interface acceleration)
+  "Makes sure that WSG50 gripper behind `interface' uses an acceleration equal to value of
+ `acceleration' for opening and closing."
+  (declare (type number acceleration)
+           (type wsg50-interface))
+  (unless (= acceleration (max-acc (status interface)))
+    (set-acceleration interface acceleration)))
+
+(defun set-acceleration (interface acceleration)
+    "Commands WSG50 gripper behind `interface' to use an acceleration equal to value of
+ `acceleration' for opening and closing."
+  (declare (type number acceleration)
+           (type wsg50-interface))
+  (with-fields (error)
+      (call-service (acceleration-client interface) :val acceleration)
+    (unless (error-code-fine-p error)
+      (error 'wsg50-command-error 
+             :text "An error occured during setting of maximum acceleration."
+             :error-code error))))
+
+(defun ensure-force (interface force)
+  "Makes sure that WSG50 gripper behind `interface' uses a force (in N) equal to value of
+ `force' for opening and closing."
+  (declare (type number force)
+           (type wsg50-interface))
+  (unless (= force (max-force (status interface))) (set-force interface force)))
+
+(defun set-force (interface force)
+  "Commands WSG50 gripper behind `interface' to use a force (in N) equal to value of
+ `force' for opening and closing."
+  (declare (type number force)
+           (type wsg50-interface))
+  (with-fields (error)
+      (call-service (force-client interface) :val force)
+    (unless (error-code-fine-p error)
+      (error 'wsg50-command-error 
+             :text "An error occured during setting of maximum force."
+             :error-code error))))
