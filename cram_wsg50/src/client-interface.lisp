@@ -40,6 +40,8 @@
   (make-instance 'wsg50-interface :open-client open-client :close-client close-client)))
 
 (defun open-gripper (interface &key (width *completely-open-width*) (speed *default-speed*))
+  "Opens the Schunk WSG50 gripper behind `interface' width a set-point of `width' (in mm),
+ and a speed of `speed' (mm/s). Might throw a condition of type 'wsg50-command-error'."
   (declare (type wsg50-interface interface))
   (with-fields (error)
       (call-service (open-client interface) :width width :speed speed)
@@ -50,6 +52,8 @@
 
 (defun close-gripper (interface &key (width *completely-closed-width*)
                                   (speed *default-speed*))
+  "Closes the Schunk WSG50 gripper behind `interface' width a set-point of `width' (in mm),
+ and a speed of `speed' (mm/s). Might throw a condition of type 'wsg50-command-error'."
   (declare (type wsg50-interface interface))
   (with-fields (error)
       (call-service (close-client interface) :width width :speed speed)
