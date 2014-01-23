@@ -30,4 +30,5 @@
 
 (defpackage :cram-wsg50
   (:use #:roslisp
-        #:common-lisp))
+        #:common-lisp)
+  (:export :make-wsg50-interface))

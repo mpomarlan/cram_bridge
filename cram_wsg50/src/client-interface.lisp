@@ -26,17 +26,8 @@
 ;;; ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ;;; POSSIBILITY OF SUCH DAMAGE.
 
-(defsystem cram-wsg50
-  :author "Georg Bartels <georg.bartels@cs.uni-bremen.de>"
-  :license "BSD"
-  :description "Interface package of CRAM to command Schunk WSG50 Gripper."
+(in-package :cram-wsg50)
 
-  :depends-on (roslisp
-               wsg_50_common-msg
-               wsg_50_common-srv)
-  :components
-  ((:module "src"
-    :components
-    ((:file "package")
-     (:file "client" :depends-on ("package"))
-     (:file "client-interface" :depends-on ("package" "client"))))))
+(defun make-wsg50-interface ()
+  "Creates and returns an instance of type 'wsg50-interface':"
+  (make-instance 'wsg50-interface))
