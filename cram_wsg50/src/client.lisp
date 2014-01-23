@@ -28,5 +28,8 @@
 
 (in-package :cram-wsg50)
 
-(defclass wsg50-interface () ()
+(defclass wsg50-interface ()
+  ((open-client :initarg :open-client :accessor open-client
+                 :documentation "ROS service client to command the gripper to open its
+                 fingers."))
   (:documentation "ROS Interface talking to Schunk WSG50 gripper controller."))

@@ -28,15 +28,8 @@
 
 (in-package :cram-wsg50)
 
-(defun make-wsg50-interface (namespace)
-  "Creates and returns an instance of type 'wsg50-interface':"
-  (declare (type string namespace))
-  (let* ((open-service-name (concatenate 'string namespace "/release"))
-         (open-client (make-service-client open-service-name "wsg_50_common/Move")))
-  (make-instance 'wsg50-interface :open-client open-client)))
+(defparameter *default-speed* 30
+  "Default speed setting for opening and closing of Schunk WSG50 gripper.")
 
-(defun open-gripper (interface &key (width *complete-open-width*) (speed *default-speed*))
-  (declare (type wsg50-interface interface))
-  (with-fields (error)
-      (call-service (open-client interface) :width width :speed speed)
-    error))
+(defparameter *complete-open-width* 110
+  "Width corresponding to a maximally opened gripper for Schunk WSG50.")

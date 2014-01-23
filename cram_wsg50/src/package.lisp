@@ -31,4 +31,4 @@
 (defpackage :cram-wsg50
   (:use #:roslisp
         #:common-lisp)
-  (:export :make-wsg50-interface))
+  (:export :make-wsg50-interface :open-gripper))

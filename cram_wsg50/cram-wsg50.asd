@@ -39,4 +39,5 @@
     :components
     ((:file "package")
      (:file "client" :depends-on ("package"))
-     (:file "client-interface" :depends-on ("package" "client"))))))
+     (:file "parameters" :depends-on ("package"))
+     (:file "client-interface" :depends-on ("package" "client" "parameters"))))))
