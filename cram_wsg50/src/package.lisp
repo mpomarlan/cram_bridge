@@ -33,4 +33,4 @@
         #:common-lisp
         #:sb-thread)
   (:export :make-wsg50-interface :open-gripper :close-gripper :home-gripper
-           :wsg50-command-error :text :name))
+           :wsg50-command-error :width :speed :acceleration :force :text :error-code))
