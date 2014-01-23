@@ -30,24 +30,25 @@
 
 (defclass wsg50-interface ()
   ((open-client :initarg :open-client :accessor open-client :type service-client
-                 :documentation "ROS service client to command the gripper to open its
-                 fingers.")
+                 :documentation "For internal use. ROS service client to command the
+                 gripper to open its fingers.")
    (close-client :initarg :close-client :accessor close-client :type service-client
-                 :documentation "ROS service client to command the gripper to close its
-                 fingers.")
+                 :documentation "For internal use. ROS service client to command the
+                 gripper to close its fingers.")
    (homing-client :initarg :homing-client :accessor homing-client :type service-client
-                  :documentation "ROS service client to home the gripper.")
+                  :documentation "For internal use. ROS service client to home the gripper.")
    (status-subscriber :accessor status-subscriber :type subscriber
-                      :documentation "ROS topic subscriber to status topic of gripper.")
+                      :documentation "FOr internal use. ROS topic subscriber to status
+                      topic of gripper.")
    (status :accessor status :type wsg50-status
            :documentation "For internal use. Last reported status of gripper."))
-  (:documentation "ROS Interface talking to Schunk WSG50 gripper controller."))
+  (:documentation "For internal use. ROS Interface talking to Schunk WSG50 gripper controller."))
 
 (defclass wsg50-status ()
   ((width :initarg :width :reader width :type number
-          :documentation "Width opening of Schunk WSG50 gripper.")
+          :documentation "For internal use. Width opening of Schunk WSG50 gripper.")
    (max-acc :initarg :max-acc :reader max-acc :type number
-            :documentation "Maximum acceleration setting of Schunk WSG50 gripper.")
+            :documentation "For internal use. Maximum acceleration setting of Schunk WSG50 gripper.")
    (max-force :initarg :max-force :reader max-force :type number
-              :documentation "Maximum force setting of Schunk WSG50 gripper."))
+              :documentation "For internal use. Maximum force setting of Schunk WSG50 gripper."))
   (:documentation "For internal use. Gripper status of Schunk WSG50."))
