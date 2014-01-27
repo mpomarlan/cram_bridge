@@ -32,7 +32,7 @@
   ((text :initarg :text :reader text))
   (:documentation "Condition signalling an error in ROS message creation for Beasty controller."))
 
-(defgeneric to-msg (data)
+(defgeneric to-msg (data &key &allow-other-keys)
   (:documentation "Creates the ROS message corresponding to lisp-data `data'."))
 
 (defgeneric from-msg (msg)
@@ -41,7 +41,7 @@
 (defgeneric to-vector (data)
   (:documentation "Transforms `data' into a corresponding vector representation."))
 
-(defmethod to-msg ((robot beasty-robot))
+(defmethod to-msg ((robot beasty-robot) &key &allow-other-keys)
   "Creates 'dlr_msgs/tcu2rcu_Robot' and 'dlr_msgs/tcu2rcu_Settings' message using the data
    stored in `robot'."
   (let ((robot-msg
@@ -66,7 +66,7 @@
                             :ddx_o (base-acceleration (base-configuration robot)))))
     (values robot-msg settings-msg)))
 
-(defmethod to-msg ((params gravity-control-parameters))
+(defmethod to-msg ((params gravity-control-parameters) &key &allow-other-keys)
   "Creates a 'dlr_msgs/tcu2rcu_Controller' and a 'dlr_msgs/tcu2rcu_Interpolator' message
    using the data stored in `params' of type 'gravity-control-parameters'."
   (let ((controller-msg (roslisp:make-msg "dlr_msgs/tcu2rcu_Controller" :mode 3))
@@ -80,7 +80,7 @@
                            :o_t_via (to-vector (cl-transforms:make-identity-transform)))))
     (values controller-msg interpolator-msg)))
 
-(defmethod to-msg ((params joint-impedance-control-parameters))
+(defmethod to-msg ((params joint-impedance-control-parameters) &key &allow-other-keys)
   "Creates a 'dlr_msgs/tcu2rcu_Controller' and a 'dlr_msgs/tcu2rcu_Interpolator' message
    using the data stored in `params' of type 'joint-impedance-control-parameters'."
   (let ((controller-msg (roslisp:make-msg 
@@ -99,7 +99,7 @@
                            :o_t_via (to-vector (cl-transforms:make-identity-transform)))))
     (values controller-msg interpolator-msg)))
 
-(defmethod to-msg ((params cartesian-impedance-control-parameters))
+(defmethod to-msg ((params cartesian-impedance-control-parameters) &key &allow-other-keys)
   "Creates a 'dlr_msgs/tcu2rcu_Controller' and a 'dlr_msgs/tcu2rcu_Interpolator' message
    using the data stored in `params' of type 'cartesian-impedance-control-parameters'."
   (let ((controller-msg (roslisp:make-msg 
@@ -123,7 +123,7 @@
     (values controller-msg interpolator-msg)))
 
 ;; TODO(Georg): the next two are identical; find a way to re-use the methods.
-(defmethod to-msg ((params hard-stop-parameters))
+(defmethod to-msg ((params hard-stop-parameters) &key &allow-other-keys)
   "Creates a 'dlr_msgs/tcu2rcu_Controller' and a 'dlr_msgs/tcu2rcu_Interpolator' message
    using the data stored in `params' of type 'complete-stop-parameters'."
   (let ((controller-msg (roslisp:make-msg 
@@ -138,7 +138,7 @@
                            :o_t_via (to-vector (cl-transforms:make-identity-transform)))))
     (values controller-msg interpolator-msg)))
 
-(defmethod to-msg ((params safety-reset))
+(defmethod to-msg ((params safety-reset) &key &allow-other-keys)
   "Creates a 'dlr_msgs/tcu2rcu_Controller' and a 'dlr_msgs/tcu2rcu_Interpolator' message
    using the data stored in `params' of type 'safety-reset'."
   (let ((controller-msg (roslisp:make-msg 
@@ -153,7 +153,7 @@
                            :o_t_via (to-vector (cl-transforms:make-identity-transform)))))
     (values controller-msg interpolator-msg)))
 
-(defmethod to-msg ((params safety-settings))
+(defmethod to-msg ((params safety-settings) &key &allow-other-keys)
   "Creates a 'dlr_msgs/tcu2rcu_Safety' message using the data stored in `params' of type
  'safety-settings'."
   (unless (safety-settings-valid-p params)
@@ -162,8 +162,24 @@
    "dlr_msgs/tcu2rcu_Safety"
    :contact (roslisp:make-msg "dlr_msgs/tcu2rcu_Contact"
                               :strategy (convert-strategy-vector (reflexes params))
-                              :threshold *default-thresholds*)))
+                              :threshold *default-thresholds*)
+   :virt_env (roslisp:make-msg "dlr_msgs/tcu2rcu_VirtEnv"
+                               :human_ff_elements (to-msg (human params)))))
 
+(defmethod to-msg ((params cl-human-shapes:human-body) &key &allow-other-keys)
+  (let ((result (make-array 100 :initial-element 0))
+        (loop-counter 0))
+    (loop for body in (cl-human-shapes:body-parts params) do
+      (setf (subseq result (* 6 loop-counter) (* 6 (incf loop-counter))) (to-msg body)))
+    result))
+    
+(defmethod to-msg ((params cl-human-shapes:human-body-part) &key &allow-other-keys)
+  (vector (cl-transforms:x (cl-3d-shapes:centroid (cl-human-shapes:shape params)))
+          (cl-transforms:y (cl-3d-shapes:centroid (cl-human-shapes:shape params)))
+          (cl-transforms:z (cl-3d-shapes:centroid (cl-human-shapes:shape params)))
+          (cl-3d-shapes:radius (cl-human-shapes:shape params))
+          200)) ; TODO(Georg): stiffness
+   
 (defun convert-strategy-vector (strategies)
   "Iterates over all strategy entries in hash-table `strategies' and transforms them into a
  vector of numbers. The format corresponds to the expectations of beasty in 'tcu2rcu...'."

@@ -38,8 +38,8 @@
    :cancel-command :robot :state :stop-beasty
    ;; modelling of LWR robot for beasty
    :beasty-robot :simulation-flag :tool-configuration :base-configuration
-   :beasty-base :base-transform :base-acceleration :beasty-tool :ee-transform
-   :mass :com :collision :joint-name :collision-type :link-name
+   :beasty-base :base-transform :base-acceleration :base-frame-id :beasty-tool
+   :ee-transform :mass :com :collision :joint-name :collision-type :link-name
    ;; commanding gravity compensation parameters
    :gravity-control-parameters :max-joint-vel :max-joint-acc
    ;; commanding joint impedance parameters
@@ -56,7 +56,7 @@
    :get-strongest-collision
    ;; safety settings
    :make-safety-settings :store-reflex :remove-reflex :safety-settings-valid-p
-   :make-beasty-reflex
+   :make-beasty-reflex :human
    ;; collision types
    :NO-COLLISION :CONTACT :LIGHT-COLLISION :STRONG-COLLISION :SEVERE-COLLISION
    ;; reaction types

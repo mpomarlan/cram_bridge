@@ -156,7 +156,11 @@ impedance motion of Beasty, defined w.r.t. arm base. Order: t_x, t_y, t_z, r_x, 
  following keys which correspond to detected collisions _have_ to be provided: :CONTACT,
  :LIGHT-COLLISION, :STRONG-COLLISION, SEVERE-COLLISION. Values are expected to be instances
  of type 'beasty-reflex'. The following reaction-types for in reflexes are currently
- supported: :IGNORE, :ZERO-G, :JOINT-IMP, :SOFT-STOP, :HARD-STOP:"))
+ supported: :IGNORE, :ZERO-G, :JOINT-IMP, :SOFT-STOP, :HARD-STOP:")
+   (human :initform (cl-human-shapes:make-human-body) :accessor human :initarg :human
+          :type cl-human-shapes:human-body
+          :documentation "Simple sphere-based representation of human co-worker which 
+          should be avoided by arm."))
   (:documentation "Class representing the safety settings to be used for the current goal."))
 
 (defclass beasty-reflex ()

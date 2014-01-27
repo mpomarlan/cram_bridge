@@ -36,7 +36,10 @@
                cl-transforms
                actionlib
                dlr_msgs-msg
-               visualization_msgs-msg)
+               visualization_msgs-msg
+               cl-human-shapes
+               cl-3d-shapes
+               cl-transforms)
   :components
   ((:module "src"
     :components
