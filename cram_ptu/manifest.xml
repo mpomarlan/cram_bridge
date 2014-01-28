@@ -1,0 +1,18 @@
+<package>
+  <description brief="cram_ptu">
+
+     CRAM interface package to command PTU unit.
+
+  </description>
+  <author>Georg Bartels</author>
+  <license>BSD</license>
+
+  <rosdep name="sbcl"/>
+  <depend package="roslisp"/>
+  <depend package="actionlib_lisp"/>
+  <depend package="cogman_msgs"/>
+  <depend package="cl_tf"/>
+  <depend package="cl_transforms"/>
+</package>
+
+
