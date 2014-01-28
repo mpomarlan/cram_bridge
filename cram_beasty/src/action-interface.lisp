@@ -88,15 +88,21 @@
   (with-recursive-lock ((execution-lock interface)) nil))
 
 (defun stop-beasty (interface)
-  "Stops the beasty-controlled LWR behind `interface' by sending a soft joint-impedance
- goal for the current configuration reported by the controller."
+  "Stops the beasty-controlled LWR behind `interface' by commanding the controller
+ to stop the last moveto-goal."
   (declare (type beasty-interface interface))
   (cancel-command interface)
   (with-recursive-lock ((execution-lock interface))
-    (let ((identity-goal (make-joint-impedance-goal 
-                          :joint-goal (joint-values (cpl:value (state interface))))))
-      (command-beasty interface identity-goal))))
+    (let* ((stop-parameters (make-instance 'stop-parameters))
+           (command-code (get-beasty-command-code (infer-command-symbol stop-parameters)))
+           (stop-goal (actionlib:make-action-goal
+                         (action-client interface)
+                        :command command-code
+                        :parameters (make-parameter-msg interface stop-parameters
+                                                        *default-safety-settings*))))
+      (send-non-cancelable-goal-to-beasty interface stop-goal command-code))))
 
+;; TODO(Georg): introduce global parameters for the next numbers
 (defun make-joint-impedance-goal (&key (joint-goal (make-array 7 :initial-element 0))
                                     (max-joint-vel (make-array 7 :initial-element 1))
                                     (max-joint-acc (make-array 7 :initial-element 0.5)))
@@ -173,7 +179,8 @@ subscriber converts state-msg into an instance of class 'beasty-state' and saves
     (joint-impedance-control-parameters :MOVETO)
     (cartesian-impedance-control-parameters :MOVETO)
     (hard-stop-parameters :STOP)
-    (safety-reset :RESET_SAFETY)))
+    (safety-reset :RESET_SAFETY)
+    (stop-parameters :STOP)))
                            
 (defun make-parameter-msg (interface parameters safety)
   "Creates the appropriate parameter message to control `robot' behind `interface' to
@@ -183,20 +190,28 @@ subscriber converts state-msg into an instance of class 'beasty-state' and saves
   (ensure-correct-emergency-status (robot interface) parameters)
   (multiple-value-bind (robot-msg settings-msg) (to-msg (robot interface))
     (multiple-value-bind (controller-msg interpolator-msg) (to-msg parameters)
-      (let ((safety-msg (to-msg safety)))
+      (let ((safety-msg (to-msg safety))
+            ;; TODO(Georg): make this a to-msg??
+            (communication-msg (make-command-communication-msg interface parameters)))
         (roslisp:make-msg 
          "dlr_msgs/tcu2rcu"
-         :com (roslisp:make-msg 
-               "dlr_msgs/tcu2rcu_Com"
-               :command (get-beasty-command-code 
-                         (infer-command-symbol parameters))
-               :cmd_id (cmd-id interface)
-               :session_id (session-id interface))
+         :com communication-msg
          :robot robot-msg
          :controller controller-msg
          :interpolator interpolator-msg
          :settings settings-msg
          :safety safety-msg)))))
+
+(defun make-command-communication-msg (interface parameters)
+  "Creates the appropriate communication-msg to send a command of type `parameters' to 
+ beasty controller behind `interface'."
+  (declare (type beasty-interface interface))
+  (roslisp:make-msg 
+   "dlr_msgs/tcu2rcu_Com"
+   :command (get-beasty-command-code 
+             (infer-command-symbol parameters))
+   :cmd_id (cmd-id interface)
+   :session_id (session-id interface)))
 
 (defun ensure-correct-emergency-status (robot parameters)
   "Sets the 'emergency-released-flag' of `robot' to 'nil' if `parameters' is of type

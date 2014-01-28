@@ -150,6 +150,10 @@ impedance motion of Beasty, defined w.r.t. arm base. Order: t_x, t_y, t_z, r_x, 
   (:documentation "Class to command complete stop of the arm _with_ kicking in of the
    brakes. NOTE: This is brutal when done during motion."))
 
+(defclass stop-parameters () ()
+  (:documentation "Class to command complete stop of the arm _with_ kicking in of the
+   brakes. NOTE: This is brutal when done during motion."))
+
 (defclass safety-settings ()
   ((reflexes :initform (make-hash-table) :accessor reflexes :type hash-table
                :documentation "Hash-table holding the reflex strategy definitions. The
