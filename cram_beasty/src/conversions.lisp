@@ -158,13 +158,17 @@
  'safety-settings'."
   (unless (safety-settings-valid-p params)
     (error 'beasty-conversion-error :text "Provided safety settings were not valid."))
-  (roslisp:make-msg 
-   "dlr_msgs/tcu2rcu_Safety"
-   :contact (roslisp:make-msg "dlr_msgs/tcu2rcu_Contact"
-                              :strategy (convert-strategy-vector (reflexes params))
-                              :threshold *default-thresholds*)
-   :virt_env (roslisp:make-msg "dlr_msgs/tcu2rcu_VirtEnv"
-                               :human_ff_elements (to-msg (human params)))))
+  (let ((msg
+          (roslisp:make-msg 
+           "dlr_msgs/tcu2rcu_Safety"
+           :contact (roslisp:make-msg "dlr_msgs/tcu2rcu_Contact"
+                                      :strategy (convert-strategy-vector (reflexes params))
+                                      :threshold *default-thresholds*)
+           :virt_env (roslisp:make-msg "dlr_msgs/tcu2rcu_VirtEnv"
+                                       :human_ff_elements (to-msg (human params))))))
+    (roslisp:with-fields (switches) msg
+      (setf (elt switches 5) 128)) ; activate human-avoidance
+    msg))
 
 (defmethod to-msg ((params cl-human-shapes:human-body) &key &allow-other-keys)
   (let ((result (make-array 100 :initial-element 0))
