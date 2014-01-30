@@ -31,4 +31,6 @@
 (defpackage :cram-ik-proxy
   (:use #:roslisp
         #:common-lisp
-        #:sb-thread))
+        #:sb-thread)
+  (:export :make-ik-proxy-interface :cleanup-ik-proxy-interface :get-ik
+           :ik-query-error :ik-root-link :ik-tip-link :joint-names))
