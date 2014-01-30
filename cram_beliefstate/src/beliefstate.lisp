@@ -252,4 +252,38 @@
   (extract-files name)
   (extract-mongodb-entries))
 
-;(defun register-collision-object (
+(defun register-interactive-object (name shape pose dimensions menu)
+  (alter-node
+   (cram-designators:make-designator
+    'cram-designators:action
+    (list (list 'command 'register-interactive-object)
+          (list 'name name)
+          (list 'shape shape)
+          (list 'pose pose)
+          (list 'width (elt dimensions 0))
+          (list 'depth (elt dimensions 1))
+          (list 'height (elt dimensions 2))
+          (list 'menu menu)))))
+
+(defun unregister-interactive-object (name)
+  (alter-node
+   (cram-designators:make-designator
+    'cram-designators:action
+    (list (list 'command 'unregister-interactive-object)
+          (list 'name name)))))
+
+(defun set-interactive-object-menu (name menu)
+  (alter-node
+   (cram-designators:make-designator
+    'cram-designators:action
+    (list (list 'command 'set-interactive-object-menu)
+          (list 'name name)
+          (list 'menu menu)))))
+
+(defun set-interactive-object-pose (name pose)
+  (alter-node
+   (cram-designators:make-designator
+    'cram-designators:action
+    (list (list 'command 'set-interactive-object-pose)
+          (list 'name name)
+          (list 'pose pose)))))

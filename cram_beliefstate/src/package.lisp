@@ -56,5 +56,10 @@
    add-failure-to-active-node
    add-designator-to-active-node
    equate-designators
-   set-metadata)
+   set-metadata
+   ;; Interactive objects
+   register-interactive-object
+   unregister-interactive-object
+   set-interactive-object-menu
+   set-interactive-object-pose)
   (:designator-properties #:is-new))
