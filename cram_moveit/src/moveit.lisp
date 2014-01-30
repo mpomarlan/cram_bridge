@@ -28,14 +28,14 @@
 (in-package :cram-moveit)
 
 (defvar *move-group-action-client* nil)
-(defvar *attached-object-publisher* nil
-  "Publisher handle for attaching and detaching collicion objects through /attached_collision_object.")
 (defvar *joint-states-fluent* nil
   "Fluent that keeps track of whether joint states were received or now.")
 (defvar *joint-states* nil
   "List of current joint states as published by /joint_states.")
 (defvar *joint-states-subscriber* nil
   "Subscriber to /joint_states.")
+
+(defparameter *scene-msg* nil)
 
 (defun init-moveit-bridge ()
   "Sets up the basic action client communication handles for the
@@ -45,10 +45,7 @@ MoveIt! framework and registers known conditions."
         (roslisp:advertise
          "/planning_scene"
          "moveit_msgs/PlanningScene" :latch t))
-  (setf *attached-object-publisher*
-        (roslisp:advertise
-         "/attached_collision_object"
-         "moveit_msgs/AttachedCollisionObject" :latch t))
+  (roslisp:publish *planning-scene-publisher* *scene-msg*)
   (setf *joint-states-fluent*
         (cram-language:make-fluent :name "joint-state-tracker"))
   (setf *joint-states-subscriber*
@@ -67,7 +64,7 @@ MoveIt! framework and registers known conditions."
            for p = (elt position i)
            collect (cons n p)))))
 
-(register-ros-init-function init-moveit-bridge)
+(roslisp-utilities:register-ros-init-function init-moveit-bridge)
 
 (defun joint-states ()
   *joint-states*)
@@ -123,10 +120,11 @@ MoveIt! framework and registers known conditions."
                      "moveit_msgs/PlanningScene"
                      fixed_frame_transforms rpose
                      is_diff t)))
-    (prog1 (roslisp:publish *planning-scene-publisher* scene-msg)
-      (roslisp:ros-info
-       (moveit)
-       "Setting robot planning pose."))))
+    (setf *scene-msg* scene-msg)
+    (when *planning-scene-publisher*
+      (prog1
+          (roslisp:publish *planning-scene-publisher* scene-msg)
+        (roslisp:ros-info (moveit) "Setting robot planning pose.")))))
 
 (defun set-planning-robot-state (joint-states)
   (let* ((rstate-msg (roslisp:make-msg
@@ -153,10 +151,11 @@ MoveIt! framework and registers known conditions."
                      "moveit_msgs/PlanningScene"
                      robot_state rstate-msg
                      is_diff t)))
-    (prog1 (roslisp:publish *planning-scene-publisher* scene-msg)
-      (roslisp:ros-info
-       (moveit)
-       "Setting robot planning state."))))
+    (setf *scene-msg* scene-msg)
+    (when *planning-scene-publisher*
+      (prog1
+          (roslisp:publish *planning-scene-publisher* scene-msg)
+        (roslisp:ros-info (moveit) "Setting robot planning state.")))))
 
 (defun move-base (pose-stamped)
   (let* ((link-name "base_link")
