@@ -1,4 +1,4 @@
-;;; Copyright (c) 2013, Georg Bartels <georg.bartels@cs.uni-bremen.de>
+;;; Copyright (c) 2014, Georg Bartels <georg.bartels@cs.uni-bremen.de>
 ;;; All rights reserved.
 ;;;
 ;;; Redistribution and use in source and binary forms, with or without
@@ -26,29 +26,19 @@
 ;;; ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ;;; POSSIBILITY OF SUCH DAMAGE.
 
-(defsystem cram-beasty
-  :author "Georg Bartels <georg.bartels@cs.uni-bremen.de>"
-  :license "BSD"
-  :description "Interface package of CRAM to command Beasty LWR controllers."
+(in-package :cram-wsg50)
 
-  :depends-on (roslisp
-               cram-language
-               cl-transforms
-               actionlib
-               dlr_msgs-msg
-               visualization_msgs-msg
-               cl-human-shapes
-               cl-3d-shapes
-               cl-transforms)
-  :components
-  ((:module "src"
-    :components
-    ((:file "package")
-     (:file "data-structures" :depends-on ("package"))
-     (:file "safety-settings" :depends-on ("package" "data-structures"))
-     (:file "conversions" :depends-on ("package" "data-structures" "safety-settings"))
-     (:file "visualization" :depends-on ("package" "data-structures"))
-     (:file "utils" :depends-on ("package"))
-     (:file "user-management" :depends-on ("package" "utils"))
-     (:file "action-interface" 
-      :depends-on ("package" "user-management" "data-structures" "conversions" "visualization"))))))
+(defparameter *default-speed* 400
+  "Default speed (in mm/s) for opening and closing of Schunk WSG50 gripper.")
+(defparameter *default-acceleration* 700
+  "Default acceleration (in mm/s2) for opening and closing of Schunk WSG50 gripper.")
+(defparameter *default-force* 15
+  "Default force (in N) for opening and closing of Schunk WSG50 gripper.")
+
+(defparameter *completely-open-width* 110
+  "Width (in mm) corresponding to a completely opened gripper for Schunk WSG50.")
+(defparameter *completely-closed-width* 0
+  "Width (in mm) corresponding to a completely closed gripper for Schunk WSG50.")
+
+(defparameter *no-error-occured-code* 0
+  "Calls to the WSG50 gripper return error codes. This one signals success.")

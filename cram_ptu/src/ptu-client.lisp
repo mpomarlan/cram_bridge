@@ -1,4 +1,4 @@
-;;; Copyright (c) 2013, Georg Bartels <georg.bartels@cs.uni-bremen.de>
+;;; Copyright (c) 2014, Georg Bartels <georg.bartels@cs.uni-bremen.de>
 ;;; All rights reserved.
 ;;;
 ;;; Redistribution and use in source and binary forms, with or without
@@ -26,29 +26,18 @@
 ;;; ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ;;; POSSIBILITY OF SUCH DAMAGE.
 
-(defsystem cram-beasty
-  :author "Georg Bartels <georg.bartels@cs.uni-bremen.de>"
-  :license "BSD"
-  :description "Interface package of CRAM to command Beasty LWR controllers."
+(in-package :cram-ptu)
 
-  :depends-on (roslisp
-               cram-language
-               cl-transforms
-               actionlib
-               dlr_msgs-msg
-               visualization_msgs-msg
-               cl-human-shapes
-               cl-3d-shapes
-               cl-transforms)
-  :components
-  ((:module "src"
-    :components
-    ((:file "package")
-     (:file "data-structures" :depends-on ("package"))
-     (:file "safety-settings" :depends-on ("package" "data-structures"))
-     (:file "conversions" :depends-on ("package" "data-structures" "safety-settings"))
-     (:file "visualization" :depends-on ("package" "data-structures"))
-     (:file "utils" :depends-on ("package"))
-     (:file "user-management" :depends-on ("package" "utils"))
-     (:file "action-interface" 
-      :depends-on ("package" "user-management" "data-structures" "conversions" "visualization"))))))
+(defclass ptu-interface ()
+  ((action-client :initarg :action-client :accessor action-client 
+                  :type actionlib::action-client
+                  :documentation "For internal use. ROS action client talking to PTU.")
+   (tf-broadcaster :initarg :tf-broadcaster :accessor tf-broadcaster
+                   :type roslisp::publication
+                   :documentation "For internal use. TF broadcaster to publish tf frames.")
+   (command-lock :initform (make-mutex :name (string (gensym "PTU-COMMAND-LOCK-")))
+                 :accessor command-lock :type mutex
+                 :documentation "For internal use. Mutex to guard commanding PTU unit to 
+                 ensure one command at a time."))
+  (:documentation "CRAM class holding necessary ROS infrastructure to interface to a PTU
+   unit."))
