@@ -36,6 +36,8 @@
 (defvar *uima-trigger-service-topic* "/uima/uima_trigger")
 (defvar *uima-results-topic* "/uima/uima_result")
 
+(define-condition uima-not-running () ())
+
 (defun init-uima-bridge ()
   "Sets up the basic action client communication handles for the
 UIMA framework."
@@ -113,22 +115,28 @@ for a reply on another topic."
              (desig:location-designator 'cram-designators:location))
            (description designator-request))))
     (equate designator-request designator-request-plus-id)
-    (format t "Waiting for hook 1~%")
+    (roslisp:ros-info (uima) "Waiting for perception results")
     (let ((log-id (hook-before-uima-request designator-request-plus-id))
           (result-designators
-            (ecase *uima-comm-mode*
-              (:topic
-               (trigger designator-request-plus-id)
-               (when (cpl:wait-for *uima-result-fluent*)
-                 (roslisp:with-fields (designators)
-                     (cpl:value *uima-result-fluent*)
-                   (map 'list (lambda (x)
-                                (desig-int::msg->designator x))
-                        designators))))
-              (:service
-               (desig-int::call-designator-service
-                *uima-service-topic* designator-request-plus-id)))))
-      (format t "Waiting for hook 2~%")
+            (cpl:with-failure-handling
+                ((cpl:policy-check-condition-met (f)
+                   (declare (ignore f))
+                   (roslisp:ros-error (uima) "UIMA seems not to be running (Reason: Timeout).")
+                   (roslisp:ros-error (uima) "Start it for perception.")))
+              (cpl:with-policy cpl:timeout-policy (20.0) ; 20.0 seconds timeout
+                (ecase *uima-comm-mode*
+                  (:topic
+                   (trigger designator-request-plus-id)
+                   (when (cpl:wait-for *uima-result-fluent*)
+                     (roslisp:with-fields (designators)
+                         (cpl:value *uima-result-fluent*)
+                       (map 'list (lambda (x)
+                                    (desig-int::msg->designator x))
+                            designators))))
+                  (:service
+                   (desig-int::call-designator-service
+                    *uima-service-topic* designator-request-plus-id)))))))
+      (roslisp:ros-info (uima) "Post processing perception results")
       (hook-after-uima-request log-id result-designators)
       result-designators)))
 
