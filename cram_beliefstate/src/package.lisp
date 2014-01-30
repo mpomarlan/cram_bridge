@@ -61,5 +61,8 @@
    register-interactive-object
    unregister-interactive-object
    set-interactive-object-menu
-   set-interactive-object-pose)
-  (:designator-properties #:is-new))
+   set-interactive-object-pose
+   ;; Interactive callbacks
+   register-interactive-callback
+   unregister-interactive-callback)
+  (:designator-properties))

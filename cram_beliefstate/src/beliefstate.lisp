@@ -29,6 +29,30 @@
 
 (defvar *planlogging-namespace* "/beliefstate_ros")
 (defvar *kinect-topic-rgb* "/kinect_head/rgb/image_color")
+(defvar *interactive-callback-fluent* (cpl:make-fluent))
+(defparameter *interactive-callback-subscriber* nil)
+(defparameter *registered-interactive-callbacks* nil)
+
+(defun init-beliefstate ()
+  (setf *registered-interactive-callbacks* nil)
+  (setf *interactive-callback-subscriber*
+        (roslisp:subscribe "/interactive_callback"
+                           "designator_integration_msgs/Designator"
+                           #'interactive-callback)))
+
+(defun interactive-callback (msg)
+  (let* ((desig (setf (cpl:value *interactive-callback-fluent*)
+                      (designator-integration-lisp::msg->designator
+                       msg)))
+         (callback (cdr (find (desig-prop-value desig 'desig-props::command)
+                              *registered-interactive-callbacks*
+                              :test (lambda (x y)
+                                      (string= x (car y)))))))
+    (when callback
+      (funcall callback (desig-prop-value desig 'desig-props::command)
+                        (desig-prop-value desig 'desig-props::parameter)))))
+
+(roslisp-utilities:register-ros-init-function init-beliefstate)
 
 (defun fully-qualified-service-name (service-name)
   (concatenate 'string *planlogging-namespace* "/" service-name))
@@ -287,3 +311,21 @@
     (list (list 'command 'set-interactive-object-pose)
           (list 'name name)
           (list 'pose pose)))))
+
+(defun register-interactive-callback (command callback-function)
+  "Callback functions need to receive two parameters: one for the
+object name clicked, and one for the optional parameter given when the
+menu entry for the interactive object was assigned."
+  (setf *registered-interactive-callbacks*
+        (remove command *registered-interactive-callbacks*
+                :test (lambda (x y)
+                        (string= x (car y)))))
+  (push (cons command callback-function)
+        *registered-interactive-callbacks*))
+
+(defun unregister-interactive-callback (command callback-function)
+  (setf *registered-interactive-callbacks*
+        (remove command *registered-interactive-callbacks*
+                :test (lambda (x y)
+                        (and (string= x (car y))
+                             (eql callback-function (cdr y)))))))
