@@ -72,3 +72,14 @@
                            'iai_kinematics_msgs-msg:ErrorCodes :success))
       (error 'ik-query-error :text "IK Solver returned with no solution, of course."))
     solution))
+
+(defmethod get-ik ((interface ik-proxy-interface) (goal-transform cl-tf:stamped-transform)
+                   (seed-state list))
+  "Queries the server behind `interface' for an IK solution around `seed-state' putting the
+ ik-root-link at `goal-pose'."
+  (with-slots (cl-tf:frame-id cl-tf:stamp cl-tf:translation cl-tf:rotation) goal-transform
+    (get-ik 
+     interface 
+     (cl-tf:make-pose-stamped cl-tf:frame-id cl-tf:stamp cl-tf:translation cl-tf:rotation)
+     seed-state)))
+     
