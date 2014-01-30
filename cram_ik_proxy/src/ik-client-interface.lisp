@@ -57,12 +57,12 @@
  a starting point of the solver."))
 
 (defmethod get-ik ((interface ik-proxy-interface) (goal-pose cl-tf:pose-stamped)
-                   (seed-state list))
+                   (seed-state vector))
   "Queries the server behind `interface' for an IK solution around `seed-state' putting the
  ik-root-link at `goal-pose'."
   (unless (eql (length seed-state) (length (joint-names interface)))
     (error 'ik-query-error :text "Given seed-state has not the right amount of values."))
-  (roslisp:with-fields ((solution (joint_state solution))
+  (roslisp:with-fields ((solution (position joint_state solution))
                         (error-code (val error_code)))
       (roslisp:call-persistent-service
        (ik-client interface)
@@ -74,7 +74,7 @@
     solution))
 
 (defmethod get-ik ((interface ik-proxy-interface) (goal-transform cl-tf:stamped-transform)
-                   (seed-state list))
+                   (seed-state vector))
   "Queries the server behind `interface' for an IK solution around `seed-state' putting the
  ik-root-link at `goal-pose'."
   (with-slots (cl-tf:frame-id cl-tf:stamp cl-tf:translation cl-tf:rotation) goal-transform

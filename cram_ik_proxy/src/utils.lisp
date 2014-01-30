@@ -47,7 +47,7 @@
  with the contents of `interface', `goal-pose' and `seed-state'."
   (declare (type ik-proxy-interface interface)
            (type cl-tf:pose-stamped goal-pose)
-           (type list seed-state))
+           (type vector seed-state))
   (roslisp:make-msg
    "iai_kinematics_msgs/PositionIKRequest"
    :ik_link_name (ik-tip-link interface)
@@ -57,13 +57,13 @@
 (defun make-seed-state-msg (interface seed-state)
   "Creates and returns an instance of type 'iai_kinematics_msgs/RobotState' filled with the
  content of `interface' and `seed-state'."
-  (declare (type list seed-state)
+  (declare (type vector seed-state)
            (type ik-proxy-interface interface))
   (roslisp:make-msg 
    "iai_kinematics_msgs/RobotState"
    :joint_state (roslisp:make-msg 
                  "sensor_msgs/JointState"
                  :name (coerce (joint-names interface) 'vector)
-                 :position (coerce seed-state 'vector)
+                 :position seed-state
                  :velocity (make-array (length seed-state) :initial-element 0)
                  :effort (make-array (length seed-state) :initial-element 0))))
