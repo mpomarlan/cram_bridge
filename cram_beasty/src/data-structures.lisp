@@ -95,7 +95,7 @@
   ((joint-goal :initform (make-array 7 :initial-element 0.0) :initarg :joint-goal
                :accessor joint-goal :type vector
                :documentation "Joint-space goal vector in radians.")
-   (joint-stiffness :initform (make-array 7 :initial-element 20.0) 
+   (joint-stiffness :initform (make-array 7 :initial-element 80.0) 
                     :accessor joint-stiffness :type vector
                     :documentation "Joint stiffness vector. Range: 0...2000.")
    (joint-damping :initform (make-array 7 :initial-element 0.7) :accessor joint-damping
