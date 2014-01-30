@@ -13,6 +13,8 @@
   <depend package="cogman_msgs"/>
   <depend package="cl_tf"/>
   <depend package="cl_transforms"/>
+  <depend package="rospy"/>
+  <depend package="tf"/>
 </package>
 
 

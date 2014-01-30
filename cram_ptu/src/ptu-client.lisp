@@ -38,6 +38,9 @@
    (command-lock :initform (make-mutex :name (string (gensym "PTU-COMMAND-LOCK-")))
                  :accessor command-lock :type mutex
                  :documentation "For internal use. Mutex to guard commanding PTU unit to 
-                 ensure one command at a time."))
+                 ensure one command at a time.")
+   (tf-relay :initarg :tf-relay :accessor tf-relay
+             :type actionlib::action-client
+             :documentation "For interal use. ROS action client for relay transforms."))
   (:documentation "CRAM class holding necessary ROS infrastructure to interface to a PTU
    unit."))

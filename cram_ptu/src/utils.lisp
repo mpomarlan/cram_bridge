@@ -38,3 +38,11 @@
 (defun make-pointing-frame-id ()
   "Creates randomized unique frame-id of type string to use in tf-broadcasting."
   (symbol-name (gensym "PTU-POINTING-FRAME")))
+
+(defun broadcast-tf (interface transform)
+  (declare (type cl-tf:stamped-transform transform)
+           (type ptu-interface interface))
+  (let* ((action-goal (actionlib:make-action-goal
+                          (tf-relay interface)
+                        :transform (cl-tf::transform->msg transform))))
+    (actionlib:send-goal-and-wait (tf-relay interface) action-goal)))
