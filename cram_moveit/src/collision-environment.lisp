@@ -269,11 +269,13 @@ bridge.")
         (roslisp:ros-info (moveit) "Transforming link from ~a into ~a"
                           (tf:frame-id current-pose-stamped)
                           target-link)
-        (tf:wait-for-transform
-         *tf*
-         :time time
-         :source-frame (tf:frame-id current-pose-stamped)
-         :target-frame target-link)
+        (loop while (not (tf:wait-for-transform
+                          *tf*
+                          :time time
+                          :timeout 3.0
+                          :source-frame (tf:frame-id current-pose-stamped)
+                          :target-frame target-link))
+              do (sleep 0.1))
         (let* ((pose-in-link (tf:transform-pose
                               *tf*
                               :pose (tf:copy-pose-stamped
