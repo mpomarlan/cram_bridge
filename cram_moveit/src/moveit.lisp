@@ -213,10 +213,11 @@ MoveIt! framework and registers known conditions."
                       :w (tf:w (tf:orientation pose-stamped)))
                      :absolute_x_axis_tolerance 0.001
                      :absolute_y_axis_tolerance 0.001
-                     :absolute_z_axis_tolerance 0.001))))))
-         ;; TODO(winkler): Implement the movement of the robot base
-         ;; here.
-         )))
+                     :absolute_z_axis_tolerance 0.001)))))))
+    (declare (ignore mpreq))
+    ;; TODO(winkler): Implement the movement of the robot base
+    ;; here.
+    ))
 
 (defun move-link-pose (link-name planning-group pose-stamped
                        &key allowed-collision-objects
