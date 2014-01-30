@@ -12,5 +12,6 @@
   <depend package="moveit_msgs" />
   <depend package="roslisp" />
   <depend package="actionlib" />
+  <depend package="roslisp_utilities" />
   
 </package>

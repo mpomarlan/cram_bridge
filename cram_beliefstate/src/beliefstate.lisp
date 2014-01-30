@@ -30,11 +30,6 @@
 (defvar *planlogging-namespace* "/beliefstate_ros")
 (defvar *kinect-topic-rgb* "/kinect_head/rgb/image_color")
 
-(defun beliefstate-init ()
-  )
-
-(register-ros-init-function beliefstate-init)
-
 (defun fully-qualified-service-name (service-name)
   (concatenate 'string *planlogging-namespace* "/" service-name))
 

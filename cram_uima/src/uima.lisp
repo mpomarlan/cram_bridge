@@ -47,7 +47,7 @@ UIMA framework."
          :value nil
          :allow-tracing nil)))
 
-(register-ros-init-function init-uima-bridge)
+(roslisp-utilities:register-ros-init-function init-uima-bridge)
 
 (defun set-comm-mode (comm-mode
                       &key
