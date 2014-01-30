@@ -28,7 +28,7 @@
 
 (in-package :cram-ik-proxy)
 
-(define-condition ik-command-error (error)
+(define-condition ik-query-error (error)
   ((text :initarg :text :reader text))
   (:documentation "Condition signalling an error querying an IK service."))
 
@@ -61,7 +61,7 @@
   "Queries the server behind `interface' for an IK solution around `seed-state' putting the
  ik-root-link at `goal-pose'."
   (unless (eql (length seed-state) (length (joint-names interface)))
-    (error 'ik-command-error :text "Given seed-state has not the right amount of values."))
+    (error 'ik-query-error :text "Given seed-state has not the right amount of values."))
   (roslisp:with-fields ((solution (joint_state solution))
                         (error-code (val error_code)))
       (roslisp:call-persistent-service
@@ -70,5 +70,5 @@
        :timeout 1.0)
     (unless (eql error-code (roslisp-msg-protocol:symbol-code
                            'iai_kinematics_msgs-msg:ErrorCodes :success))
-      (error 'ik-command-error :text "IK Solver returned with no solution, of course."))
+      (error 'ik-query-error :text "IK Solver returned with no solution, of course."))
     solution))
