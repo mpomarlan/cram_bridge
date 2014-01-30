@@ -55,5 +55,6 @@
    add-topic-image-to-active-node
    add-failure-to-active-node
    add-designator-to-active-node
-   equate-designators)
+   equate-designators
+   set-metadata)
   (:designator-properties #:is-new))

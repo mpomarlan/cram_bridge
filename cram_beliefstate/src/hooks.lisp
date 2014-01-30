@@ -1,24 +1,7 @@
-(in-package :cpl-impl)
+(in-package :beliefstate)
 
-(defmethod hook-before-task-execution :around (name log-parameters)
-  (beliefstate:start-node name log-parameters 1))
-
-(defmethod hook-after-task-execution :around (id)
-  (beliefstate:stop-node id))
-
-(defmethod hook-before-named-top-level :around (name)
-  (beliefstate:start-node name `() 1))
-
-(defmethod hook-after-named-top-level :around (id)
-  (beliefstate:stop-node id))
-
-(defmethod hook-on-fail :around (condition)
-  (beliefstate:add-failure-to-active-node condition))
-
-
-(in-package :plan-lib)
-
-(defmethod hook-before-performing-action-designator :around (designator matching-process-modules)
+(defmethod plan-lib::on-preparing-performing-action-designator
+    cram-beliefstate (designator matching-process-modules)
   (prog1
       (beliefstate:start-node
        "PERFORM-ACTION-DESIGNATOR"
@@ -32,17 +15,36 @@
        2)
     (beliefstate:add-designator-to-active-node designator)))
 
-(defmethod hook-after-performing-action-designator :around (id success)
+(defmethod plan-lib::on-finishing-performing-action-designator
+    cram-beliefstate (id success)
   (declare (ignore success))
   ;; NOTE(winkler): Success is not used at the moment. It would be
   ;; nice to have an additional service, saying "append data to
   ;; current task". The success would the go there.
   (beliefstate:stop-node id))
 
-(defmethod hook-with-designator :around (designator)
+(defmethod plan-lib::on-with-designator cram-beliefstate (designator)
   (beliefstate:add-designator-to-active-node
-   designator))
+   designator))  
 
+(defmethod cpl-impl::on-preparing-named-top-level cram-beliefstate (name)
+  (let ((name (or name "ANONYMOUS-TOP-LEVEL")))
+    (beliefstate:start-node name `() 1)))
+
+(defmethod cpl-impl::on-finishing-named-top-level cram-beliefstate (id)
+  (beliefstate:stop-node id))
+
+(defmethod cpl-impl::on-preparing-task-execution cram-beliefstate (name log-parameters)
+  (beliefstate:start-node name log-parameters 1))
+
+(defmethod cpl-impl::on-finishing-task-execution cram-beliefstate (id)
+  (beliefstate:stop-node id))
+
+
+(in-package :cpl-impl)
+
+(defmethod hook-on-fail :around (condition)
+  (beliefstate:add-failure-to-active-node condition))
 
 (in-package :desig)
 

@@ -28,26 +28,18 @@
 (in-package :cram-beliefstate)
 
 (defvar *planlogging-namespace* "/beliefstate_ros")
-(defvar *designator-publisher* nil)
-(defvar *designator-topic* "/logged_designators")
 (defvar *kinect-topic-rgb* "/kinect_head/rgb/image_color")
 
 (defun beliefstate-init ()
-  (setf *designator-publisher*
-        (roslisp:advertise
-         *designator-topic*
-         'designator_integration_msgs-msg:designator)))
+  )
 
 (register-ros-init-function beliefstate-init)
 
 (defun fully-qualified-service-name (service-name)
-  (concatenate 'string
-               *planlogging-namespace*
-               "/" service-name))
+  (concatenate 'string *planlogging-namespace* "/" service-name))
 
 (defun start-node (name log-parameters detail-level)
-  (let ((service (fully-qualified-service-name
-                  "begin_context")))
+  (let ((service (fully-qualified-service-name "begin_context")))
     (when (roslisp:wait-for-service service 0.3)
       (let* ((parameters
                (mapcar (lambda (x) x)
@@ -64,8 +56,7 @@
             (desig-prop-value result 'desig-props::_id))))))
 
 (defun stop-node (id &key (success t))
-  (let ((service (fully-qualified-service-name
-                  "end_context")))
+  (let ((service (fully-qualified-service-name "end_context")))
     (when (roslisp:wait-for-service service 0.3)
       (designator-integration-lisp:call-designator-service
        service
@@ -93,15 +84,18 @@
                 :fails fails
                 :max-detail-level max-detail-level))
 
+(defun extract-meta-file ()
+  (extract-file "" 'meta))
+
 (defun extract-file (filename format &key
                                        (successes t)
                                        (fails t)
                                        (max-detail-level 99))
   (ecase format
     (owl)
-    (dot))
-  (let ((service (fully-qualified-service-name
-                  "alter_context")))
+    (dot)
+    (meta))
+  (let ((service (fully-qualified-service-name "alter_context")))
     (when (roslisp:wait-for-service service 0.3)
       (designator-integration-lisp:call-designator-service
        service
@@ -121,8 +115,7 @@
                           (successes t)
                           (fails t)
                           (max-detail-level 99))
-  (let ((service (fully-qualified-service-name
-                  "control")))
+  (let ((service (fully-qualified-service-name "control")))
     (when (roslisp:wait-for-service service 0.3)
       (designator-integration-lisp:call-designator-service
        service
@@ -139,16 +132,14 @@
               (list 'max-detail-level max-detail-level)))))))
 
 (defun alter-node (designator)
-  (let ((service (fully-qualified-service-name
-                  "alter_context")))
+  (let ((service (fully-qualified-service-name "alter_context")))
     (when (roslisp:wait-for-service service 0.3)
       (designator-integration-lisp:call-designator-service
        service
        designator))))
 
 (defun start-new-experiment ()
-  (let ((service (fully-qualified-service-name
-                  "alter_context")))
+  (let ((service (fully-qualified-service-name "alter_context")))
     (when (roslisp:wait-for-service service 0.3)
       (designator-integration-lisp:call-designator-service
        service
@@ -169,22 +160,22 @@
                          (list 'description description))))))
     (add-designator-to-active-node designator :annotation annotation)
     (when result
-      (let* ((desig-id (desig-prop-value (first result) 'desig-props::id))
-             (is-new (eql (desig-prop-value (first result) 'desig-props::is-new)
-                          1.0d0)))
-        (when is-new
-          (publish-logged-designator
-           (type-of designator)
-           (append description (list `(__id ,desig-id)))))
-        desig-id))))
+      (desig-prop-value (first result) 'desig-props::id)))) ;; desig_id
+
+(defun set-experiment-meta-data (field value)
+  (alter-node
+   (cram-designators:make-designator
+    'cram-designators:action
+    `((command set-experiment-meta-data)
+      (field ,field)
+      (value ,value)))))
 
 (defun add-topic-image-to-active-node (image-topic)
-  (let ((filename "topic.png"))
-    (alter-node
-     (cram-designators:make-designator
-      'cram-designators:action
-      (list (list 'command 'add-image)
-            (list 'origin image-topic))))))
+  (alter-node
+   (cram-designators:make-designator
+    'cram-designators:action
+    (list (list 'command 'add-image)
+          (list 'origin image-topic)))))
 
 (defun add-failure-to-active-node (condition)
   (let ((cond-str (write-to-string condition)))
@@ -214,54 +205,37 @@
       (let* ((desig-id (desig-prop-value (first result) 'desig-props::id)))
         desig-id))))
 
-(defun publish-logged-designator (type description)
-  (roslisp:publish
-   *designator-publisher*
-   (designator-integration-lisp::designator->msg
-    (make-designator (ecase type
-                       (cram-designators:action-designator
-                        'cram-designators:action)
-                       (cram-designators:location-designator
-                        'cram-designators:location)
-                       (cram-designators:object-designator
-                        'cram-designators:object))
-                     description))))
+(defun set-metadata (&key robot creator experiment description)
+  (when robot (set-experiment-meta-data "robot" robot))
+  (when creator (set-experiment-meta-data "creator" creator))
+  (when experiment (set-experiment-meta-data "experiment" experiment))
+  (when description (set-experiment-meta-data "description" description)))
 
 (defun equate-designators (desig-child desig-parent)
   (let* ((mem-addr-child (write-to-string
                           (sb-kernel:get-lisp-obj-address desig-child)))
          (mem-addr-parent (write-to-string
-                           (sb-kernel:get-lisp-obj-address desig-parent))))
-    (let ((result
-            (first (alter-node
-                    (cram-designators:make-designator
-                     'cram-designators:action
-                     (list (list 'command 'equate-designators)
-                           (list 'memory-address-child mem-addr-child)
-                           (list 'memory-address-parent mem-addr-parent)))))))
-      (when result
-        (let* ((desig-id-child (desig-prop-value result
-                                                 'desig-props::id-child))
-               (is-new-child (eql (desig-prop-value
-                                   result
-                                   'desig-props::is-new-child)
-                                  1.0d0))
-               (desig-id-parent (desig-prop-value result
-                                                  'desig-props::id-parent))
-               (is-new-parent (eql (desig-prop-value
-                                    result
-                                    'desig-props::is-new-parent)
-                                   1.0d0)))
-          (when is-new-child
-            (publish-logged-designator
-             (type-of desig-child)
-             (append (description desig-child)
-                     (list `(__id ,desig-id-child)))))
-          (when is-new-parent
-            (publish-logged-designator
-             (type-of desig-parent)
-             (append (description desig-parent)
-                     (list `(__id ,desig-id-parent))))))))))
+                           (sb-kernel:get-lisp-obj-address desig-parent)))
+         (desc-child (description desig-child))
+         (type-child (ecase (type-of desig-child)
+                       (cram-designators:action-designator "ACTION")
+                       (cram-designators:location-designator "LOCATION")
+                       (cram-designators:object-designator "OBJECT")))
+         (desc-parent (description desig-parent))
+         (type-parent (ecase (type-of desig-parent)
+                        (cram-designators:action-designator "ACTION")
+                        (cram-designators:location-designator "LOCATION")
+                        (cram-designators:object-designator "OBJECT"))))
+    (alter-node
+     (cram-designators:make-designator
+      'cram-designators:action
+      `((command equate-designators)
+        (memory-address-child ,mem-addr-child)
+        (type-child ,type-child)
+        (description-child ,desc-child)
+        (memory-address-parent ,mem-addr-parent)
+        (type-parent ,type-parent)
+        (description-parent ,desc-parent))))))
 
 (defun extract-files (name)
   (let ((owl-name (concatenate 'string name ".owl"))
@@ -269,7 +243,8 @@
         (owl-name-no-details (concatenate 'string name "-no-details.owl"))
         (dot-name-no-details (concatenate 'string name "-no-details.dot")))
     (extract-dot-file dot-name)
-    (extract-owl-file owl-name)))
+    (extract-owl-file owl-name)
+    (extract-meta-file)))
     ;(extract-dot-file dot-name-no-details :max-detail-level 2)
     ;(extract-owl-file owl-name-no-details :max-detail-level 2)))
 
@@ -281,3 +256,5 @@
 (defun extract (name)
   (extract-files name)
   (extract-mongodb-entries))
+
+;(defun register-collision-object (
