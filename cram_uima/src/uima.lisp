@@ -103,10 +103,6 @@ for a reply on another topic."
 (defmethod hook-after-uima-request (id result))
 
 (defun get-uima-result (designator-request)
-  ;; This is a hacky solution. We configure UIMA over and over again
-  ;; here in order to make sure that the service is connected
-  ;; properly.
-  ;(config-uima)
   (let ((designator-request-plus-id
           (make-designator
            (ecase (class-name (class-of designator-request))
