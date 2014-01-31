@@ -1,5 +1,32 @@
 (in-package :beliefstate)
 
+(defmethod sem-map-coll-env::on-publishing-collision-object
+    cram-beliefstate (object obj-name)
+  (with-slots ((pose sem-map-coll-env::pose)
+               (type sem-map-coll-env::type)
+               (index sem-map-coll-env::index)
+               (name sem-map-coll-env::name)
+               (dimensions sem-map-coll-env::dimensions)) object
+    (let* ((surfaces
+             `(,(cons "kitchen_island" "HTTP://IAS.CS.TUM.EDU/KB/KNOWROB.OWL#KITCHEN_ISLAND_COUNTER_TOP-0")
+               ,(cons "kitchen_sink_block" "HTTP://IAS.CS.TUM.EDU/KB/KNOWROB.OWL#KITCHEN_SINK_BLOCK_COUNTER_TOP-0")))
+           (entry (find obj-name surfaces :test (lambda (x y)
+                                                  (string= x (cdr y))))))
+      (when entry
+        (let ((offset-pose (tf:make-pose (tf:v+ (tf:origin pose)
+                                                (tf:make-3d-vector 0 0 0.01))
+                                         (tf:orientation pose))))
+          (beliefstate:register-interactive-object
+           (car entry) 'box offset-pose
+           (vector (sem-map-coll-env::x dimensions)
+                   (sem-map-coll-env::y dimensions)
+                   (sem-map-coll-env::z dimensions))
+           `((examine-tabletop ((label ,(concatenate 'string
+                                                     "Examine countertop '"
+                                                     (car entry)
+                                                     "'"))
+                                (parameter ,(car entry)))))))))))
+
 (defmethod plan-lib::on-preparing-performing-action-designator
     cram-beliefstate (designator matching-process-modules)
   (prog1
