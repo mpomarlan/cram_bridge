@@ -67,18 +67,16 @@
 (defmethod cpl-impl::on-finishing-task-execution cram-beliefstate (id)
   (beliefstate:stop-node id))
 
+(defmethod cpl-impl::on-fail cram-beliefstate (condition)
+  (when condition
+    (let ((failure (intern (symbol-name (slot-value
+                                         (class-of condition)
+                                         'sb-pcl::name)))))
+      (beliefstate:add-failure-to-active-node failure))))
 
-(in-package :cpl-impl)
-
-(defmethod hook-on-fail :around (condition)
-  (beliefstate:add-failure-to-active-node condition))
-
-(in-package :desig)
-
-(defmethod hook-equate-designators :around (desig-child desig-parent)
-  (beliefstate:equate-designators
-   desig-child desig-parent))
-
+(defmethod desig::on-equate-designators (successor parent)
+  (format t "Equate!~%")
+  (beliefstate:equate-designators successor parent))
 
 (in-package :crs)
 
