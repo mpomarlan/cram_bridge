@@ -111,7 +111,7 @@
    control mode of the Beasty controller."))
 
 (defclass cartesian-impedance-control-parameters ()
-  ((cart-stiffness :initform (vector 1500 1500 1500 200 200 200) :accessor
+  ((cart-stiffness :initform (vector 500 500 500 50 50 50) :accessor
                    cart-stiffness :type vector :documentation "Cartesian stiffness of a
  Cartesian impedance motion, defined w.r.t. EE frame. Order: t_x, t_y, t_z, r_x, r_y,
  r_z. Range for position: 0..4000. Range for orientations: 0..400.")
@@ -134,10 +134,10 @@ Range for positions: 0..400000. Range for orientations: 0..40000.")
               :accessor goal-pose
               :type cl-transforms:transform :documentation "Goal pose for EE frame of
  Cartesian impedance motion of Beasty, defined w.r.t. base frame of LWR.")
-   (max-cart-vel :initform (vector 0.1 0.1 0.1 0.3 0.3 0.3) :accessor max-cart-vel
+   (max-cart-vel :initform (vector 0.6 0.6 0.6 0.7 0.7 0.7) :accessor max-cart-vel
                  :type vector :documentation "Maximum Cartesian velocities of Cartesian
  impedance motion of Beasty, defined w.r.t. arm base. Order: t_x, t_y, t_z, r_x, r_y, r_z")
-   (max-cart-acc :initform (vector 0.2 0.2 0.2 0.6 0.6 0.6) :accessor max-cart-acc
+   (max-cart-acc :initform (vector 0.3 0.3 0.3 1.4 1.4 1.4) :accessor max-cart-acc
                  :type vector :documentation "Maximum Cartesian accelerations of Cartesian
 impedance motion of Beasty, defined w.r.t. arm base. Order: t_x, t_y, t_z, r_x, r_y, r_z."))
   (:documentation "Class holding all parameters necessary to configure Cartesian impedance 
