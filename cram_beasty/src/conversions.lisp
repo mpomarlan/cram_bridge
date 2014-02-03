@@ -267,7 +267,12 @@
                              :joint-name (get-joint-name prefix i)
                              :link-name (get-link-name prefix i)
                              :collision-type (get-collision-type (elt joints i)))))))
-  
+
+(defmethod to-vector ((pose cl-transforms:pose))
+  (to-vector (cl-transforms:make-transform
+              (cl-transforms:origin pose)
+              (cl-transforms:orientation pose))))
+
 (defmethod to-vector ((transform cl-transforms:transform))
   "Turns 'cl-transforms:transform' `transform' into row-ordered 16x1 double-array."
   (let* ((array4x4 (cl-transforms:transform->matrix transform))
