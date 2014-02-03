@@ -75,7 +75,6 @@
       (beliefstate:add-failure-to-active-node failure))))
 
 (defmethod desig::on-equate-designators (successor parent)
-  (format t "Equate!~%")
   (beliefstate:equate-designators successor parent))
 
 (in-package :crs)
