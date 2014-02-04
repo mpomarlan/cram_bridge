@@ -90,6 +90,9 @@
    sensor-info-stale
    no-ik-solution
    no-collision-shapes-defined
-   pose-not-transformable-into-link)
+   pose-not-transformable-into-link
+   ;; Transformations
+   ensure-pose-stamped-transformable
+   ensure-pose-stamped-transformed)
   (:desig-properties #:shape #:dimensions #:box #:cylinder
                      #:sphere #:cone #:round #:name))

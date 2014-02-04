@@ -93,29 +93,23 @@ MoveIt! framework and registers known conditions."
 
 (defun set-planning-robot-pose (pose-stamped)
   (let* ((rpose
-           (progn
-             (tf:wait-for-transform
-              *tf*
-              :time (tf:stamp pose-stamped)
-              :source-frame (tf:frame-id pose-stamped)
-              :target-frame "odom_combined")
-             (let ((pose-map (tf:transform-pose
-                              *tf*
-                              :pose pose-stamped
-                              :target-frame "odom_combined")))
-               (vector
-                (roslisp:make-msg
-                 "geometry_msgs/TransformStamped"
-                 (stamp header) (tf:stamp pose-map)
-                 (frame_id header) "/odom_combined"
-                 (child_frame_id) "odom_combined"
-                 (x translation transform) (tf:x (tf:origin pose-map))
-                 (y translation transform) (tf:y (tf:origin pose-map))
-                 (z translation transform) (tf:z (tf:origin pose-map))
-                 (x rotation transform) (tf:x (tf:orientation pose-map))
-                 (y rotation transform) (tf:y (tf:orientation pose-map))
-                 (z rotation transform) (tf:z (tf:orientation pose-map))
-                 (w rotation transform) (tf:w (tf:orientation pose-map)))))))
+           (let ((pose-map
+                   (ensure-pose-stamped-transformed
+                    pose-stamped "/odom_combined"
+                    :ros-time t)))
+             (vector
+              (roslisp:make-msg
+               "geometry_msgs/TransformStamped"
+               (stamp header) (tf:stamp pose-map)
+               (frame_id header) "/odom_combined"
+               (child_frame_id) "odom_combined"
+               (x translation transform) (tf:x (tf:origin pose-map))
+               (y translation transform) (tf:y (tf:origin pose-map))
+               (z translation transform) (tf:z (tf:origin pose-map))
+               (x rotation transform) (tf:x (tf:orientation pose-map))
+               (y rotation transform) (tf:y (tf:orientation pose-map))
+               (z rotation transform) (tf:z (tf:orientation pose-map))
+               (w rotation transform) (tf:w (tf:orientation pose-map))))))
          (scene-msg (roslisp:make-msg
                      "moveit_msgs/PlanningScene"
                      fixed_frame_transforms rpose
@@ -345,6 +339,7 @@ MoveIt! framework and registers known conditions."
              (cpl:with-failure-handling
                  ((actionlib:server-lost (f)
                     (declare (ignore f))
+                    (ros-error (moveit) "Lost actionlib connection.")
                     (error 'planning-failed)))
                (let ((result (actionlib:call-goal
                               *move-group-action-client*
@@ -361,7 +356,8 @@ MoveIt! framework and registers known conditions."
                                        :success))
                        (signal-moveit-error val))
                      (values trajectory_start planned_trajectory))))))
-            (t (error 'actionlib:server-lost))))))
+            (t (ros-error (moveit) "Lost actionlib connection.")
+               (error 'actionlib:server-lost))))))
 
 (defun execute-trajectory (trajectory &key (wait-for-execution t))
   (let ((result (call-service "/execute_kinematic_path"
@@ -459,33 +455,51 @@ as only the final configuration IK is generated."
               :default-collision-entries default-collision-entries
               :ignore-collisions ignore-collisions)))))
 
+(defun ensure-pose-stamped-transformable (pose-stamped target-frame
+                                          &key ros-time)
+  (ros-info (moveit) "Ensuring pose transformable (~a -> ~a)."
+            (tf:frame-id pose-stamped) target-frame)
+  (loop for sleepiness = (sleep 0.1)
+        for time = (ros-time)
+        when (tf:wait-for-transform
+              *tf*
+              :source-frame (tf:frame-id pose-stamped)
+              :target-frame target-frame
+              :timeout 0.4
+              :time (cond (ros-time time)
+                          (t (tf:stamp pose-stamped))))
+          do (return (cond
+                       (ros-time
+                        (tf:copy-pose-stamped pose-stamped :stamp (ros-time)))
+                       (t pose-stamped)))))
+
+(defun ensure-pose-stamped-transformed (pose-stamped target-frame
+                                        &key ros-time)
+  (tf:transform-pose
+   *tf* :pose (ensure-pose-stamped-transformable
+               pose-stamped target-frame :ros-time ros-time)
+   :target-frame target-frame))
+
 (defun pose-distance (link-frame pose-stamped)
   "Returns the distance of stamped pose `pose-stamped' from the origin
 coordinates of link `link-frame'. This can be for example used for
 checking how far away a given grasp pose is from the gripper frame."
-  (tf:wait-for-transform
-   *tf* :timeout 5.0
-        :time (tf:stamp pose-stamped)
-        :source-frame (tf:frame-id pose-stamped)
-        :target-frame link-frame)
-  (let ((transformed-pose-stamped (tf:transform-pose
-                                   *tf* :pose pose-stamped
-                                        :target-frame link-frame)))
-    (tf:v-dist (tf:make-identity-vector)
-               (tf:origin transformed-pose-stamped))))
+  (tf:v-dist (tf:make-identity-vector)
+             (tf:origin (ensure-pose-stamped-transformed
+                         pose-stamped link-frame :ros-time t))))
 
 (defun motion-length (link-name planning-group pose-stamped
                         &key allowed-collision-objects)
-  (when (tf:wait-for-transform
-         *tf*
-         :time (tf:stamp pose-stamped)
-         :timeout 5.0
-         :source-frame (tf:frame-id pose-stamped)
-         :target-frame "torso_lift_link")
-    (let ((state-0 (moveit:plan-link-movement
-                    link-name planning-group pose-stamped
-                    :allowed-collision-objects
-                    allowed-collision-objects
-                    :destination-validity-only t)))
-      (when state-0
-        (pose-distance link-name pose-stamped)))))
+  (let* ((pose-stamped-transformed
+           (ensure-pose-stamped-transformed
+            pose-stamped "/torso_lift_link" :ros-time t))
+         (state-0 (moveit:plan-link-movement
+                   link-name planning-group
+                   pose-stamped-transformed
+                   :allowed-collision-objects
+                   allowed-collision-objects
+                   :destination-validity-only t)))
+    (when state-0
+      (pose-distance
+       link-name
+       pose-stamped-transformed))))
