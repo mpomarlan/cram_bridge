@@ -246,8 +246,8 @@ MoveIt! framework and registers known conditions."
     (let* ((mpreq (make-message
                    "moveit_msgs/MotionPlanRequest"
                    :group_name planning-group
-                   :num_planning_attempts 1
-                   :allowed_planning_time 3
+                   :num_planning_attempts 10
+                   :allowed_planning_time 10
                    :goal_constraints
                    (vector
                     (make-message
@@ -340,7 +340,11 @@ MoveIt! framework and registers known conditions."
                  ((actionlib:server-lost (f)
                     (declare (ignore f))
                     (ros-error (moveit) "Lost actionlib connection.")
-                    (error 'planning-failed)))
+                    (error 'planning-failed))
+                  (invalid-motion-plan (f)
+                    (declare (ignore f))
+                    (ros-warn (moveit) "Invalid motion plan. Rethrowing.")
+                    (error 'manipulation-failed)))
                (let ((result (actionlib:call-goal
                               *move-group-action-client*
                               (actionlib:make-action-goal
@@ -473,12 +477,37 @@ as only the final configuration IK is generated."
                         (tf:copy-pose-stamped pose-stamped :stamp (ros-time)))
                        (t pose-stamped)))))
 
+(defun ensure-transform-available (reference-frame target-frame)
+  (cpl:with-failure-handling
+      ((cl-tf:tf-cache-error (f)
+         (declare (ignore f))
+         (ros-warn (moveit) "Failed to make transform available. Retrying.")
+         (cpl:retry)))
+    (loop for sleepiness = (sleep 0.1)
+          for time = (ros-time)
+          for transform = (when (tf:wait-for-transform
+                                 *tf* :timeout 0.4
+                                 :time time
+                                 :source-frame reference-frame
+                                 :target-frame target-frame)
+                            (tf:lookup-transform
+                             *tf* :time time
+                                  :source-frame reference-frame
+                                  :target-frame target-frame))
+          when transform
+            do (return transform))))
+  
 (defun ensure-pose-stamped-transformed (pose-stamped target-frame
                                         &key ros-time)
-  (tf:transform-pose
-   *tf* :pose (ensure-pose-stamped-transformable
-               pose-stamped target-frame :ros-time ros-time)
-   :target-frame target-frame))
+  (cpl:with-failure-handling
+      ((cl-tf:tf-cache-error (f)
+         (declare (ignore f))
+         (ros-warn (moveit) "Failed to transform pose. Retrying.")
+         (cpl:retry)))
+    (tf:transform-pose
+     *tf* :pose (ensure-pose-stamped-transformable
+                 pose-stamped target-frame :ros-time ros-time)
+          :target-frame target-frame)))
 
 (defun pose-distance (link-frame pose-stamped)
   "Returns the distance of stamped pose `pose-stamped' from the origin
