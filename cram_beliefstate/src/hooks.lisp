@@ -77,6 +77,38 @@
 (defmethod desig::on-equate-designators (successor parent)
   (beliefstate:equate-designators successor parent))
 
+(defmethod pr2-manipulation-process-module::on-begin-grasp (obj-desig)
+  (prog1
+      (beliefstate:start-node "GRASP" `() 2)
+    (beliefstate:add-topic-image-to-active-node
+     cram-beliefstate::*kinect-topic-rgb*)
+    (beliefstate:add-designator-to-active-node
+     obj-desig
+     :annotation "object-acted-on")))
+
+(defmethod pr2-manipulation-process-module::on-finish-grasp (log-id success)
+  (beliefstate:add-topic-image-to-active-node
+   cram-beliefstate::*kinect-topic-rgb*)
+  (beliefstate:stop-node log-id :success success))
+
+(defmethod pr2-manipulation-process-module::on-begin-putdown (obj-desig loc-desig)
+  (prog1
+      (beliefstate:start-node
+       "PUTDOWN"
+       `() 2)
+    (beliefstate:add-topic-image-to-active-node
+     cram-beliefstate::*kinect-topic-rgb*)
+    (beliefstate:add-designator-to-active-node
+     obj-desig :annotation "object-acted-on")
+    (beliefstate:add-designator-to-active-node
+     loc-desig :annotation "putdown-location")))
+
+(defmethod pr2-manipulation-process-module::on-finish-putdown (log-id success)
+  (beliefstate:add-topic-image-to-active-node
+   cram-beliefstate::*kinect-topic-rgb*)
+  (beliefstate:stop-node log-id :success success))
+
+
 (in-package :crs)
 
 ;; Switch off prolog logging for now
@@ -109,20 +141,6 @@
 
 
 (in-package :pr2-manipulation-process-module)
-
-(defmethod hook-before-grasp :around (obj-desig)
-  (prog1
-      (beliefstate:start-node
-       "GRASP"
-       `() 2)
-    (beliefstate:add-topic-image-to-active-node cram-beliefstate::*kinect-topic-rgb*)
-    (beliefstate:add-designator-to-active-node obj-desig
-                                               :annotation "object-acted-on")))
-
-(defmethod hook-after-grasp :around (id success)
-  (progn
-    (beliefstate:add-topic-image-to-active-node cram-beliefstate::*kinect-topic-rgb*)
-    (beliefstate:stop-node id :success success)))
 
 (defmethod hook-before-putdown :around (obj-desig loc-desig)
   (prog1

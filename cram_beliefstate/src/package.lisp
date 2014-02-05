@@ -64,5 +64,9 @@
    set-interactive-object-pose
    ;; Interactive callbacks
    register-interactive-callback
-   unregister-interactive-callback)
+   unregister-interactive-callback
+   ;; Experiment metadata
+   begin-experiment
+   end-experiment
+   query-input)
   (:designator-properties))
