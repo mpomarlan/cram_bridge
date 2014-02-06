@@ -44,7 +44,7 @@
                :roslisp
                :alexandria
                :cram-reasoning
-               :cl-json-pl-client)
+               :cram-json-pl-client)
 
   :components
   ((:module "src"

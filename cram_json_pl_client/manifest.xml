@@ -1,13 +1,11 @@
 <package>
-  <description brief="cl_json_pl_client">
+  <description brief="cram_json_pl_client">
 
-     cl_json_pl_client
+     cram_json_pl_client
 
   </description>
   <author>Lorenz Moesenlechner</author>
   <license>BSD</license>
-  <review status="unreviewed" notes=""/>
-  <url>http://ros.org/wiki/cl_json_pl_client</url>
   <rosdep name="sbcl"/>
   <depend package="json_prolog"/>
   <depend package="yason"/>
@@ -16,5 +14,3 @@
   <depend package="alexandria"/>
 
 </package>
-
-

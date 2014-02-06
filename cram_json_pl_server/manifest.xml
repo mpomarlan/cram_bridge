@@ -8,7 +8,7 @@
   <license>BSD</license>
   <rosdep name="sbcl"/>
   <depend package="cram_reasoning"/>
-  <depend package="cl_json_pl_client"/>
+  <depend package="cram_json_pl_client"/>
 
 </package>
 

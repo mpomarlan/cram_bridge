@@ -31,12 +31,12 @@
 
 (in-package :asdf)
 
-(defsystem "cl-json-pl-client"
+(defsystem "cram-json-pl-client"
   :author "Lorenz Moesenlechner"
   :version "0.1"
   :maintainer "Lorenz Moesenlechner <moesenle@in.tum.de>"
   :license "BSD"
-  :description "A Common Lisp client library for json_prolog."
+  :description "A json_prolog client library for cram-reasoning."
 
   :depends-on (:cram-utilities
                :cram-reasoning
