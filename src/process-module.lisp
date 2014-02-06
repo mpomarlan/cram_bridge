@@ -57,14 +57,16 @@
   (assert parent () "Parent not set!")
   (let* ((pose (slot-value perceived-object 'pose))
          (identifier (bound-slot-value perceived-object
-                                       'identifier)))
-    (let ((color (bound-slot-value perceived-object 'color))
-          (shape (bound-slot-value perceived-object 'shape))
-          (size (bound-slot-value perceived-object 'size))
-          (type (bound-slot-value perceived-object 'type))
-          (z-offset (bound-slot-value perceived-object 'z-offset))
-          (dimensions (bound-slot-value perceived-object 'dimensions))
-          (grasp-poses (bound-slot-value perceived-object 'grasp-poses)))
+                                       'desig-props:identifier)))
+    (let ((color (bound-slot-value perceived-object 'desig-props:color))
+          (shape (bound-slot-value perceived-object 'desig-props:shape))
+          (size (bound-slot-value perceived-object 'desig-props:size))
+          (type (bound-slot-value perceived-object 'desig-props:type))
+          (z-offset (bound-slot-value perceived-object 'desig-props:z-offset))
+          (dimensions (bound-slot-value perceived-object
+                                        'desig-props:dimensions))
+          (grasp-poses (bound-slot-value perceived-object
+                                         'desig-props:grasp-poses)))
       (make-effective-designator
        parent
        :new-properties (desig:update-designator-properties
@@ -93,7 +95,8 @@
                 found-designator symbol)
                (cram-designators:desig-prop-value
                 parent-designator symbol)
-               default))))
+               default))
+          :desig-props))
 
 (defun find-object (designator)
   (let* ((at (desig-prop-value designator 'desig-props:at))
@@ -148,6 +151,7 @@
                               *proximity-threshold*)))
               collect (make-instance
                        'perceived-object
+                       :object-identifier name
                        :identifier name
                        :pose pose
                        :type type
@@ -160,7 +164,8 @@
 
 (defun find-with-designator (designator)
   (mapcar (lambda (perceived-object)
-            (perceived-object->designator perceived-object))
+            (perceived-object->designator perceived-object
+                                          :parent designator))
           (find-object designator)))
 
 (def-action-handler perceive (object-designator)
@@ -171,11 +176,6 @@
                                       object-designator))))
      (dolist (designator perceived-designators)
        (moveit:register-collision-object designator :add t)
-       (cram-plan-knowledge:on-event
-        (make-instance
-         'cram-plan-knowledge:object-perceived-event
-         :perception-source :robosherlock
-         :object-designator designator))
        (let ((pose (reference (desig-prop-value designator 'desig-props:at)))
              (name (desig-prop-value designator 'desig-props:name)))
          (crs:prolog `(and (btr:bullet-world ?w)
@@ -191,7 +191,12 @@
                                 ,(tf:z (tf:orientation pose))
                                 ,(tf:w (tf:orientation pose))))
                              :size (0.1 0.1 0.1)
-                             :mass 0.0))))))
+                             :mass 0.0)))))
+       (cram-plan-knowledge:on-event
+        (make-instance
+         'cram-plan-knowledge:object-perceived-event
+         :perception-source :robosherlock
+         :object-designator designator)))
      perceived-designators)
    (cpl:fail 'cram-plan-failures:object-not-found
              :object-desig object-designator)))
