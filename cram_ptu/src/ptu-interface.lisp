@@ -36,16 +36,23 @@
   "Creates and returns an instance of type `ptu-interface' which is a proxy for the PTU
  controller behind the ROS action with the name `action-name'."
   (declare (type string action-name))
-  (let ((tf-broadcaster (cl-tf:make-transform-broadcaster))
-        (action-client (actionlib:make-action-client action-name "cogman_msgs/PtuAction")))
+  (let (;;(tf-broadcaster (cl-tf:make-transform-broadcaster))
+        (action-client (actionlib:make-action-client action-name "cogman_msgs/PtuAction"))
+        (tf-relay (actionlib:make-action-client "/tf_relay" "cogman_msgs/TFRelayAction")))
     (make-instance
-     'ptu-interface :tf-broadcaster tf-broadcaster :action-client action-client)))
+     'ptu-interface ;:tf-broadcaster tf-broadcaster 
+                    :action-client action-client
+                    :tf-relay tf-relay
+     )))
 
 (defun cleanup-ptu-interface (interface)
   "Cleans up the internal of ptu-interface `interface'."
-  (declare (type ptu-interface interface))
+  (declare (type ptu-interface interface)
+           (ignore interface))
   ;; TODO(Georg): cleanup action-client
-  (unadvertise (tf-broadcaster interface)))
+  ;; TODO(Georg): get this back in, once roslisp is fixed
+  ;; (unadvertise (tf-broadcaster interface))
+  )
 
 (defgeneric point-head (interface destination &key &allow-other-keys)
   (:documentation "Points PTU behind `interface' at `destination'."))
@@ -61,8 +68,11 @@
            (stamp (roslisp:ros-time))
            (stamped-transform 
              (cl-tf:transform->stamped-transform frame-id child-frame-id stamp transform)))
-      (with-tf-broadcasting (interface stamped-transform)
-        (point-head interface child-frame-id)))))
+; TODO(Georg): get this back in, once roslisp is fixed
+; (with-tf-broadcasting (interface stamped-transform)
+      (broadcast-tf interface stamped-transform)
+      (point-head interface child-frame-id)
+      )))
 
 (defmethod point-head ((interface ptu-interface) (frame-id string)
                        &key &allow-other-keys)

@@ -92,15 +92,16 @@
  to stop the last moveto-goal."
   (declare (type beasty-interface interface))
   (cancel-command interface)
-  (with-recursive-lock ((execution-lock interface))
-    (let* ((stop-parameters (make-instance 'stop-parameters))
-           (command-code (get-beasty-command-code (infer-command-symbol stop-parameters)))
-           (stop-goal (actionlib:make-action-goal
-                         (action-client interface)
-                        :command command-code
-                        :parameters (make-parameter-msg interface stop-parameters
-                                                        *default-safety-settings*))))
-      (send-non-cancelable-goal-to-beasty interface stop-goal command-code))))
+  ;; (with-recursive-lock ((execution-lock interface))
+  ;;   (let* ((stop-parameters (make-instance 'stop-parameters))
+  ;;          (command-code (get-beasty-command-code (infer-command-symbol stop-parameters)))
+  ;;          (stop-goal (actionlib:make-action-goal
+  ;;                         (action-client interface)
+  ;;                       :command command-code
+  ;;                       :parameters (make-parameter-msg interface stop-parameters
+  ;;                                                       *default-safety-settings*))))
+  ;;     (send-non-cancelable-goal-to-beasty interface stop-goal command-code)))
+  )
 
 ;; TODO(Georg): introduce global parameters for the next numbers
 (defun make-joint-impedance-goal (&key (joint-goal (make-array 7 :initial-element 0))

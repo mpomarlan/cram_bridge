@@ -267,7 +267,12 @@
                              :joint-name (get-joint-name prefix i)
                              :link-name (get-link-name prefix i)
                              :collision-type (get-collision-type (elt joints i)))))))
-  
+
+(defmethod to-vector ((pose cl-transforms:pose))
+  (to-vector (cl-transforms:make-transform
+              (cl-transforms:origin pose)
+              (cl-transforms:orientation pose))))
+
 (defmethod to-vector ((transform cl-transforms:transform))
   "Turns 'cl-transforms:transform' `transform' into row-ordered 16x1 double-array."
   (let* ((array4x4 (cl-transforms:transform->matrix transform))
@@ -294,7 +299,7 @@
 (defun to-transform (input-vector)
   "Returns an instance of type 'cl-transforms:transforms' corresponding to the content
  of `input-vector'. Where `input-vector' is a vector of length 12 expected to have the
- following layout: #(rotation-matrix-in-row-major translation-vector)."
+ following layout: #(rotation-matrix-in-column-major translation-vector)."
            (declare (type (vector number 12) input-vector))
            (let* ((rotation-vector (subseq input-vector 0 9))
                   (translation-vector (subseq input-vector 9 12))
@@ -302,8 +307,8 @@
                     (make-array 
                      '(3 3) 
                      :initial-contents
-                     (loop for y from 0 below 3
-                           collecting (loop for x from 0 below 3
+                     (loop for x from 0 below 3
+                           collecting (loop for y from 0 below 3
                                             collecting (elt rotation-vector
                                                             (+ x (* 3 y)))))))
                   (quaternion (cl-transforms:matrix->quaternion rotation-matrix))
