@@ -31,7 +31,7 @@
 
 (in-package :asdf)
 
-(defsystem "cram-json-pl-client"
+(defsystem "cram-json-prolog"
   :author "Lorenz Moesenlechner"
   :version "0.2"
   :maintainer "Lorenz Moesenlechner <moesenle@in.tum.de>"
