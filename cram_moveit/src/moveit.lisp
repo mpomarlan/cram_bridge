@@ -52,8 +52,12 @@ MoveIt! framework and registers known conditions."
         (roslisp:subscribe "/joint_states"
                            "sensor_msgs/JointState"
                            #'joint-states-callback))
-  (setf *move-group-action-client* (actionlib:make-action-client
-                                    "move_group" "moveit_msgs/MoveGroupAction")))
+  (connect-action-client))
+
+(defun connect-action-client ()
+  (setf *move-group-action-client*
+        (actionlib:make-action-client
+         "move_group" "moveit_msgs/MoveGroupAction")))
 
 (defun joint-states-callback (msg)
   (roslisp:with-fields (name position) msg
@@ -340,6 +344,7 @@ MoveIt! framework and registers known conditions."
                  ((actionlib:server-lost (f)
                     (declare (ignore f))
                     (ros-error (moveit) "Lost actionlib connection.")
+                    (connect-action-client)
                     (error 'planning-failed))
                   (invalid-motion-plan (f)
                     (declare (ignore f))
@@ -361,6 +366,7 @@ MoveIt! framework and registers known conditions."
                        (signal-moveit-error val))
                      (values trajectory_start planned_trajectory))))))
             (t (ros-error (moveit) "Lost actionlib connection.")
+               (connect-action-client)
                (error 'actionlib:server-lost))))))
 
 (defun execute-trajectory (trajectory &key (wait-for-execution t))
