@@ -31,7 +31,7 @@
 
 (in-package :asdf)
 
-(defsystem "cl-json-pl-server"
+(defsystem "cram-json-pl-server"
   :author "Lorenz Moesenlechner"
   :version "0.1"
   :maintainer "Lorenz Moesenlechner <moesenle@in.tum.de>"

@@ -1,13 +1,11 @@
 <package>
-  <description brief="cl_json_pl_server">
+  <description brief="cram_json_pl_server">
 
-     cl_json_pl_server
+     cram_json_pl_server
 
   </description>
   <author>Lorenz Moesenlechner</author>
   <license>BSD</license>
-  <review status="unreviewed" notes=""/>
-  <url>http://ros.org/wiki/cl_json_pl_server</url>
   <rosdep name="sbcl"/>
   <depend package="cram_reasoning"/>
   <depend package="cl_json_pl_client"/>
