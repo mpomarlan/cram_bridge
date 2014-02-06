@@ -28,6 +28,7 @@
 (in-package :cl-user)
 
 (desig-props:def-desig-package robosherlock-process-module
+  (:nicknames robosherlock-pm)
   (:use #:common-lisp
         #:roslisp
         #:cram-process-modules
