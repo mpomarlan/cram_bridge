@@ -43,4 +43,5 @@
            #:with-type-atoms
            #:init-type-atoms
            #:clear-type-atoms
-           #:replace-complex-types))
+           #:replace-complex-types
+           #:start-prolog-server))

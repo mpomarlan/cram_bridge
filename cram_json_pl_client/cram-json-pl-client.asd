@@ -33,15 +33,16 @@
 
 (defsystem "cram-json-pl-client"
   :author "Lorenz Moesenlechner"
-  :version "0.1"
+  :version "0.2"
   :maintainer "Lorenz Moesenlechner <moesenle@in.tum.de>"
   :license "BSD"
-  :description "A json_prolog client library for cram-reasoning."
+  :description "A json_prolog server/client library for cram-reasoning."
 
   :depends-on (:cram-utilities
                :cram-reasoning
                :json_prolog-srv
-               :yason :roslisp
+               :yason 
+               :roslisp
                :alexandria)
 
   :components
@@ -50,4 +51,5 @@
             ((:file "package")
              (:file "json-conversion" :depends-on ("package"))
              (:file "prolog-interface" :depends-on ("package" "json-conversion"))
-             (:file "prolog-handlers" :depends-on ("package" "prolog-interface"))))))
+             (:file "prolog-handlers" :depends-on ("package" "prolog-interface"))
+             (:file "server" :depends-on ("package"))))))
