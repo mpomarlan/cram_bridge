@@ -30,27 +30,9 @@
 (defvar *planlogging-namespace* "/beliefstate_ros")
 (defvar *kinect-topic-rgb* "/kinect_head/rgb/image_color")
 (defvar *interactive-callback-fluent* (cpl:make-fluent))
-(defparameter *interactive-callback-subscriber* nil)
-(defparameter *registered-interactive-callbacks* nil)
 
 (defun init-beliefstate ()
-  (setf *registered-interactive-callbacks* nil)
-  (setf *interactive-callback-subscriber*
-        (roslisp:subscribe "/interactive_callback"
-                           "designator_integration_msgs/Designator"
-                           #'interactive-callback)))
-
-(defun interactive-callback (msg)
-  (let* ((desig (setf (cpl:value *interactive-callback-fluent*)
-                      (designator-integration-lisp::msg->designator
-                       msg)))
-         (callback (cdr (find (desig-prop-value desig 'desig-props::command)
-                              *registered-interactive-callbacks*
-                              :test (lambda (x y)
-                                      (string= x (car y)))))))
-    (when callback
-      (funcall callback (desig-prop-value desig 'desig-props::command)
-                        (desig-prop-value desig 'desig-props::parameter)))))
+  (setf *registered-interactive-callbacks* nil))
 
 (roslisp-utilities:register-ros-init-function init-beliefstate)
 
@@ -123,27 +105,6 @@
         (list (list 'command 'export-planlog)
               (list 'format format)
               (list 'filename filename)
-              (list 'show-successes (cond (successes 1)
-                                          (t 0)))
-              (list 'show-fails (cond (fails 1)
-                                      (t 0)))
-              (list 'max-detail-level max-detail-level)))))))
-
-(defun extract-mongodb (database collection
-                        &key
-                          (successes t)
-                          (fails t)
-                          (max-detail-level 99))
-  (let ((service (fully-qualified-service-name "control")))
-    (when (roslisp:wait-for-service service 0.3)
-      (designator-integration-lisp:call-designator-service
-       service
-       (cram-designators:make-designator
-        'cram-designators:action
-        (list (list 'command 'extract)
-              (list 'format 'mongo)
-              (list 'database database)
-              (list 'collection collection)
               (list 'show-successes (cond (successes 1)
                                           (t 0)))
               (list 'show-fails (cond (fails 1)
@@ -267,68 +228,8 @@
     ;(extract-dot-file dot-name-no-details :max-detail-level 2)
     ;(extract-owl-file owl-name-no-details :max-detail-level 2)))
 
-(defun extract-mongodb-entries (&key
-                                  (database "db_exp_log")
-                                  (collection "col_exp_log"))
-  (extract-mongodb database collection))
-
 (defun extract (name)
-  (extract-files name)
-  (extract-mongodb-entries))
-
-(defun register-interactive-object (name shape pose dimensions menu)
-  (alter-node
-   (cram-designators:make-designator
-    'cram-designators:action
-    (list (list 'command 'register-interactive-object)
-          (list 'name name)
-          (list 'shape shape)
-          (list 'pose pose)
-          (list 'width (elt dimensions 0))
-          (list 'depth (elt dimensions 1))
-          (list 'height (elt dimensions 2))
-          (list 'menu menu)))))
-
-(defun unregister-interactive-object (name)
-  (alter-node
-   (cram-designators:make-designator
-    'cram-designators:action
-    (list (list 'command 'unregister-interactive-object)
-          (list 'name name)))))
-
-(defun set-interactive-object-menu (name menu)
-  (alter-node
-   (cram-designators:make-designator
-    'cram-designators:action
-    (list (list 'command 'set-interactive-object-menu)
-          (list 'name name)
-          (list 'menu menu)))))
-
-(defun set-interactive-object-pose (name pose)
-  (alter-node
-   (cram-designators:make-designator
-    'cram-designators:action
-    (list (list 'command 'set-interactive-object-pose)
-          (list 'name name)
-          (list 'pose pose)))))
-
-(defun register-interactive-callback (command callback-function)
-  "Callback functions need to receive two parameters: one for the
-object name clicked, and one for the optional parameter given when the
-menu entry for the interactive object was assigned."
-  (setf *registered-interactive-callbacks*
-        (remove command *registered-interactive-callbacks*
-                :test (lambda (x y)
-                        (string= x (car y)))))
-  (push (cons command callback-function)
-        *registered-interactive-callbacks*))
-
-(defun unregister-interactive-callback (command callback-function)
-  (setf *registered-interactive-callbacks*
-        (remove command *registered-interactive-callbacks*
-                :test (lambda (x y)
-                        (and (string= x (car y))
-                             (eql callback-function (cdr y)))))))
+  (extract-files name))
 
 (defun begin-experiment ()
   (let ((results (query-input `((experiment "Experiment name" "Pick and Place")

@@ -53,4 +53,5 @@
     :components
     ((:file "package")
      (:file "beliefstate" :depends-on ("package"))
+     (:file "interactive-control" :depends-on ("beliefstate" "package"))
      (:file "hooks" :depends-on ("beliefstate" "package"))))))
