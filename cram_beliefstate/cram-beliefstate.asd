@@ -47,7 +47,8 @@
                designator_integration_msgs-srv
                cram-reasoning
                cram-uima
-               pr2-manipulation-process-module)
+               pr2-manipulation-process-module
+               point-head-process-module)
   :components
   ((:module "src"
     :components

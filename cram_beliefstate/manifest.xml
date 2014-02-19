@@ -15,12 +15,12 @@
   
   <depend package="roslisp" />
   <depend package="actionlib" />
-  <depend package="beliefstate" />
   <depend package="cram_language" />
   <depend package="cram_plan_library" />
   <depend package="designator_integration_lisp" />
   <depend package="cram_reasoning" />
   <depend package="cram_uima" />
   <depend package="pr2_manipulation_process_module" />
+  <depend package="point_head_process_module" />
   
 </package>

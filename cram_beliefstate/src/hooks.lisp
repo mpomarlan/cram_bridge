@@ -89,7 +89,21 @@
   (beliefstate:stop-node id))
 
 (defmethod cpl-impl::on-preparing-task-execution cram-beliefstate (name log-parameters)
-  (beliefstate:start-node name log-parameters 1))
+  (prog1
+      (beliefstate:start-node name log-parameters 1)
+    (let ((goal-location (second
+                          (find 'cram-plan-library::goal-location log-parameters
+                                :test (lambda (x y)
+                                        (eql x (first y)))))))
+      (when goal-location
+        (beliefstate:add-designator-to-active-node
+         goal-location
+         :annotation "goal-location")
+        (beliefstate:add-designator-to-active-node
+         (make-designator
+          'cram-designators:location
+          `((pose ,(reference goal-location))))
+         :annotation "goal-pose")))))
 
 (defmethod cpl-impl::on-finishing-task-execution cram-beliefstate (id)
   (beliefstate:stop-node id))
@@ -104,7 +118,21 @@
 (defmethod desig::on-equate-designators (successor parent)
   (beliefstate:equate-designators successor parent))
 
-(defmethod pr2-manipulation-process-module::on-begin-grasp (obj-desig)
+(defmethod point-head-process-module::on-begin-move-head cram-beliefstate (pose-stamped)
+  (prog1
+      (beliefstate:start-node
+       "VOLUNTARY-BODY-MOVEMENT-HEAD"
+       `() 2)
+    (beliefstate:add-designator-to-active-node
+     (make-designator
+      'cram-designators:action
+      `((goal-pose ,pose-stamped)))
+     :annotation "voluntary-movement-details")))
+
+(defmethod point-head-process-module::on-finish-move-head cram-beliefstate (id success)
+  (beliefstate:stop-node id :success success))
+
+(defmethod pr2-manipulation-process-module::on-begin-grasp cram-beliefstate (obj-desig)
   (prog1
       (beliefstate:start-node "GRASP" `() 2)
     (beliefstate:add-topic-image-to-active-node
@@ -113,12 +141,12 @@
      obj-desig
      :annotation "object-acted-on")))
 
-(defmethod pr2-manipulation-process-module::on-finish-grasp (log-id success)
+(defmethod pr2-manipulation-process-module::on-finish-grasp cram-beliefstate (log-id success)
   (beliefstate:add-topic-image-to-active-node
    cram-beliefstate::*kinect-topic-rgb*)
   (beliefstate:stop-node log-id :success success))
 
-(defmethod pr2-manipulation-process-module::on-begin-putdown (obj-desig loc-desig)
+(defmethod pr2-manipulation-process-module::on-begin-putdown cram-beliefstate (obj-desig loc-desig)
   (prog1
       (beliefstate:start-node
        "PUTDOWN"
@@ -130,7 +158,7 @@
     (beliefstate:add-designator-to-active-node
      loc-desig :annotation "putdown-location")))
 
-(defmethod pr2-manipulation-process-module::on-finish-putdown (log-id success)
+(defmethod pr2-manipulation-process-module::on-finish-putdown cram-beliefstate (log-id success)
   (beliefstate:add-topic-image-to-active-node
    cram-beliefstate::*kinect-topic-rgb*)
   (beliefstate:stop-node log-id :success success))
@@ -189,7 +217,7 @@
                                  planning-group ignore-collisions)
   (prog1
       (beliefstate:start-node
-       "VOLUNTARY-BODY-MOVEMENT"
+       "VOLUNTARY-BODY-MOVEMENT-ARMS"
        `() 2)
     (beliefstate:add-designator-to-active-node
      (make-designator
