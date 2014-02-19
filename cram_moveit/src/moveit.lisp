@@ -28,8 +28,6 @@
 (in-package :cram-moveit)
 
 (defvar *move-group-action-client* nil)
-(defvar *attached-object-publisher* nil
-  "Publisher handle for attaching and detaching collicion objects through /attached_collision_object.")
 (defvar *joint-states-fluent* nil
   "Fluent that keeps track of whether joint states were received or now.")
 (defvar *joint-states* nil
@@ -37,26 +35,29 @@
 (defvar *joint-states-subscriber* nil
   "Subscriber to /joint_states.")
 
+(defparameter *scene-msg* nil)
+
 (defun init-moveit-bridge ()
   "Sets up the basic action client communication handles for the
-  MoveIt! framework and registers known conditions."
+MoveIt! framework and registers known conditions."
   (register-known-moveit-errors)
   (setf *planning-scene-publisher*
         (roslisp:advertise
          "/planning_scene"
          "moveit_msgs/PlanningScene" :latch t))
-  (setf *attached-object-publisher*
-        (roslisp:advertise
-         "/attached_collision_object"
-         "moveit_msgs/AttachedCollisionObject" :latch t))
+  (roslisp:publish *planning-scene-publisher* *scene-msg*)
   (setf *joint-states-fluent*
         (cram-language:make-fluent :name "joint-state-tracker"))
   (setf *joint-states-subscriber*
         (roslisp:subscribe "/joint_states"
                            "sensor_msgs/JointState"
                            #'joint-states-callback))
-  (setf *move-group-action-client* (actionlib:make-action-client
-                                    "move_group" "moveit_msgs/MoveGroupAction")))
+  (connect-action-client))
+
+(defun connect-action-client ()
+  (setf *move-group-action-client*
+        (actionlib:make-action-client
+         "move_group" "moveit_msgs/MoveGroupAction")))
 
 (defun joint-states-callback (msg)
   (roslisp:with-fields (name position) msg
@@ -67,7 +68,7 @@
            for p = (elt position i)
            collect (cons n p)))))
 
-(register-ros-init-function init-moveit-bridge)
+(roslisp-utilities:register-ros-init-function init-moveit-bridge)
 
 (defun joint-states ()
   *joint-states*)
@@ -96,37 +97,32 @@
 
 (defun set-planning-robot-pose (pose-stamped)
   (let* ((rpose
-           (progn
-             (tf:wait-for-transform
-              *tf*
-              :time (tf:stamp pose-stamped)
-              :source-frame (tf:frame-id pose-stamped)
-              :target-frame "odom_combined")
-             (let ((pose-map (tf:transform-pose
-                              *tf*
-                              :pose pose-stamped
-                              :target-frame "odom_combined")))
-               (vector
-                (roslisp:make-msg
-                 "geometry_msgs/TransformStamped"
-                 (stamp header) (tf:stamp pose-map)
-                 (frame_id header) "/odom_combined"
-                 (child_frame_id) "odom_combined"
-                 (x translation transform) (tf:x (tf:origin pose-map))
-                 (y translation transform) (tf:y (tf:origin pose-map))
-                 (z translation transform) (tf:z (tf:origin pose-map))
-                 (x rotation transform) (tf:x (tf:orientation pose-map))
-                 (y rotation transform) (tf:y (tf:orientation pose-map))
-                 (z rotation transform) (tf:z (tf:orientation pose-map))
-                 (w rotation transform) (tf:w (tf:orientation pose-map)))))))
+           (let ((pose-map
+                   (ensure-pose-stamped-transformed
+                    pose-stamped "/odom_combined"
+                    :ros-time t)))
+             (vector
+              (roslisp:make-msg
+               "geometry_msgs/TransformStamped"
+               (stamp header) (tf:stamp pose-map)
+               (frame_id header) "/odom_combined"
+               (child_frame_id) "odom_combined"
+               (x translation transform) (tf:x (tf:origin pose-map))
+               (y translation transform) (tf:y (tf:origin pose-map))
+               (z translation transform) (tf:z (tf:origin pose-map))
+               (x rotation transform) (tf:x (tf:orientation pose-map))
+               (y rotation transform) (tf:y (tf:orientation pose-map))
+               (z rotation transform) (tf:z (tf:orientation pose-map))
+               (w rotation transform) (tf:w (tf:orientation pose-map))))))
          (scene-msg (roslisp:make-msg
                      "moveit_msgs/PlanningScene"
                      fixed_frame_transforms rpose
                      is_diff t)))
-    (prog1 (roslisp:publish *planning-scene-publisher* scene-msg)
-      (roslisp:ros-info
-       (moveit)
-       "Setting robot planning pose."))))
+    (setf *scene-msg* scene-msg)
+    (when *planning-scene-publisher*
+      (prog1
+          (roslisp:publish *planning-scene-publisher* scene-msg)
+        (roslisp:ros-info (moveit) "Setting robot planning pose.")))))
 
 (defun set-planning-robot-state (joint-states)
   (let* ((rstate-msg (roslisp:make-msg
@@ -153,77 +149,19 @@
                      "moveit_msgs/PlanningScene"
                      robot_state rstate-msg
                      is_diff t)))
-    (prog1 (roslisp:publish *planning-scene-publisher* scene-msg)
-      (roslisp:ros-info
-       (moveit)
-       "Setting robot planning state."))))
-
-(defun move-base (pose-stamped)
-  (let* ((link-name "base_link")
-         (planning-group "base")
-         (mpreq (make-message
-                 "moveit_msgs/MotionPlanRequest"
-                 :group_name planning-group
-                 :num_planning_attempts 1
-                 :allowed_planning_time 3.0
-                 :goal_constraints
-                 (vector
-                  (make-message
-                   "moveit_msgs/Constraints"
-                   :position_constraints
-                   (vector
-                    (make-message
-                     "moveit_msgs/PositionConstraint"
-                     :weight 1.0
-                     :link_name link-name
-                     :header
-                     (make-message
-                      "std_msgs/Header"
-                      :frame_id (tf:frame-id pose-stamped)
-                      :stamp (tf:stamp pose-stamped))
-                     :constraint_region
-                     (make-message
-                      "moveit_msgs/BoundingVolume"
-                      :primitives
-                      (vector
-                       (make-message
-                        "shape_msgs/SolidPrimitive"
-                        :type (roslisp-msg-protocol:symbol-code
-                               'shape_msgs-msg:solidprimitive :box)
-                        :dimensions (vector 0.01 0.01 0.01)))
-                      :primitive_poses
-                      (vector
-                       (tf:pose->msg pose-stamped)))))
-                   :orientation_constraints
-                   (vector
-                    (make-message
-                     "moveit_msgs/OrientationConstraint"
-                     :weight 1.0
-                     :link_name link-name
-                     :header
-                     (make-message
-                      "std_msgs/Header"
-                      :frame_id (tf:frame-id pose-stamped)
-                      :stamp (tf:stamp pose-stamped))
-                     :orientation
-                     (make-message
-                      "geometry_msgs/Quaternion"
-                      :x (tf:x (tf:orientation pose-stamped))
-                      :y (tf:y (tf:orientation pose-stamped))
-                      :z (tf:z (tf:orientation pose-stamped))
-                      :w (tf:w (tf:orientation pose-stamped)))
-                     :absolute_x_axis_tolerance 0.001
-                     :absolute_y_axis_tolerance 0.001
-                     :absolute_z_axis_tolerance 0.001))))))
-         ;; TODO(winkler): Implement the movement of the robot base
-         ;; here.
-         )))
+    (setf *scene-msg* scene-msg)
+    (when *planning-scene-publisher*
+      (prog1
+          (roslisp:publish *planning-scene-publisher* scene-msg)
+        (roslisp:ros-info (moveit) "Setting robot planning state.")))))
 
 (defun move-link-pose (link-name planning-group pose-stamped
                        &key allowed-collision-objects
                          plan-only touch-links
                          default-collision-entries
-                         ignore-collisions)
+                         ignore-collisions
+                         corridor
+                         (wait-until-finished t))
   "Calls the MoveIt! MoveGroup action. The link identified by
   `link-name' is tried to be positioned in the pose given by
   `pose-stamped'. Returns `T' on success and `nil' on failure, in
@@ -248,11 +186,27 @@
                                 (subseq str 1))
                                (t str)))
                        (tf:stamp pose-stamped)
-                       pose-stamped)))
+                       pose-stamped))
+        (path-constraints
+          (cond (corridor (make-message
+                           "moveit_msgs/Constraints"
+                           :position_constraints
+                           (vector
+                            (make-message
+                             "moveit_msgs/PositionConstraint"
+                             :header
+                             (make-message
+                              "std_msgs/Header"
+                              :frame_id (tf:frame-id pose-stamped)
+                              :stamp (tf:stamp pose-stamped))
+                             :link_name link-name
+                             :constraint_region corridor
+                             :weight 0.1))))
+                (t (make-message "moveit_msgs/Constraints")))))
     (let* ((mpreq (make-message
                    "moveit_msgs/MotionPlanRequest"
                    :group_name planning-group
-                   :num_planning_attempts 1
+                   :num_planning_attempts 5
                    :allowed_planning_time 3
                    :goal_constraints
                    (vector
@@ -302,7 +256,12 @@
                         :w (tf:w (tf:orientation pose-stamped)))
                        :absolute_x_axis_tolerance 0.005
                        :absolute_y_axis_tolerance 0.005
-                       :absolute_z_axis_tolerance 0.005))))))
+                       :absolute_z_axis_tolerance 0.005))))
+                   :path_constraints path-constraints))
+                   ;:trajectory_constraints
+                   ;(make-message
+                   ; "moveit_msgs/TrajectoryConstraints"
+                   ; :constraints (vector path-constraints))))
            (touch-links-concat (concatenate 'vector allowed-collision-objects
                                             touch-links))
            (options
@@ -345,25 +304,64 @@
              (cpl:with-failure-handling
                  ((actionlib:server-lost (f)
                     (declare (ignore f))
-                    (error 'planning-failed)))
-               (let ((result (actionlib:call-goal
-                              *move-group-action-client*
-                              (actionlib:make-action-goal
-                                  *move-group-action-client*
-                                :request mpreq
-                                :planning_options options))))
-                 (roslisp:with-fields (error_code
-                                       trajectory_start
-                                       planned_trajectory) result
-                   (roslisp:with-fields (val) error_code
-                     (unless (eql val (roslisp-msg-protocol:symbol-code
-                                       'moveit_msgs-msg:moveiterrorcodes
-                                       :success))
-                       (signal-moveit-error val))
-                     (values trajectory_start planned_trajectory))))))
-            (t (error 'actionlib:server-lost))))))
+                    (ros-error (moveit) "Lost actionlib connection.")
+                    (connect-action-client)
+                    (cpl:retry))
+                  (invalid-motion-plan (f)
+                    (declare (ignore f))
+                    (ros-warn (moveit) "Invalid motion plan. Rethrowing.")
+                    (error 'manipulation-failed)))
+               (let ((goal (actionlib:make-action-goal
+                               *move-group-action-client*
+                             :request mpreq
+                             :planning_options options)))
+                 (cond (wait-until-finished
+                        (let ((result (actionlib:call-goal
+                                       *move-group-action-client*
+                                       goal
+                                       :result-timeout 10.0 :timeout 10.0)))
+                          (cond (result
+                                 (roslisp:with-fields (error_code
+                                                       trajectory_start
+                                                       planned_trajectory)
+                                     result
+                                   (roslisp:with-fields (val) error_code
+                                     (unless
+                                         (eql val
+                                              (roslisp-msg-protocol:symbol-code
+                                               'moveit_msgs-msg:moveiterrorcodes
+                                               :success))
+                                       (signal-moveit-error val))
+                                     (values
+                                      trajectory_start planned_trajectory))))
+                                (t (ros-error (moveit)
+                                              "Empty actionlib response.")
+                                   (error 'actionlib:server-lost)))))
+                       (t (actionlib:send-goal *move-group-action-client*
+                                               goal))))))
+            (t (ros-error (moveit) "Lost actionlib connection.")
+               (connect-action-client)
+               (error 'planning-failed))))))
+
+(defun execute-trajectory (trajectory &key (wait-for-execution t))
+  (let ((result (call-service "/execute_kinematic_path"
+                              'moveit_msgs-srv:ExecuteKnownTrajectory
+                              :trajectory trajectory
+                              :wait_for_execution wait-for-execution)))
+    (roslisp:with-fields (error_code) result
+      (roslisp:with-fields (val) error_code
+        (unless (eql val (roslisp-msg-protocol:symbol-code
+                          'moveit_msgs-msg:moveiterrorcodes
+                          :success))
+          (signal-moveit-error val))))
+    t))
 
 (defun compute-ik (link-name planning-group pose-stamped)
+  "Computes an inverse kinematics solution (if possible) of the given
+kinematics goal (given the link name `link-name' to position, the
+`planning-group' to take into consideration, and the final goal pose
+`pose-stamped' for the given link). Returns the final joint state on
+success, and `nil' otherwise."
   (let ((result (roslisp:call-service
                  "/compute_ik"
                  "moveit_msgs/GetPositionIK"
@@ -382,11 +380,34 @@
           (signal-moveit-error val))
         solution))))
 
+(defun plan-link-movements (link-name planning-group poses-stamped
+                            &key allowed-collision-objects
+                              touch-links default-collision-entries
+                              ignore-collisions
+                              destination-validity-only)
+  (every (lambda (pose-stamped)
+           (plan-link-movement
+            link-name planning-group pose-stamped
+            :allowed-collision-objects allowed-collision-objects
+            :touch-links touch-links
+            :default-collision-entries default-collision-entries
+            :ignore-collisions ignore-collisions
+            :destination-validity-only destination-validity-only))
+         poses-stamped))
+
 (defun plan-link-movement (link-name planning-group pose-stamped
                            &key allowed-collision-objects
                              touch-links default-collision-entries
                              ignore-collisions
                              destination-validity-only)
+  "Plans the movement of link `link-name' to given goal-pose
+`pose-stamped', taking the planning group `planning-group' into
+consideration. Returns the proposed trajectory, and final joint state
+on finding a valid motion plan for the given configuration from the
+current configuration. If the flag `destination-validity-only' is set,
+only the final state (but not the motion path trajectory in between)
+is returned. Setting this flag also speeds up the process very much,
+as only the final configuration IK is generated."
   (cpl:with-failure-handling
       ((moveit:no-ik-solution (f)
          (declare (ignore f))
@@ -418,14 +439,76 @@
               :default-collision-entries default-collision-entries
               :ignore-collisions ignore-collisions)))))
 
+(defun ensure-pose-stamped-transformable (pose-stamped target-frame
+                                          &key ros-time)
+  (ros-info (moveit) "Ensuring pose transformable (~a -> ~a)."
+            (tf:frame-id pose-stamped) target-frame)
+  (loop for sleepiness = (sleep 0.1)
+        for time = (ros-time)
+        when (tf:wait-for-transform
+              *tf*
+              :source-frame (tf:frame-id pose-stamped)
+              :target-frame target-frame
+              :timeout 0.4
+              :time (cond (ros-time time)
+                          (t (tf:stamp pose-stamped))))
+          do (return (cond
+                       (ros-time
+                        (tf:copy-pose-stamped pose-stamped :stamp (ros-time)))
+                       (t pose-stamped)))))
+
+(defun ensure-transform-available (reference-frame target-frame)
+  (cpl:with-failure-handling
+      ((cl-tf:tf-cache-error (f)
+         (declare (ignore f))
+         (ros-warn (moveit) "Failed to make transform available. Retrying.")
+         (cpl:retry)))
+    (loop for sleepiness = (sleep 0.1)
+          for time = (ros-time)
+          for transform = (when (tf:wait-for-transform
+                                 *tf* :timeout 0.4
+                                 :time time
+                                 :source-frame reference-frame
+                                 :target-frame target-frame)
+                            (tf:lookup-transform
+                             *tf* :time time
+                                  :source-frame reference-frame
+                                  :target-frame target-frame))
+          when transform
+            do (return transform))))
+  
+(defun ensure-pose-stamped-transformed (pose-stamped target-frame
+                                        &key ros-time)
+  (cpl:with-failure-handling
+      ((cl-tf:tf-cache-error (f)
+         (declare (ignore f))
+         (ros-warn (moveit) "Failed to transform pose. Retrying.")
+         (cpl:retry)))
+    (tf:transform-pose
+     *tf* :pose (ensure-pose-stamped-transformable
+                 pose-stamped target-frame :ros-time ros-time)
+          :target-frame target-frame)))
+
 (defun pose-distance (link-frame pose-stamped)
-  (tf:wait-for-transform
-   *tf* :timeout 5.0
-        :time (tf:stamp pose-stamped)
-        :source-frame (tf:frame-id pose-stamped)
-        :target-frame link-frame)
-  (let ((transformed-pose-stamped (tf:transform-pose
-                                   *tf* :pose pose-stamped
-                                        :target-frame link-frame)))
-    (tf:v-dist (tf:make-identity-vector) (tf:origin
-                                          transformed-pose-stamped))))
+  "Returns the distance of stamped pose `pose-stamped' from the origin
+coordinates of link `link-frame'. This can be for example used for
+checking how far away a given grasp pose is from the gripper frame."
+  (tf:v-dist (tf:make-identity-vector)
+             (tf:origin (ensure-pose-stamped-transformed
+                         pose-stamped link-frame :ros-time t))))
+
+(defun motion-length (link-name planning-group pose-stamped
+                        &key allowed-collision-objects)
+  (let* ((pose-stamped-transformed
+           (ensure-pose-stamped-transformed
+            pose-stamped "/torso_lift_link" :ros-time t))
+         (state-0 (moveit:plan-link-movement
+                   link-name planning-group
+                   pose-stamped-transformed
+                   :allowed-collision-objects
+                   allowed-collision-objects
+                   :destination-validity-only t)))
+    (when state-0
+      (pose-distance
+       link-name
+       pose-stamped-transformed))))

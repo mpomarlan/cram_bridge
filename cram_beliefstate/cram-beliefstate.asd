@@ -47,10 +47,12 @@
                designator_integration_msgs-srv
                cram-reasoning
                cram-uima
-               pr2-manipulation-process-module)
+               pr2-manipulation-process-module
+               point-head-process-module)
   :components
   ((:module "src"
     :components
     ((:file "package")
      (:file "beliefstate" :depends-on ("package"))
+     (:file "interactive-control" :depends-on ("beliefstate" "package"))
      (:file "hooks" :depends-on ("beliefstate" "package"))))))

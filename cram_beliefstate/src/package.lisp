@@ -55,5 +55,18 @@
    add-topic-image-to-active-node
    add-failure-to-active-node
    add-designator-to-active-node
-   equate-designators)
-  (:designator-properties #:is-new))
+   equate-designators
+   set-metadata
+   ;; Interactive objects
+   register-interactive-object
+   unregister-interactive-object
+   set-interactive-object-menu
+   set-interactive-object-pose
+   ;; Interactive callbacks
+   register-interactive-callback
+   unregister-interactive-callback
+   ;; Experiment metadata
+   begin-experiment
+   end-experiment
+   query-input)
+  (:designator-properties))

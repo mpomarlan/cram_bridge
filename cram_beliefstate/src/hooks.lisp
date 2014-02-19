@@ -1,24 +1,61 @@
-(in-package :cpl-impl)
+;;; Copyright (c) 2013, Jan Winkler <winkler@cs.uni-bremen.de>
+;;; All rights reserved.
+;;; 
+;;; Redistribution and use in source and binary forms, with or without
+;;; modification, are permitted provided that the following conditions are met:
+;;; 
+;;;     * Redistributions of source code must retain the above copyright
+;;;       notice, this list of conditions and the following disclaimer.
+;;;     * Redistributions in binary form must reproduce the above copyright
+;;;       notice, this list of conditions and the following disclaimer in the
+;;;       documentation and/or other materials provided with the distribution.
+;;;     * Neither the name of the Universitaet Bremen nor the names of its contributors 
+;;;       may be used to endorse or promote products derived from this software 
+;;;       without specific prior written permission.
+;;; 
+;;; THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+;;; AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+;;; IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+;;; ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+;;; LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+;;; CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+;;; SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+;;; INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+;;; CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+;;; ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+;;; POSSIBILITY OF SUCH DAMAGE.
 
-(defmethod hook-before-task-execution :around (name log-parameters)
-  (beliefstate:start-node name log-parameters 1))
+(in-package :beliefstate)
 
-(defmethod hook-after-task-execution :around (id)
-  (beliefstate:stop-node id))
+(defmethod sem-map-coll-env::on-publishing-collision-object
+    cram-beliefstate (object obj-name)
+  (with-slots ((pose sem-map-coll-env::pose)
+               (type sem-map-coll-env::type)
+               (index sem-map-coll-env::index)
+               (name sem-map-coll-env::name)
+               (dimensions sem-map-coll-env::dimensions)) object
+    (let* ((surfaces
+             `(,(cons "kitchen_island" "HTTP://IAS.CS.TUM.EDU/KB/KNOWROB.OWL#KITCHEN_ISLAND_COUNTER_TOP-0")
+               ,(cons "kitchen_sink_block" "HTTP://IAS.CS.TUM.EDU/KB/KNOWROB.OWL#KITCHEN_SINK_BLOCK_COUNTER_TOP-0")))
+           (entry (find obj-name surfaces :test (lambda (x y)
+                                                  (string= x (cdr y))))))
+      (when entry
+        (let ((offset-pose (tf:make-pose (tf:v+ (tf:origin pose)
+                                                (tf:make-3d-vector 0 0 0.01))
+                                         (tf:orientation pose))))
+          (beliefstate:register-interactive-object
+           (car entry) 'box offset-pose
+           (vector (sem-map-coll-env::x dimensions)
+                   (sem-map-coll-env::y dimensions)
+                   (sem-map-coll-env::z dimensions))
+           `((examine-tabletop ((label ,(concatenate 'string
+                                                     "Examine countertop '"
+                                                     (car entry)
+                                                     "'"))
+                                (parameter ,(car entry)))))))))))
 
-(defmethod hook-before-named-top-level :around (name)
-  (beliefstate:start-node name `() 1))
-
-(defmethod hook-after-named-top-level :around (id)
-  (beliefstate:stop-node id))
-
-(defmethod hook-on-fail :around (condition)
-  (beliefstate:add-failure-to-active-node condition))
-
-
-(in-package :plan-lib)
-
-(defmethod hook-before-performing-action-designator :around (designator matching-process-modules)
+(defmethod plan-lib::on-preparing-performing-action-designator
+    cram-beliefstate (designator matching-process-modules)
   (prog1
       (beliefstate:start-node
        "PERFORM-ACTION-DESIGNATOR"
@@ -32,23 +69,99 @@
        2)
     (beliefstate:add-designator-to-active-node designator)))
 
-(defmethod hook-after-performing-action-designator :around (id success)
+(defmethod plan-lib::on-finishing-performing-action-designator
+    cram-beliefstate (id success)
   (declare (ignore success))
   ;; NOTE(winkler): Success is not used at the moment. It would be
   ;; nice to have an additional service, saying "append data to
   ;; current task". The success would the go there.
   (beliefstate:stop-node id))
 
-(defmethod hook-with-designator :around (designator)
+(defmethod plan-lib::on-with-designator cram-beliefstate (designator)
   (beliefstate:add-designator-to-active-node
-   designator))
+   designator))  
 
+(defmethod cpl-impl::on-preparing-named-top-level cram-beliefstate (name)
+  (let ((name (or name "ANONYMOUS-TOP-LEVEL")))
+    (beliefstate:start-node name `() 1)))
 
-(in-package :desig)
+(defmethod cpl-impl::on-finishing-named-top-level cram-beliefstate (id)
+  (beliefstate:stop-node id))
 
-(defmethod hook-equate-designators :around (desig-child desig-parent)
-  (beliefstate:equate-designators
-   desig-child desig-parent))
+(defmethod cpl-impl::on-preparing-task-execution cram-beliefstate (name log-parameters)
+  (prog1
+      (beliefstate:start-node name log-parameters 1)
+    (let ((goal-location (second
+                          (find 'cram-plan-library::goal-location log-parameters
+                                :test (lambda (x y)
+                                        (eql x (first y)))))))
+      (when goal-location
+        (beliefstate:add-designator-to-active-node
+         goal-location
+         :annotation "goal-location")
+        (beliefstate:add-designator-to-active-node
+         (make-designator
+          'cram-designators:location
+          `((pose ,(reference goal-location))))
+         :annotation "goal-pose")))))
+
+(defmethod cpl-impl::on-finishing-task-execution cram-beliefstate (id)
+  (beliefstate:stop-node id))
+
+(defmethod cpl-impl::on-fail cram-beliefstate (condition)
+  (when condition
+    (let ((failure (intern (symbol-name (slot-value
+                                         (class-of condition)
+                                         'sb-pcl::name)))))
+      (beliefstate:add-failure-to-active-node failure))))
+
+(defmethod desig::on-equate-designators (successor parent)
+  (beliefstate:equate-designators successor parent))
+
+(defmethod point-head-process-module::on-begin-move-head cram-beliefstate (pose-stamped)
+  (prog1
+      (beliefstate:start-node
+       "VOLUNTARY-BODY-MOVEMENT-HEAD"
+       `() 2)
+    (beliefstate:add-designator-to-active-node
+     (make-designator
+      'cram-designators:action
+      `((goal-pose ,pose-stamped)))
+     :annotation "voluntary-movement-details")))
+
+(defmethod point-head-process-module::on-finish-move-head cram-beliefstate (id success)
+  (beliefstate:stop-node id :success success))
+
+(defmethod pr2-manipulation-process-module::on-begin-grasp cram-beliefstate (obj-desig)
+  (prog1
+      (beliefstate:start-node "GRASP" `() 2)
+    (beliefstate:add-topic-image-to-active-node
+     cram-beliefstate::*kinect-topic-rgb*)
+    (beliefstate:add-designator-to-active-node
+     obj-desig
+     :annotation "object-acted-on")))
+
+(defmethod pr2-manipulation-process-module::on-finish-grasp cram-beliefstate (log-id success)
+  (beliefstate:add-topic-image-to-active-node
+   cram-beliefstate::*kinect-topic-rgb*)
+  (beliefstate:stop-node log-id :success success))
+
+(defmethod pr2-manipulation-process-module::on-begin-putdown cram-beliefstate (obj-desig loc-desig)
+  (prog1
+      (beliefstate:start-node
+       "PUTDOWN"
+       `() 2)
+    (beliefstate:add-topic-image-to-active-node
+     cram-beliefstate::*kinect-topic-rgb*)
+    (beliefstate:add-designator-to-active-node
+     obj-desig :annotation "object-acted-on")
+    (beliefstate:add-designator-to-active-node
+     loc-desig :annotation "putdown-location")))
+
+(defmethod pr2-manipulation-process-module::on-finish-putdown cram-beliefstate (log-id success)
+  (beliefstate:add-topic-image-to-active-node
+   cram-beliefstate::*kinect-topic-rgb*)
+  (beliefstate:stop-node log-id :success success))
 
 
 (in-package :crs)
@@ -84,20 +197,6 @@
 
 (in-package :pr2-manipulation-process-module)
 
-(defmethod hook-before-grasp :around (obj-desig)
-  (prog1
-      (beliefstate:start-node
-       "GRASP"
-       `() 2)
-    (beliefstate:add-topic-image-to-active-node cram-beliefstate::*kinect-topic-rgb*)
-    (beliefstate:add-designator-to-active-node obj-desig
-                                               :annotation "object-acted-on")))
-
-(defmethod hook-after-grasp :around (id success)
-  (progn
-    (beliefstate:add-topic-image-to-active-node cram-beliefstate::*kinect-topic-rgb*)
-    (beliefstate:stop-node id :success success)))
-
 (defmethod hook-before-putdown :around (obj-desig loc-desig)
   (prog1
       (beliefstate:start-node
@@ -118,7 +217,7 @@
                                  planning-group ignore-collisions)
   (prog1
       (beliefstate:start-node
-       "VOLUNTARY-BODY-MOVEMENT"
+       "VOLUNTARY-BODY-MOVEMENT-ARMS"
        `() 2)
     (beliefstate:add-designator-to-active-node
      (make-designator

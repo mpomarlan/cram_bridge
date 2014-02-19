@@ -46,6 +46,7 @@
    ;; Functions
    move-link-pose
    plan-link-movement
+   plan-link-movements
    init-moveit-bridge
    pose-distance
    add-collision-object
@@ -62,6 +63,8 @@
    detach-collision-object-from-link
    get-joint-value
    set-collision-object-pose
+   compute-ik
+   execute-trajectory
    ;; Conditions
    moveit-failure
    planning-failed
@@ -87,6 +90,10 @@
    sensor-info-stale
    no-ik-solution
    no-collision-shapes-defined
-   pose-not-transformable-into-link)
+   pose-not-transformable-into-link
+   ;; Transformations
+   ensure-pose-stamped-transformable
+   ensure-pose-stamped-transformed
+   ensure-transform-available)
   (:desig-properties #:shape #:dimensions #:box #:cylinder
                      #:sphere #:cone #:round #:name))

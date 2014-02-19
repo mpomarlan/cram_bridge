@@ -36,6 +36,8 @@
 (defvar *uima-trigger-service-topic* "/uima/uima_trigger")
 (defvar *uima-results-topic* "/uima/uima_result")
 
+(define-condition uima-not-running () ())
+
 (defun init-uima-bridge ()
   "Sets up the basic action client communication handles for the
 UIMA framework."
@@ -45,7 +47,7 @@ UIMA framework."
          :value nil
          :allow-tracing nil)))
 
-(register-ros-init-function init-uima-bridge)
+(roslisp-utilities:register-ros-init-function init-uima-bridge)
 
 (defun set-comm-mode (comm-mode
                       &key
@@ -101,10 +103,6 @@ for a reply on another topic."
 (defmethod hook-after-uima-request (id result))
 
 (defun get-uima-result (designator-request)
-  ;; This is a hacky solution. We configure UIMA over and over again
-  ;; here in order to make sure that the service is connected
-  ;; properly.
-  ;(config-uima)
   (let ((designator-request-plus-id
           (make-designator
            (ecase (class-name (class-of designator-request))
@@ -113,22 +111,29 @@ for a reply on another topic."
              (desig:location-designator 'cram-designators:location))
            (description designator-request))))
     (equate designator-request designator-request-plus-id)
-    (format t "Waiting for hook 1~%")
+    (roslisp:ros-info (uima) "Waiting for perception results")
     (let ((log-id (hook-before-uima-request designator-request-plus-id))
           (result-designators
-            (ecase *uima-comm-mode*
-              (:topic
-               (trigger designator-request-plus-id)
-               (when (cpl:wait-for *uima-result-fluent*)
-                 (roslisp:with-fields (designators)
-                     (cpl:value *uima-result-fluent*)
-                   (map 'list (lambda (x)
-                                (desig-int::msg->designator x))
-                        designators))))
-              (:service
-               (desig-int::call-designator-service
-                *uima-service-topic* designator-request-plus-id)))))
-      (format t "Waiting for hook 2~%")
+            (cpl:with-failure-handling
+                ((roslisp::ros-rpc-error (f)
+                   (declare (ignore f))
+                   (roslisp:ros-warn
+                    (uima) "Waiting for connection to RoboSherlock.")
+                   (sleep 1)
+                   (cpl:retry)))
+              (ecase *uima-comm-mode*
+                (:topic
+                 (trigger designator-request-plus-id)
+                 (when (cpl:wait-for *uima-result-fluent*)
+                   (roslisp:with-fields (designators)
+                       (cpl:value *uima-result-fluent*)
+                     (map 'list (lambda (x)
+                                  (desig-int::msg->designator x))
+                          designators))))
+                (:service
+                 (desig-int::call-designator-service
+                  *uima-service-topic* designator-request-plus-id))))))
+      (roslisp:ros-info (uima) "Post processing perception results")
       (hook-after-uima-request log-id result-designators)
       result-designators)))
 
