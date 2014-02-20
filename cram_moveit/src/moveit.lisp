@@ -55,9 +55,12 @@ MoveIt! framework and registers known conditions."
   (connect-action-client))
 
 (defun connect-action-client ()
-  (setf *move-group-action-client*
-        (actionlib:make-action-client
-         "move_group" "moveit_msgs/MoveGroupAction")))
+  (loop while (or (not *move-group-action-client*)
+                  (not (actionlib:wait-for-server
+                        *move-group-action-client* 3.0)))
+        do (setf *move-group-action-client*
+                 (actionlib:make-action-client
+                  "/move_group" "moveit_msgs/MoveGroupAction"))))
 
 (defun joint-states-callback (msg)
   (roslisp:with-fields (name position) msg
@@ -206,8 +209,8 @@ MoveIt! framework and registers known conditions."
     (let* ((mpreq (make-message
                    "moveit_msgs/MotionPlanRequest"
                    :group_name planning-group
-                   :num_planning_attempts 5
-                   :allowed_planning_time 3
+                   :num_planning_attempts 10
+                   :allowed_planning_time 10
                    :goal_constraints
                    (vector
                     (make-message
@@ -304,9 +307,10 @@ MoveIt! framework and registers known conditions."
              (cpl:with-failure-handling
                  ((actionlib:server-lost (f)
                     (declare (ignore f))
-                    (ros-error (moveit) "Lost actionlib connection.")
+                    (ros-error (moveit)
+                               "Lost actionlib connection while executing.")
                     (connect-action-client)
-                    (cpl:retry))
+                    (cpl:fail 'planning-failed))
                   (invalid-motion-plan (f)
                     (declare (ignore f))
                     (ros-warn (moveit) "Invalid motion plan. Rethrowing.")
@@ -339,7 +343,7 @@ MoveIt! framework and registers known conditions."
                                    (error 'actionlib:server-lost)))))
                        (t (actionlib:send-goal *move-group-action-client*
                                                goal))))))
-            (t (ros-error (moveit) "Lost actionlib connection.")
+            (t (ros-error (moveit) "Lost actionlib connection while waiting.")
                (connect-action-client)
                (error 'planning-failed))))))
 
@@ -443,19 +447,21 @@ as only the final configuration IK is generated."
                                           &key ros-time)
   (ros-info (moveit) "Ensuring pose transformable (~a -> ~a)."
             (tf:frame-id pose-stamped) target-frame)
-  (loop for sleepiness = (sleep 0.1)
-        for time = (ros-time)
-        when (tf:wait-for-transform
-              *tf*
-              :source-frame (tf:frame-id pose-stamped)
-              :target-frame target-frame
-              :timeout 0.4
-              :time (cond (ros-time time)
-                          (t (tf:stamp pose-stamped))))
-          do (return (cond
-                       (ros-time
-                        (tf:copy-pose-stamped pose-stamped :stamp (ros-time)))
-                       (t pose-stamped)))))
+  (let ((first-run t))
+    (loop for sleepiness = (or first-run (sleep 1.0))
+          for time = (ros-time)
+          when (tf:wait-for-transform
+                *tf*
+                :source-frame (tf:frame-id pose-stamped)
+                :target-frame target-frame
+                :timeout 2.0
+                :time (cond (ros-time time)
+                            (t (tf:stamp pose-stamped))))
+            do (setf first-run nil)
+               (return (cond
+                         (ros-time
+                          (tf:copy-pose-stamped pose-stamped :stamp (ros-time)))
+                         (t pose-stamped))))))
 
 (defun ensure-transform-available (reference-frame target-frame)
   (cpl:with-failure-handling
@@ -463,19 +469,21 @@ as only the final configuration IK is generated."
          (declare (ignore f))
          (ros-warn (moveit) "Failed to make transform available. Retrying.")
          (cpl:retry)))
-    (loop for sleepiness = (sleep 0.1)
-          for time = (ros-time)
-          for transform = (when (tf:wait-for-transform
-                                 *tf* :timeout 0.4
-                                 :time time
-                                 :source-frame reference-frame
-                                 :target-frame target-frame)
-                            (tf:lookup-transform
-                             *tf* :time time
-                                  :source-frame reference-frame
-                                  :target-frame target-frame))
-          when transform
-            do (return transform))))
+    (let ((first-run t))
+      (loop for sleepiness = (or first-run (sleep 1.0))
+            for time = (ros-time)
+            for transform = (when (tf:wait-for-transform
+                                   *tf* :timeout 2.0
+                                        :time time
+                                        :source-frame reference-frame
+                                        :target-frame target-frame)
+                              (tf:lookup-transform
+                               *tf* :time time
+                                    :source-frame reference-frame
+                                    :target-frame target-frame))
+            when transform
+              do (setf first-run nil)
+                 (return transform)))))
   
 (defun ensure-pose-stamped-transformed (pose-stamped target-frame
                                         &key ros-time)
