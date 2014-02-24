@@ -37,9 +37,7 @@
                geometry_msgs-msg
                std_msgs-msg
                cl-transforms
-               ;; cram-feature-constraints
-               ;; constraint_msgs-msg
-               ;; geometry_msgs-msg
+               cl-feature-constraints
                ;; cram-language
                )
   :components
