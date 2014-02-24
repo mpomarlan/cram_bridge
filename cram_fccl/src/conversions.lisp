@@ -74,46 +74,6 @@
    base_frame (to-msg (base-frame-id chain))
    tip_frame (to-msg (tip-frame-id chain))))
 
-;; (defun feature-constraints->config-msg (constraints controller-id)
-;;   (declare (type list constraints)
-;;            (type string controller-id))
-;;   (let ((constraint-msg-vector
-;;            (map 'vector #'identity
-;;                 (map 'list #'feature-constraint->single-config-msg constraints))))
-;;     (roslisp:make-msg
-;;      "constraint_msgs/constraintconfig"
-;;      :controller_id controller-id
-;;      :movement_id (sxhash constraints)
-;;      :constraints constraint-msg-vector)))
-
-;; (defun feature-constraints->command-msg (constraints controller-id)
-;;   (declare (type list constraints)
-;;            (type string controller-id))
-;;   (let ((min_vels
-;;           (map 'list #'minimum-velocity constraints))
-;;         (max_vels
-;;           (map 'list #'maximum-velocity constraints))
-;;         (weights
-;;           (map 'list #'weight constraints))
-;;         (lower
-;;           (map 'list #'lower-boundary constraints))
-;;         (upper
-;;           (map 'list #'upper-boundary constraints)))
-;;     (roslisp:make-msg
-;;      "constraint_msgs/constraintcommand"
-;;      controller_id controller-id
-;;      movement_id (sxhash constraints)
-;;      pos_lo (map 'vector #'identity
-;;                  lower)
-;;      pos_hi (map 'vector #'identity
-;;                  upper)
-;;      weight (map 'vector #'identity
-;;                  weights)
-;;      max_vel (map 'vector #'identity
-;;                   max_vels)
-;;      min_vel (map 'vector #'identity
-;;                   min_vels))))
-
 (defmethod to-msg ((point cl-transforms:3d-vector))
   (roslisp:make-msg
    "geometry_msgs/vector3"
@@ -198,8 +158,3 @@
 (defmethod from-msg ((msg std_msgs-msg:Uint8))
   (with-fields (data) msg
     data))
-
-;; (defun constraint-state-msg->feature-constraint-state (msg)
-;;   (when msg
-;;     (roslisp:with-fields (weights movement_id) msg
-;;       (cram-feature-constraints:make-constraint-state weights movement_id))))
