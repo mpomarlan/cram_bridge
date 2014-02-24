@@ -49,7 +49,4 @@
      (:file "datatypes" :depends-on ("package"))
      (:file "conversions" :depends-on ("package" "datatypes"))
      (:file "action-interface" :depends-on ("package" "datatypes" "conversions"))
-     (:file "samples" :depends-on ("package" "datatypes" "action-interface"))
-     ;; (:file "publisher-interface" :depends-on ("package" "conversions"))
-     ;; (:file "tests" :depends-on ("package" "conversions" "publisher-interface"))
-     ))))
+     (:file "samples" :depends-on ("package" "datatypes" "action-interface"))))))
