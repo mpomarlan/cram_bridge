@@ -29,73 +29,68 @@
 (in-package :cram-fccl)
 
 (defgeneric to-msg (data))
+(defgeneric from-msg (data))
 
-(defmethod to-msg ((feature geometric-feature))
-  (roslisp:make-msg
-   "fccl_msgs/feature"
-   name (to-msg (name feature))
-   reference (to-msg (reference-id feature))
-   ; TODO(Georg): refactor message to use primitive messages
-   type (roslisp:make-msg
-         "std_msgs/Uint8"
-         data (ecase (feature-type feature)
-                (line
-                 (get-feature-type-msg-symbol-code :line))
-                (plane
-                 (get-feature-type-msg-symbol-code :plane))
-                (point
-                 (get-feature-type-msg-symbol-code :point))))
-   position (to-msg (feature-position feature))
-   direction (to-msg (feature-direction feature))))
-
-(defmethod to-msg ((constraint geometric-constraint))
+(defmethod to-msg ((constraint feature-constraint))
+  (with-slots (relation) constraint
   (roslisp:make-msg
    "fccl_msgs/constraint"
-   name (to-msg (name constraint))
-   reference (to-msg (reference-id constraint))
-   function (to-msg (constraint-function constraint))
-   tool_feature (to-msg (tool-feature constraint))
-   object_feature (to-msg (object-feature constraint))
+   name (to-msg (id constraint))
+   reference (to-msg (reference relation))
+   function (to-msg (symbol-name (function-type relation)))
+   tool_feature (to-msg (tool-feature relation))
+   object_feature (to-msg (object-feature relation))
    ; TODO(Georg): refactor message to use primitive types
    lower_boundary (roslisp:make-msg
                    "std_msgs/Float64"
                    data (lower-boundary constraint))
    upper_boundary (roslisp:make-msg
                    "std_msgs/Float64"
-                   data (upper-boundary constraint))))
+                   data (upper-boundary constraint)))))
 
-(defmethod to-msg ((list-of-data list))
-  (map 'vector #'identity
-       (map 'list #'to-msg list-of-data)))
+(defmethod to-msg ((feature geometric-feature))
+  (roslisp:make-msg
+   "fccl_msgs/feature"
+   name (to-msg (id feature))
+   reference (to-msg (frame-id feature))
+   ; TODO(Georg): refactor message to use primitive messages
+   type (roslisp:make-msg
+         "std_msgs/Uint8"
+         data (lookup-feature-type-msg-symbol-code feature))
+   position (to-msg (origin feature))
+   direction (to-msg (orientation feature))))
 
 (defmethod to-msg ((chain kinematic-chain))
-  (roslisp:make-msg
+  (make-msg 
    "fccl_msgs/kinematicchain"
    base_frame (to-msg (base-frame-id chain))
    tip_frame (to-msg (tip-frame-id chain))))
 
 (defmethod to-msg ((point cl-transforms:3d-vector))
-  (roslisp:make-msg
+  (make-msg
    "geometry_msgs/vector3"
    x (cl-transforms:x point)
    y (cl-transforms:y point)
    z (cl-transforms:z point)))
 
 (defmethod to-msg ((string-data string))
-  (roslisp:make-msg
-   "std_msgs/String"
-   data string-data))
+  (make-msg "std_msgs/String" data string-data))
 
-(defun get-feature-type-msg-symbol-code (type-symbol)
-  (roslisp-msg-protocol:symbol-code
-   'fccl_msgs-msg:feature
-   type-symbol))
+(defmethod to-msg ((list-of-data list))
+  (map 'vector #'identity
+       (map 'list #'to-msg list-of-data)))
 
-(defun get-feature-type-symbol-from-msg-code (type-code)
-  (car 
-   (find type-code (roslisp-msg-protocol:symbol-codes 'fccl_msgs-msg:feature) :key #'cdr)))
-
-(defgeneric from-msg (data))
+(defun lookup-feature-type-msg-symbol-code (feature)
+  (declare (type geometric-feature feature))
+  (flet ((feature->feature-type-keyword (feature)
+           (ecase (feature-type feature)
+             (line :line)
+             (plane :plane)
+             (point :point)))
+         (feature-type-keyword->msg-symbol-code (feature-type-keyword)
+           (symbol-code 'fccl_msgs-msg:feature feature-type-keyword)))
+    (feature-type-keyword->msg-symbol-code
+     (feature->feature-type-keyword feature))))
 
 (defmethod from-msg ((msg fccl_msgs-msg:SingleArmMotionFeedback))
   (with-fields (constraints) msg
@@ -107,41 +102,54 @@
 
 (defmethod from-msg ((msg fccl_msgs-msg:ConstraintFeedback))
   (with-fields (command output) msg
-    (make-geometric-constraint-feedback (from-msg command) (from-msg output))))
-
-(defmethod from-msg ((msg fccl_msgs-msg:ConstraintState))
-  (roslisp:with-fields (output_value desired_output weight) msg
-    (make-geometric-constraint-state output_value desired_output weight)))
+    (with-fields (output_value desired_output weight) output
+      (with-fields (name) command
+        (make-feature-constraint-state
+         :constraint-id (from-msg name)
+         :output output_value
+         :ctrl-output desired_output
+         :ctrl-weight weight)))))
 
 (defmethod from-msg ((msg fccl_msgs-msg:Constraint))
   (with-fields (name reference function tool_feature object_feature
                      lower_boundary upper_boundary) msg
     ;; TODO(Georg): use primitive datatypes in msg
-    (make-geometric-constraint
-     (from-msg name)
-     (from-msg reference)
-     (from-msg function)
-     (from-msg tool_feature)
-     (from-msg object_feature)
-     (from-msg lower_boundary)
-     (from-msg upper_boundary))))
+    (make-feature-constraint
+     :id (from-msg name)
+     :relation
+     (make-feature-relation
+      :reference (from-msg reference)
+      :function-type (lookup-relation-type-from-msg function)
+      :tool-feature (from-msg tool_feature)
+      :object-feature (from-msg object_feature))
+     :lower-boundary (from-msg lower_boundary)
+     :upper-boundary (from-msg upper_boundary))))
 
+(defun lookup-relation-type-from-msg (msg)
+  (declare (type std_msgs-msg:String msg))
+  (find (from-msg msg) (valid-relation-functions) :key #'symbol-name :test #'string-equal))
+  
 (defmethod from-msg ((msg fccl_msgs-msg:Feature))
   (with-fields ((name-msg name) (reference-msg reference) (type-msg type)
                 (position-msg position) (direction-msg direction)) msg
-      (let ((name (from-msg name-msg))
-            (reference (from-msg reference-msg))
-            (type (from-msg type-msg))
-            (position (from-msg position-msg))
-            (direction (from-msg direction-msg)))
-        (cond ((eq (get-feature-type-symbol-from-msg-code type) :point)
-               (make-point-feature name reference position))
-              ((eq (get-feature-type-symbol-from-msg-code type) :line)
-               (make-line-feature name reference position direction))
-              ((eq (get-feature-type-symbol-from-msg-code type) :plane)
-               (make-plane-feature name reference position direction))
-              ;; TODO(Georg): throw meaningful error error
-              (t nil)))))
+    (make-geometric-feature
+     :id (from-msg name-msg)
+     :frame-id (from-msg reference-msg)
+     :feature-type (lookup-feature-type-from-msg type-msg)
+     :origin (from-msg position-msg)
+     :orientation (from-msg direction-msg))))
+
+(defun lookup-feature-type-from-msg (msg)
+  (declare (type std_msgs-msg:Uint8 msg))
+  (flet ((type-code->feature-type-keyword (type-code)
+           (car (find type-code (symbol-codes 'fccl_msgs-msg:feature) :key #'cdr)))
+         (feature-type-keyword->feature-type-symbol (type-keyword)
+           (ecase type-keyword
+             (:point 'point)
+             (:line 'line)
+             (:plane 'plane))))
+    (feature-type-keyword->feature-type-symbol
+     (type-code->feature-type-keyword (from-msg msg)))))
 
 (defmethod from-msg ((msg geometry_msgs-msg:Vector3))
   (with-fields (x y z) msg
@@ -152,8 +160,8 @@
     data))
 
 (defmethod from-msg ((msg std_msgs-msg:Float64))
-  (with-fields ((data2 data)) msg 
-    data2))
+  (with-fields (data) msg 
+    data))
 
 (defmethod from-msg ((msg std_msgs-msg:Uint8))
   (with-fields (data) msg
