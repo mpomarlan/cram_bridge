@@ -77,9 +77,10 @@
   ;; current task". The success would the go there.
   (beliefstate:stop-node id))
 
-(defmethod plan-lib::on-with-designator cram-beliefstate (designator)
+(defmethod cram-language-designator-support::on-with-designator
+    cram-beliefstate (designator)
   (beliefstate:add-designator-to-active-node
-   designator))  
+   designator))
 
 (defmethod cpl-impl::on-preparing-named-top-level cram-beliefstate (name)
   (let ((name (or name "ANONYMOUS-TOP-LEVEL")))
@@ -140,6 +141,17 @@
     (beliefstate:add-designator-to-active-node
      obj-desig
      :annotation "object-acted-on")))
+
+(defmethod pr2-manipulation-process-module::on-grasp-decisions-complete
+    cram-beliefstate (obj-name pregrasp-pose grasp-pose side object-pose)
+  (beliefstate:add-designator-to-active-node
+   (make-designator 'cram-designators:action
+                    `((object-name ,obj-name)
+                      (pregrasp-pose ,pregrasp-pose)
+                      (grasp-pose ,grasp-pose)
+                      (side ,side)
+                      (object-pose ,object-pose)))
+   :annotation "grasp-details"))
 
 (defmethod pr2-manipulation-process-module::on-finish-grasp cram-beliefstate (log-id success)
   (beliefstate:add-topic-image-to-active-node
