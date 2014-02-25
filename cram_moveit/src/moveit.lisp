@@ -45,6 +45,10 @@ MoveIt! framework and registers known conditions."
         (roslisp:advertise
          "/planning_scene"
          "moveit_msgs/PlanningScene" :latch t))
+  (setf *robot-state-display-publisher*
+        (roslisp:advertise
+         *robot-state-display-topic*
+         "moveit_msgs/DisplayRobotState" :latch t))
   (roslisp:publish *planning-scene-publisher* *scene-msg*)
   (setf *joint-states-fluent*
         (cram-language:make-fluent :name "joint-state-tracker"))
@@ -52,15 +56,19 @@ MoveIt! framework and registers known conditions."
         (roslisp:subscribe "/joint_states"
                            "sensor_msgs/JointState"
                            #'joint-states-callback))
-  (connect-action-client))
+  (connect-action-client :reconnect nil))
 
-(defun connect-action-client ()
-  (loop while (or (not *move-group-action-client*)
-                  (not (actionlib:wait-for-server
-                        *move-group-action-client* 3.0)))
-        do (setf *move-group-action-client*
+(defun connect-action-client (&key (reconnect t))
+  (cond (reconnect
+         (loop while (or (not *move-group-action-client*)
+                         (not (actionlib:wait-for-server
+                               *move-group-action-client* 3.0)))
+               do (setf *move-group-action-client*
+                        (actionlib:make-action-client
+                         "/move_group" "moveit_msgs/MoveGroupAction"))))
+        (t (setf *move-group-action-client*
                  (actionlib:make-action-client
-                  "/move_group" "moveit_msgs/MoveGroupAction"))))
+                  "/move_group" "moveit_msgs/MoveGroupAction")))))
 
 (defun joint-states-callback (msg)
   (roslisp:with-fields (name position) msg
@@ -403,7 +411,8 @@ success, and `nil' otherwise."
                            &key allowed-collision-objects
                              touch-links default-collision-entries
                              ignore-collisions
-                             destination-validity-only)
+                             destination-validity-only
+                             highlight-links)
   "Plans the movement of link `link-name' to given goal-pose
 `pose-stamped', taking the planning group `planning-group' into
 consideration. Returns the proposed trajectory, and final joint state
@@ -432,7 +441,9 @@ as only the final configuration IK is generated."
          (declare (ignore f))
          (return)))
     (cond (destination-validity-only
-           (compute-ik link-name planning-group pose-stamped))
+           (let ((ik (compute-ik link-name planning-group pose-stamped)))
+             (when (and ik highlight-links)
+               (display-robot-state ik :highlight highlight-links))))
           (t (moveit:move-link-pose
               link-name
               planning-group pose-stamped
@@ -506,7 +517,8 @@ checking how far away a given grasp pose is from the gripper frame."
                          pose-stamped link-frame :ros-time t))))
 
 (defun motion-length (link-name planning-group pose-stamped
-                        &key allowed-collision-objects)
+                        &key allowed-collision-objects
+                          highlight-links)
   (let* ((pose-stamped-transformed
            (ensure-pose-stamped-transformed
             pose-stamped "/torso_lift_link" :ros-time t))
@@ -515,7 +527,8 @@ checking how far away a given grasp pose is from the gripper frame."
                    pose-stamped-transformed
                    :allowed-collision-objects
                    allowed-collision-objects
-                   :destination-validity-only t)))
+                   :destination-validity-only t
+                   :highlight-links highlight-links)))
     (when state-0
       (pose-distance
        link-name
