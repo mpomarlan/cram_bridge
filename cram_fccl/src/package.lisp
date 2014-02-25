@@ -29,10 +29,11 @@
 (in-package :cl-user)
 
 (defpackage :cram-fccl
-  (:use #:roslisp
-        #:common-lisp
-        ;; #:cram-feature-constraints
-        )
+  (:use #:common-lisp
+        #:roslisp
+        #:actionlib
+        #:cl-feature-constraints)
+  (:export from-msg to-msg))
   ;; (:export feature-constraints->config-msg
   ;;          feature-constraints->command-msg
   ;;          constraint-state-msg->feature-constraint-state
