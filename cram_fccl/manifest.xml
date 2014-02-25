@@ -15,4 +15,6 @@
   <depend package="cl_transforms"/>
   <depend package="cl_feature_constraints"/>
   <!--depend package="cram_language"/-->
+
+  <depend package="lisp_unit"/>
 </package>
