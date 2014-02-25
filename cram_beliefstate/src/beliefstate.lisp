@@ -30,6 +30,7 @@
 (defvar *planlogging-namespace* "/beliefstate_ros")
 (defvar *kinect-topic-rgb* "/kinect_head/rgb/image_color")
 (defvar *interactive-callback-fluent* (cpl:make-fluent))
+(defparameter *logging-enabled* t)
 
 (defun init-beliefstate ()
   (setf *registered-interactive-callbacks* nil))
@@ -39,33 +40,49 @@
 (defun fully-qualified-service-name (service-name)
   (concatenate 'string *planlogging-namespace* "/" service-name))
 
+(defun wait-for-logging (service &optional (duration 0.3))
+  (when *logging-enabled*
+    (let* ((full-service-name (fully-qualified-service-name service))
+           (result (roslisp:wait-for-service full-service-name duration)))
+      (unless result
+        (setf *logging-enabled* nil)
+        (roslisp:ros-warn
+         (beliefstate)
+         "No connection to beliefstate service '~a'. Disabling logging."
+         service))
+      result)))
+
+(defun toggle-logging ()
+  (if *logging-enabled*
+    (roslisp:ros-info (beliefstate) "Switching OFF beliefstate logging.")
+    (roslisp:ros-info (beliefstate) "Switching ON beliefstate logging."))
+  (setf *logging-enabled* (not *logging-enabled*)))
+
 (defun start-node (name log-parameters detail-level)
-  (let ((service (fully-qualified-service-name "begin_context")))
-    (when (roslisp:wait-for-service service 0.3)
-      (let* ((parameters
-               (mapcar (lambda (x) x)
-                       (append (list (list '_name name)
-                                     (list '_detail-level detail-level)
-                                     (list '_source 'cram)
-                                     log-parameters))))
-             (result (first (designator-integration-lisp:call-designator-service
-                             service
-                             (cram-designators:make-designator
-                              'cram-designators:action
-                              parameters)))))
-          (when result
-            (desig-prop-value result 'desig-props::_id))))))
+  (when (wait-for-logging "begin_context")
+    (let* ((parameters
+             (mapcar (lambda (x) x)
+                     (append (list (list '_name name)
+                                   (list '_detail-level detail-level)
+                                   (list '_source 'cram)
+                                   log-parameters))))
+           (result (first (designator-integration-lisp:call-designator-service
+                           (fully-qualified-service-name "begin_context")
+                           (cram-designators:make-designator
+                            'cram-designators:action
+                            parameters)))))
+      (when result
+        (desig-prop-value result 'desig-props::_id)))))
 
 (defun stop-node (id &key (success t))
-  (let ((service (fully-qualified-service-name "end_context")))
-    (when (roslisp:wait-for-service service 0.3)
-      (designator-integration-lisp:call-designator-service
-       service
-       (cram-designators:make-designator
-        'cram-designators:action
-        (list (list '_id id)
-              (list '_success (cond (success 1)
-                                    (t 0)))))))))
+  (when (wait-for-logging "end_context")
+    (designator-integration-lisp:call-designator-service
+     (fully-qualified-service-name "end_context")
+     (cram-designators:make-designator
+      'cram-designators:action
+      (list (list '_id id)
+            (list '_success (cond (success 1)
+                                  (t 0))))))))
 
 (defun extract-dot-file (filename &key
                                     (successes t)
@@ -92,31 +109,23 @@
                                        (successes t)
                                        (fails t)
                                        (max-detail-level 99))
-  (ecase format
-    (owl)
-    (dot)
-    (meta))
-  (let ((service (fully-qualified-service-name "alter_context")))
-    (when (roslisp:wait-for-service service 0.3)
-      (designator-integration-lisp:call-designator-service
-       service
-       (cram-designators:make-designator
-        'cram-designators:action
-        (list (list 'command 'export-planlog)
-              (list 'format format)
-              (list 'filename filename)
-              (list 'show-successes (cond (successes 1)
-                                          (t 0)))
-              (list 'show-fails (cond (fails 1)
+  (alter-node
+   (cram-designators:make-designator
+    'cram-designators:action
+    (list (list 'command 'export-planlog)
+          (list 'format format)
+          (list 'filename filename)
+          (list 'show-successes (cond (successes 1)
                                       (t 0)))
-              (list 'max-detail-level max-detail-level)))))))
+          (list 'show-fails (cond (fails 1)
+                                  (t 0)))
+          (list 'max-detail-level max-detail-level)))))
 
 (defun alter-node (designator)
-  (let ((service (fully-qualified-service-name "alter_context")))
-    (when (roslisp:wait-for-service service 0.3)
-      (designator-integration-lisp:call-designator-service
-       service
-       designator))))
+  (when (wait-for-logging "alter_context")
+    (designator-integration-lisp:call-designator-service
+     (fully-qualified-service-name "alter_context")
+     designator)))
 
 (defun start-new-experiment ()
   (let ((service (fully-qualified-service-name "alter_context")))
