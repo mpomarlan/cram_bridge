@@ -30,18 +30,8 @@
 
 (defpackage :cram-fccl
   (:use #:common-lisp
+        #:sb-thread
         #:roslisp
         #:actionlib
         #:cl-feature-constraints)
-  (:export from-msg to-msg))
-  ;; (:export feature-constraints->config-msg
-  ;;          feature-constraints->command-msg
-  ;;          constraint-state-msg->feature-constraint-state
-  ;;          ensure-fccl-initialized
-  ;;          add-fccl-controller-interface 
-  ;;          get-fccl-controller-interface
-  ;;          remove-fccl-controller-interface
-  ;;          execute-constraints-motion
-  ;;          get-constraints-state-fluent
-  ;;          movement-id)
-  )
+  (:export from-msg to-msg make-fccl-action-client command-motion cancel-motion))

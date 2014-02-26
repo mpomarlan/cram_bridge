@@ -1,4 +1,4 @@
-;;; Copyright (c) 2013, Georg Bartels <georg.bartels@cs.uni-bremen.de>
+;;; Copyright (c) 2014, Georg Bartels <georg.bartels@cs.uni-bremen.de>
 ;;; All rights reserved.
 ;;;
 ;;; Redistribution and use in source and binary forms, with or without
@@ -30,6 +30,9 @@
 
 (defgeneric to-msg (data))
 (defgeneric from-msg (data))
+
+(defmethod to-msg ((motion motion-phase))
+  (coerce (mapcar #'to-msg (constraints motion)) 'vector))
 
 (defmethod to-msg ((constraint feature-constraint))
   (with-slots (relation) constraint

@@ -1,4 +1,4 @@
-;;; Copyright (c) 2013, Georg Bartels <georg.bartels@cs.uni-bremen.de>
+;;; Copyright (c) 2014, Georg Bartels <georg.bartels@cs.uni-bremen.de>
 ;;; All rights reserved.
 ;;;
 ;;; Redistribution and use in source and binary forms, with or without
@@ -33,18 +33,17 @@
 
   :depends-on (roslisp
                actionlib
-               fccl_msgs-msg
-               geometry_msgs-msg
-               std_msgs-msg
                cl-transforms
                cl-feature-constraints
-               ;; cram-language
-               )
+               fccl_msgs-msg
+               geometry_msgs-msg
+               std_msgs-msg)
   :components
   ((:module "src"
     :components
     ((:file "package")
      (:file "datatypes" :depends-on ("package"))
      (:file "conversions" :depends-on ("package" "datatypes"))
-     (:file "action-interface" :depends-on ("package" "datatypes" "conversions"))
-     (:file "samples" :depends-on ("package" "datatypes" "action-interface"))))))
+     (:file "action-interface" :depends-on ("package"))
+     (:file "action-client" 
+      :depends-on ("package" "datatypes" "conversions" "action-interface"))))))
