@@ -28,75 +28,11 @@
 
 (in-package :cram-fccl)
 
-;; (defclass geometric-feature ()
-;;   ((name :initarg :name :reader name :type string)
-;;    (reference-id :initarg :reference-id :reader reference-id :type string)
-;;    (feature-type :initarg :feature-type :reader feature-type)
-;;    (feature-position :initarg :feature-position :reader feature-position)
-;;    (feature-direction :initarg :feature-direction :reader feature-direction)))
-
-;; (defclass geometric-constraint ()
-;;   ((name :initarg :name :reader name :type string)
-;;    (reference-id :initarg :reference-id :reader reference-id :type string)
-;;    (constraint-function :initarg :constraint-function 
-;;                         :reader constraint-function :type string)
-;;    (tool-feature :initarg :tool-feature :reader tool-feature)
-;;    (object-feature :initarg :object-feature :reader object-feature)
-;;    (lower-boundary :initarg :lower-boundary :reader lower-boundary)
-;;    (upper-boundary :initarg :upper-boundary :reader upper-boundary)))
-
-;; (defclass geometric-constraint-state ()
-;;   ((output :initarg :output :reader output)
-;;    (desired-output :initarg :desired-output :reader desired-output)
-;;    (weight :initarg :weight :reader weight)))
-
-;; (defclass geometric-constraint-feedback ()
-;;   ((command :initarg :command :reader command :type geometric-constraint)
-;;    (output :initarg :output :reader output :type geometric-constraint-state)))
+;;; TODO(Georg): move this into some package in cl-robotics-libs
 
 (defclass kinematic-chain ()
   ((base-frame-id :initarg :base-frame-id :reader base-frame-id :type string)
    (tip-frame-id :initarg :tip-frame-id :reader tip-frame-id :type string)))
-
-;; (defun make-geometric-feature (name reference-id type position 
-;;                                &optional (direction (cl-transforms:make-identity-vector)))
-;;   (make-instance 'geometric-feature
-;;                  :name name
-;;                  :reference-id reference-id
-;;                  :feature-type type
-;;                  :feature-position position
-;;                  :feature-direction direction))
-
-;; (defun make-point-feature (name reference-id position)
-;;   (make-geometric-feature name reference-id 'point position))
-
-;; (defun make-line-feature (name reference-id position direction)
-;;   (make-geometric-feature name reference-id 'line position direction))
-
-;; (defun make-plane-feature (name reference-id position direction)
-;;   (make-geometric-feature name reference-id 'plane position direction))
-
-;; (defun make-geometric-constraint (name reference-id function 
-;;                                   tool-feature object-feature
-;;                                   lower-boundary upper-boundary)
-;;   (declare (type string name reference-id function)
-;;            (type geometric-feature tool-feature object-feature)
-;;            (type number lower-boundary upper-boundary))
-;;   (make-instance 'geometric-constraint
-;;                  :name name
-;;                  :reference-id reference-id
-;;                  :constraint-function function
-;;                  :tool-feature tool-feature
-;;                  :object-feature object-feature
-;;                  :lower-boundary lower-boundary
-;;                  :upper-boundary upper-boundary))
-
-;; (defun make-geometric-constraint-state (output desired-output weight)
-;;   (make-instance 'geometric-constraint-state
-;;                  :output output :desired-output desired-output :weight weight))
-
-;; (defun make-geometric-constraint-feedback (command output)
-;;   (make-instance 'geometric-constraint-feedback :command command :output output))
 
 (defun make-kinematic-chain (base-frame-id tip-frame-id)
   (declare (type string base-frame-id tip-frame-id))
