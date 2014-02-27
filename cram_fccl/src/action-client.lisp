@@ -44,7 +44,7 @@
                                 (kinematics kinematic-chain))
   (actionlib:wait-for-server action-client 2.0)
   (make-instance 
-   'fccl-action-interface :action-client action-client :kinematic-chain kinematics))
+   'fccl-action-client :action-client action-client :kinematic-chain kinematics))
 
 (defmethod make-fccl-action-client ((action-name string) (kinematics kinematic-chain))
   (make-fccl-action-client
