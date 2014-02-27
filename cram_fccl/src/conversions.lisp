@@ -103,6 +103,10 @@
   (map 'list #'identity
        (map 'vector #'from-msg vector-of-msgs)))
 
+(defmethod from-msg ((msg fccl_msgs-msg:SingleArmMotionFeedback))
+  (with-fields (constraints) msg
+    (map 'list #'from-msg constraints)))
+
 (defmethod from-msg ((msg fccl_msgs-msg:ConstraintFeedback))
   (with-fields (command output) msg
     (with-fields (output_value desired_output weight) output
