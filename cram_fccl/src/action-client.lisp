@@ -33,6 +33,7 @@
                   :type actionlib::action-client)
    (kinematic-chain :initarg :kinematic-chain :reader kinematic-chain
                     :type kinematic-chain)
+   (constraint-states :initform nil :accessor constraint-states :type list)
    (cancel-request :initform nil :accessor cancel-request :type boolean)
    (execution-lock :initform (make-mutex :name (string (gensym "FCCL-EXECUTION-LOCK-")))
                    :accessor execution-lock :type mutex)
@@ -79,7 +80,10 @@
            (type fccl_msgs-msg:singlearmmotiongoal goal-msg))
   (with-recursive-lock ((execution-lock interface))
     (multiple-value-bind (result status)
-        (actionlib:send-goal-and-wait (action-client interface) goal-msg)
+        (actionlib:send-goal-and-wait 
+         (action-client interface) goal-msg
+         :feedback-cb (lambda (msg)
+                        (set-current-state interface (from-msg msg))))
       (declare (ignore status)) ; TODO(Georg): think about a good low-level interface
       result)))
 
@@ -96,3 +100,13 @@
 (defun cancel-requested-p (interface)
   (declare (type fccl-action-client interface))
   (with-recursive-lock ((data-lock interface)) (cancel-request interface)))
+
+(defun set-current-state (interface new-state)
+  (declare (type fccl-action-client interface)
+           (type list new-state))
+  (with-recursive-lock ((data-lock interface)) 
+    (setf (constraint-states interface) new-state)))
+
+(defmethod get-current-state (interface)
+  (declare (type fccl-action-client interface))
+  (with-recursive-lock ((data-lock interface)) (constraint-states interface)))

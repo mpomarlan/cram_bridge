@@ -34,4 +34,5 @@
         #:roslisp
         #:actionlib
         #:cl-feature-constraints)
-  (:export from-msg to-msg make-fccl-action-client command-motion cancel-motion))
+  (:export from-msg to-msg make-fccl-action-client command-motion cancel-motion 
+           get-current-state))

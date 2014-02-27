@@ -33,3 +33,5 @@
 (defgeneric command-motion (interface motion))
 
 (defgeneric cancel-motion (interface))
+
+(defgeneric get-current-state (interface))
