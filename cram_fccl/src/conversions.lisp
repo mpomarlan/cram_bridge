@@ -40,7 +40,7 @@
    "fccl_msgs/constraint"
    name (to-msg (id constraint))
    reference (to-msg (reference relation))
-   function (to-msg (symbol-name (function-type relation)))
+   function (to-msg (string-downcase (symbol-name (function-type relation))))
    tool_feature (to-msg (tool-feature relation))
    object_feature (to-msg (object-feature relation))
    ; TODO(Georg): refactor message to use primitive types
