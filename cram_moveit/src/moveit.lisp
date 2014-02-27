@@ -443,7 +443,8 @@ as only the final configuration IK is generated."
     (cond (destination-validity-only
            (let ((ik (compute-ik link-name planning-group pose-stamped)))
              (when (and ik highlight-links)
-               (display-robot-state ik :highlight highlight-links))))
+               (display-robot-state ik :highlight highlight-links))
+             ik))
           (t (moveit:move-link-pose
               link-name
               planning-group pose-stamped
