@@ -175,58 +175,8 @@
    cram-beliefstate::*kinect-topic-rgb*)
   (beliefstate:stop-node log-id :success success))
 
-
-(in-package :crs)
-
-;; Switch off prolog logging for now
-;; (defmethod hook-before-proving-prolog :around (query binds)
-;;   (beliefstate:start-node "PROLOG"
-;;                           (list (list 'query (write-to-string query))
-;;                                 (list 'bindings (write-to-string binds)))
-;;                           3))
-
-;; (defmethod hook-after-proving-prolog :around (id success)
-;;   (beliefstate:stop-node id :success success))
-
-
-(in-package :cram-uima)
-
-(defmethod hook-before-uima-request :around (designator-request)
-  (let ((id (beliefstate:start-node
-             "UIMA-PERCEIVE"
-             (cram-designators:description designator-request) 2)))
-    (beliefstate:add-designator-to-active-node designator-request
-                                               :annotation "perception-request")
-    id))
-
-(defmethod hook-after-uima-request :around (id result)
-  (dolist (desig result)
-    (beliefstate:add-object-to-active-node
-     desig :annotation "perception-result"))
-  (beliefstate:add-topic-image-to-active-node cram-beliefstate::*kinect-topic-rgb*)
-  (beliefstate:stop-node id :success (not (eql result nil))))
-
-
-(in-package :pr2-manipulation-process-module)
-
-(defmethod hook-before-putdown :around (obj-desig loc-desig)
-  (prog1
-      (beliefstate:start-node
-       "PUTDOWN"
-       `() 2)
-    (beliefstate:add-topic-image-to-active-node cram-beliefstate::*kinect-topic-rgb*)
-    (beliefstate:add-designator-to-active-node
-     obj-desig :annotation "object-acted-on")
-    (beliefstate:add-designator-to-active-node
-     loc-desig :annotation "putdown-location")))
-
-(defmethod hook-after-putdown :around (id success)
-  (progn
-    (beliefstate:add-topic-image-to-active-node cram-beliefstate::*kinect-topic-rgb*)
-    (beliefstate:stop-node id :success success)))
-
-(defmethod hook-before-move-arm :around (side pose-stamped
-                                 planning-group ignore-collisions)
+(defmethod pr2-manipulation-process-module::on-prepare-move-arm cram-beliefstate
+    (side pose-stamped planning-group ignore-collisions)
   (prog1
       (beliefstate:start-node
        "VOLUNTARY-BODY-MOVEMENT-ARMS"
@@ -241,5 +191,30 @@
                                   (t 0)))))
      :annotation "voluntary-movement-details")))
 
-(defmethod hook-after-move-arm :around (id success)
+(defmethod pr2-manipulation-process-module::on-finish-move-arm cram-beliefstate (id success)
   (beliefstate:stop-node id :success success))
+
+(defmethod cram-uima::on-prepare-request cram-beliefstate (designator-request)
+  (let ((id (beliefstate:start-node
+             "UIMA-PERCEIVE"
+             (cram-designators:description designator-request) 2)))
+    (beliefstate:add-designator-to-active-node designator-request
+                                               :annotation "perception-request")
+    id))
+
+(defmethod cram-uima::on-finish-request cram-beliefstate (id result)
+  (dolist (desig result)
+    (beliefstate:add-object-to-active-node
+     desig :annotation "perception-result"))
+  (beliefstate:add-topic-image-to-active-node cram-beliefstate::*kinect-topic-rgb*)
+  (beliefstate:stop-node id :success (not (eql result nil))))
+
+;; Switch off prolog logging for now
+;; (defmethod cram-reasoning::on-prepare-prolog-prove cram-beliefstate (query binds)
+;;   (beliefstate:start-node "PROLOG"
+;;                           (list (list 'query (write-to-string query))
+;;                                 (list 'bindings (write-to-string binds)))
+;;                           3))
+
+;; (defmethod cram-reasoning::on-finish-prolog-prove cram-beliefstate (id success)
+;;   (beliefstate:stop-node id :success success))

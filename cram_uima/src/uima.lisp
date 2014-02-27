@@ -96,11 +96,8 @@ for a reply on another topic."
    "_"
    (write-to-string (random 1000000))))
 
-(defgeneric hook-before-uima-request (designator-request))
-(defmethod hook-before-uima-request (designator-request))
-
-(defgeneric hook-after-uima-request (id result))
-(defmethod hook-after-uima-request (id result))
+(define-hook on-prepare-request (designator-request))
+(define-hook on-finish-request (log-id result))
 
 (defun get-uima-result (designator-request)
   (let ((designator-request-plus-id
@@ -112,7 +109,8 @@ for a reply on another topic."
            (description designator-request))))
     (equate designator-request designator-request-plus-id)
     (roslisp:ros-info (uima) "Waiting for perception results")
-    (let ((log-id (hook-before-uima-request designator-request-plus-id))
+    (let ((log-id (first (on-prepare-request
+                          designator-request-plus-id)))
           (result-designators
             (cpl:with-failure-handling
                 ((roslisp::ros-rpc-error (f)
@@ -134,7 +132,7 @@ for a reply on another topic."
                  (desig-int::call-designator-service
                   *uima-service-topic* designator-request-plus-id))))))
       (roslisp:ros-info (uima) "Post processing perception results")
-      (hook-after-uima-request log-id result-designators)
+      (on-finish-request log-id result-designators)
       result-designators)))
 
 (defun config-uima ()
