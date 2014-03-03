@@ -1,4 +1,4 @@
-;;; Copyright (c) 2013, Georg Bartels <georg.bartels@cs.uni-bremen.de>
+;;; Copyright (c) 2014, Georg Bartels <georg.bartels@cs.uni-bremen.de>
 ;;; All rights reserved.
 ;;;
 ;;; Redistribution and use in source and binary forms, with or without
@@ -28,10 +28,8 @@
 
 (in-package :cl-user)
 
-(defpackage :cram-fccl
+(defpackage :cram-fccl-tests
   (:use #:common-lisp
-        #:sb-thread
-        #:roslisp
-        #:actionlib
-        #:cl-feature-constraints)
-  (:export from-msg to-msg make-fccl-action-client command-motion cancel-motion))
+        #:lisp-unit
+        #:cl-feature-constraints
+        #:cram-fccl))

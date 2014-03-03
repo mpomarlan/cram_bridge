@@ -26,24 +26,36 @@
 ;;; ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ;;; POSSIBILITY OF SUCH DAMAGE.
 
-(defsystem cram-fccl
-  :author "Georg Bartels <georg.bartels@cs.uni-bremen.de>"
-  :license "BSD"
-  :description "Interface package of CRAM to communicate with feature constraints controllers in FCCL."
+(in-package :cram-fccl-tests)
 
-  :depends-on (roslisp
-               actionlib
-               cl-transforms
-               cl-feature-constraints
-               fccl_msgs-msg
-               geometry_msgs-msg
-               std_msgs-msg)
-  :components
-  ((:module "src"
-    :components
-    ((:file "package")
-     (:file "datatypes" :depends-on ("package"))
-     (:file "conversions" :depends-on ("package" "datatypes"))
-     (:file "action-interface" :depends-on ("package"))
-     (:file "action-client" 
-      :depends-on ("package" "datatypes" "conversions" "action-interface"))))))
+(define-test converting-geometric-features ()
+  (let ((feature (make-geometric-feature
+                           :id "some feature"
+                           :frame-id "head"
+                           :feature-type 'point
+                           :origin (cl-transforms:make-3d-vector 0.1 0.2 0.3)
+                           :orientation (cl-transforms:make-3d-vector -1 -2 -3))))
+    (assert-true (equal-p feature (from-msg (to-msg feature))))))
+
+(define-test converting-feature-constraints ()
+  (let* ((feature (make-geometric-feature
+                           :id "some feature"
+                           :frame-id "head"
+                           :feature-type 'point
+                           :origin (cl-transforms:make-3d-vector 0.1 0.2 0.3)
+                           :orientation (cl-transforms:make-3d-vector -1 -2 -3)))
+         (relation-id "my relation")
+         (constraint
+           (make-feature-constraint
+            :id "my constraint"
+            :relation (make-feature-relation
+                       :id relation-id
+                       :reference "here"
+                       :function-type 'above
+                       :tool-feature (copy-geometric-feature feature)
+                       :object-feature (copy-geometric-feature feature :id "another feature"))
+            :lower-boundary -0.1
+            :upper-boundary 0.3))
+         (constraint2 (from-msg (to-msg constraint))))
+    (setf (id (relation constraint2)) relation-id)
+    (assert-true (equal-p constraint constraint2))))

@@ -1,4 +1,4 @@
-;;; Copyright (c) 2013, Georg Bartels <georg.bartels@cs.uni-bremen.de>
+;;; Copyright (c) 2014, Georg Bartels <georg.bartels@cs.uni-bremen.de>
 ;;; All rights reserved.
 ;;;
 ;;; Redistribution and use in source and binary forms, with or without
@@ -26,12 +26,14 @@
 ;;; ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ;;; POSSIBILITY OF SUCH DAMAGE.
 
-(in-package :cl-user)
+(defsystem cram-fccl-tests
+  :author "Georg Bartels <georg.bartels@cs.uni-bremen.de>"
+  :license "BSD"
+  :description "Unit-tests for package CRAM-FCCL."
 
-(defpackage :cram-fccl
-  (:use #:common-lisp
-        #:sb-thread
-        #:roslisp
-        #:actionlib
-        #:cl-feature-constraints)
-  (:export from-msg to-msg make-fccl-action-client command-motion cancel-motion))
+  :depends-on (lisp-unit cram-fccl cl-feature-constraints)
+  :components
+  ((:module "test"
+    :components
+    ((:file "package")
+     (:file "message-conversions" :depends-on ("package"))))))

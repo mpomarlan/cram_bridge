@@ -1,4 +1,4 @@
-;;; Copyright (c) 2013, Georg Bartels <georg.bartels@cs.uni-bremen.de>
+;;; Copyright (c) 2014, Georg Bartels <georg.bartels@cs.uni-bremen.de>
 ;;; All rights reserved.
 ;;;
 ;;; Redistribution and use in source and binary forms, with or without
@@ -28,33 +28,8 @@
 
 (in-package :cram-fccl)
 
-(defclass fccl-action-interface ()
-  ((action-client :initarg :action-client :reader action-client)
-   (kinematic-chain :initarg :kinematic-chain :reader kinematic-chain)))
+(defgeneric make-fccl-action-client (action kinematics))
 
-(defun make-fccl-action-interface (action-client kinematic-chain)
-  (declare (type kinematic-chain kinematic-chain)
-           (type actionlib::action-client action-client))
-  (actionlib:wait-for-server action-client 2.0)
-  (make-instance 'fccl-action-interface
-                 :action-client action-client
-                 :kinematic-chain kinematic-chain))
+(defgeneric command-motion (interface motion))
 
-(defgeneric execute-fccl-motion (interface motion cancel-callback &key execution-timeout))
-
-(defmethod execute-fccl-motion ((interface fccl-action-interface) (motion list)
-                                (cancel-callback function) &key execution-timeout)
-  (handler-bind ((actionlib:feedback-signal 
-                   (lambda (feedback-signal)
-                     (with-slots ((goal-handle actionlib::goal) 
-                                  (feedback actionlib::feedback)) 
-                         feedback-signal
-                       (declare (ignore goal-handle))
-                       (when (funcall cancel-callback feedback)
-                         (invoke-restart 'actionlib:abort-goal))))))
-    (actionlib:send-goal-and-wait (action-client interface)
-                                  (actionlib:make-action-goal
-                                      (action-client interface)
-                                    :constraints (to-msg motion)
-                                    :kinematics (to-msg (kinematic-chain interface)))
-                                  :exec-timeout execution-timeout)))
+(defgeneric cancel-motion (interface))
