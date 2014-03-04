@@ -68,5 +68,7 @@
    ;; Experiment metadata
    begin-experiment
    end-experiment
-   query-input)
+   query-input
+   ;; General
+   toggle-logging)
   (:designator-properties))

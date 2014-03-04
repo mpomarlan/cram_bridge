@@ -50,6 +50,8 @@
     ((:file "package")
      (:file "failures" :depends-on ("package"))
      (:file "collision-environment" :depends-on ("package"))
+     (:file "display" :depends-on ("package"))
      (:file "moveit" :depends-on ("package"
                                   "failures"
-                                  "collision-environment"))))))
+                                  "collision-environment"
+                                  "display"))))))

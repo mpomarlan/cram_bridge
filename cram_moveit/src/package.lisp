@@ -94,6 +94,8 @@
    ;; Transformations
    ensure-pose-stamped-transformable
    ensure-pose-stamped-transformed
-   ensure-transform-available)
+   ensure-transform-available
+   ;; Display
+   display-robot-state)
   (:desig-properties #:shape #:dimensions #:box #:cylinder
                      #:sphere #:cone #:round #:name))
