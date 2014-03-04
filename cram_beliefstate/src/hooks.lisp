@@ -109,17 +109,14 @@
 (defmethod cpl-impl::on-finishing-task-execution cram-beliefstate (id)
   (beliefstate:stop-node id))
 
-(defmethod cpl-impl::on-fail cram-beliefstate (condition)
-  (when condition
-    (let ((failure (intern (symbol-name (slot-value
-                                         (class-of condition)
-                                         'sb-pcl::name)))))
-      (beliefstate:add-failure-to-active-node failure))))
+(defmethod cpl-impl::on-fail cram-beliefstate (datum)
+  (beliefstate:add-failure-to-active-node datum))
 
 (defmethod desig::on-equate-designators (successor parent)
   (beliefstate:equate-designators successor parent))
 
-(defmethod point-head-process-module::on-begin-move-head cram-beliefstate (pose-stamped)
+(defmethod point-head-process-module::on-begin-move-head
+    cram-beliefstate (pose-stamped)
   (prog1
       (beliefstate:start-node
        "VOLUNTARY-BODY-MOVEMENT-HEAD"

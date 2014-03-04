@@ -166,13 +166,14 @@
     (list (list 'command 'add-image)
           (list 'origin image-topic)))))
 
-(defun add-failure-to-active-node (condition)
-  (let ((cond-str (write-to-string condition)))
+(defun add-failure-to-active-node (datum)
+  (let ((datum-str (cond (datum (write-to-string datum))
+                        (t "ANONYMOUS-FAILURE"))))
     (alter-node
      (cram-designators:make-designator
       'cram-designators:action
       (list (list 'command 'add-failure)
-            (list 'condition cond-str))))))
+            (list 'condition datum-str))))))
 
 (defun add-designator-to-active-node (designator &key (annotation ""))
   (let* ((type (ecase (type-of designator)
