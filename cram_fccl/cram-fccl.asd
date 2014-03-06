@@ -35,6 +35,7 @@
                actionlib
                cl-transforms
                cl-feature-constraints
+               cram-language
                fccl_msgs-msg
                geometry_msgs-msg
                std_msgs-msg)
