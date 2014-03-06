@@ -58,6 +58,7 @@
 
 (defmethod command-motion ((interface fccl-action-client) (motion motion-phase))
   (with-recursive-lock ((execution-lock interface))
+    (reset-state-fluent interface)
     (send-cancelable-goal interface (make-single-arm-motion-goal interface motion))))
 
 (defmethod get-state-fluent ((interface fccl-action-client))
@@ -82,6 +83,11 @@
   (actionlib:make-action-goal (action-client interface)
     :constraints (to-msg motion)
     :kinematics (to-msg (kinematic-chain interface))))
+
+(defun reset-state-fluent (interface)
+  (declare (type fccl-action-client interface))
+  (with-recursive-lock ((data-lock interface))
+    (setf (cram-language:value (state-fluent interface)) nil)))
 
 (defun send-cancelable-goal (interface goal-msg)
   (declare (type fccl-action-client interface)
