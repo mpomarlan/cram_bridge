@@ -109,4 +109,12 @@
 
 (defmethod get-current-state (interface)
   (declare (type fccl-action-client interface))
-  (with-recursive-lock ((data-lock interface)) (constraint-states interface)))
+  (with-recursive-lock ((data-lock interface)) 
+    (mapcar (lambda (constraint-state)
+              (copy-feature-constraint-state constraint-state))
+            (constraint-states interface))))
+
+(defmethod current-motion-finished-p ((interface fccl-action-client))
+  (let ((current-state (get-current-state interface)))
+    (every #'feature-constraint-fulfilled-p current-state)))
+    

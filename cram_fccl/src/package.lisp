@@ -35,4 +35,5 @@
         #:actionlib
         #:cl-feature-constraints)
   (:export from-msg to-msg make-fccl-action-client command-motion cancel-motion 
-           get-current-state make-kinematic-chain base-frame-id tip-frame-id))
+           get-current-state current-motion-finished-p make-kinematic-chain
+           base-frame-id tip-frame-id))

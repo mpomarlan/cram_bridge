@@ -35,3 +35,5 @@
 (defgeneric cancel-motion (interface))
 
 (defgeneric get-current-state (interface))
+
+(defgeneric current-motion-finished-p (interface))
