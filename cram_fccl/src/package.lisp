@@ -34,6 +34,5 @@
         #:roslisp
         #:actionlib
         #:cl-feature-constraints)
-  (:export from-msg to-msg make-fccl-action-client command-motion cancel-motion 
-           get-current-state current-motion-finished-p make-kinematic-chain
-           base-frame-id tip-frame-id))
+  (:export make-fccl-action-client command-motion cancel-motion get-state-fluent
+           get-constraints-fulfilled-fluent make-kinematic-chain base-frame-id tip-frame-id))

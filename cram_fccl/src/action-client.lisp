@@ -33,7 +33,8 @@
                   :type actionlib::action-client)
    (kinematic-chain :initarg :kinematic-chain :reader kinematic-chain
                     :type kinematic-chain)
-   (constraint-states :initform nil :accessor constraint-states :type list)
+   (state-fluent :initform (cram-language:make-fluent :value nil)
+                 :accessor state-fluent :type cram-language:value-fluent)
    (cancel-request :initform nil :accessor cancel-request :type boolean)
    (execution-lock :initform (make-mutex :name (string (gensym "FCCL-EXECUTION-LOCK-")))
                    :accessor execution-lock :type mutex)
@@ -83,7 +84,8 @@
         (actionlib:send-goal-and-wait 
          (action-client interface) goal-msg
          :feedback-cb (lambda (msg)
-                        (set-current-state interface (from-msg msg))))
+                        (setf (cram-language:value (state-fluent interface))
+                              (from-msg msg))))
       (declare (ignore status)) ; TODO(Georg): think about a good low-level interface
       result)))
 
@@ -101,20 +103,12 @@
   (declare (type fccl-action-client interface))
   (with-recursive-lock ((data-lock interface)) (cancel-request interface)))
 
-(defun set-current-state (interface new-state)
-  (declare (type fccl-action-client interface)
-           (type list new-state))
-  (with-recursive-lock ((data-lock interface)) 
-    (setf (constraint-states interface) new-state)))
+(defmethod get-state-fluent ((interface fccl-action-client))
+  (state-fluent interface))
 
-(defmethod get-current-state (interface)
-  (declare (type fccl-action-client interface))
-  (with-recursive-lock ((data-lock interface)) 
-    (mapcar (lambda (constraint-state)
-              (copy-feature-constraint-state constraint-state))
-            (constraint-states interface))))
-
-(defmethod current-motion-finished-p ((interface fccl-action-client))
-  (let ((current-state (get-current-state interface)))
-    (every #'feature-constraint-fulfilled-p current-state)))
-    
+(defmethod get-constraints-fulfilled-fluent ((interface fccl-action-client))
+  (cram-language-implementation:fl-funcall
+   (lambda (constraint-states)
+     (when constraint-states
+       (every #'feature-constraint-fulfilled-p constraint-states)))
+   (get-state-fluent interface)))

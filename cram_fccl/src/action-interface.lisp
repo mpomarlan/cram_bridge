@@ -34,6 +34,6 @@
 
 (defgeneric cancel-motion (interface))
 
-(defgeneric get-current-state (interface))
+(defgeneric get-state-fluent (interface))
 
-(defgeneric current-motion-finished-p (interface))
+(defgeneric get-constraints-fulfilled-fluent (interface))
