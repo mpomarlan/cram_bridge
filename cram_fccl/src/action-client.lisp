@@ -28,6 +28,8 @@
 
 (in-package :cram-fccl)
 
+;;; CLASS ASSOCIATED WITH AN FCCL ACTION CLIENT
+
 (defclass fccl-action-client ()
   ((action-client :initarg :action-client :reader action-client
                   :type actionlib::action-client)
@@ -40,6 +42,8 @@
                    :accessor execution-lock :type mutex)
    (data-lock :initform (make-mutex :name (string (gensym "FCCL-DATA-LOCK-")))
               :accessor data-lock :type mutex)))
+
+;;; IMPLEMENTATION OF EXPORTED METHODS
 
 (defmethod make-fccl-action-client ((action-client actionlib::action-client)
                                 (kinematics kinematic-chain))
@@ -55,6 +59,22 @@
 (defmethod command-motion ((interface fccl-action-client) (motion motion-phase))
   (with-recursive-lock ((execution-lock interface))
     (send-cancelable-goal interface (make-single-arm-motion-goal interface motion))))
+
+(defmethod get-state-fluent ((interface fccl-action-client))
+  (state-fluent interface))
+
+(defmethod get-constraints-fulfilled-fluent ((interface fccl-action-client))
+  (cram-language-implementation:fl-funcall
+   (lambda (constraint-states)
+     (when constraint-states
+       (every #'feature-constraint-fulfilled-p constraint-states)))
+   (get-state-fluent interface)))
+
+(defmethod cancel-motion ((interface fccl-action-client))
+  (set-cancel-request-signal interface t)
+  (with-recursive-lock ((execution-lock interface)) nil))
+
+;;; INTERNAL HELPER FUNCTIONS
 
 (defun make-single-arm-motion-goal (interface motion)
   (declare (type fccl-action-client)
@@ -89,10 +109,6 @@
       (declare (ignore status)) ; TODO(Georg): think about a good low-level interface
       result)))
 
-(defmethod cancel-motion ((interface fccl-action-client))
-  (set-cancel-request-signal interface t)
-  (with-recursive-lock ((execution-lock interface)) nil))
-
 (defun set-cancel-request-signal (interface cancel-requested-p)
   (declare (type fccl-action-client interface)
            (type boolean cancel-requested-p))
@@ -102,13 +118,3 @@
 (defun cancel-requested-p (interface)
   (declare (type fccl-action-client interface))
   (with-recursive-lock ((data-lock interface)) (cancel-request interface)))
-
-(defmethod get-state-fluent ((interface fccl-action-client))
-  (state-fluent interface))
-
-(defmethod get-constraints-fulfilled-fluent ((interface fccl-action-client))
-  (cram-language-implementation:fl-funcall
-   (lambda (constraint-states)
-     (when constraint-states
-       (every #'feature-constraint-fulfilled-p constraint-states)))
-   (get-state-fluent interface)))
