@@ -1,0 +1,7 @@
+<package>
+  <description brief="cram_pr2_controllers">
+     Interface package between CRAM and standard PR2 controllers.
+  </description>
+  <author>Georg Bartels</author>
+  <license>BSD</license>
+</package>
