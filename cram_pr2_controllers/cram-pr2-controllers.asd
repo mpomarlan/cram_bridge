@@ -31,8 +31,10 @@
   :license "BSD"
   :description "Interface package between CRAM and standard PR2 controllers."
 
-  :depends-on ()
+  :depends-on (roslisp
+               pr2_mechanism_msgs-srv)
   :components
   ((:module "src"
     :components
-    ((:file "package")))))
+    ((:file "package")
+     (:file "controller-manager" :depends-on ("package"))))))

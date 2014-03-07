@@ -4,4 +4,8 @@
   </description>
   <author>Georg Bartels</author>
   <license>BSD</license>
+
+  <rosdep name="sbcl"/>
+  <depend package="roslisp"/>
+  <depend package="pr2_mechanism_msgs"/>
 </package>

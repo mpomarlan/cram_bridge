@@ -29,6 +29,9 @@
 (in-package :cl-user)
 
 (defpackage :cram-pr2-controllers
-  ;; (:use #:roslisp)
-  ;; (:export #:make-pr2-arm-controller-interface)
-)
+  (:nicknames :pr2-controllers)
+  (:use #:common-lisp)
+  (:export 
+   ;; controller manager
+   switch-controllers namespace ensure-vel-controllers ensure-pos-controllers arms
+   stop-controllers switch-controller-error))
