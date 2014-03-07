@@ -110,7 +110,8 @@
   (beliefstate:stop-node id))
 
 (defmethod cpl-impl::on-fail cram-beliefstate (datum)
-  (beliefstate:add-failure-to-active-node datum))
+  (when (symbolp datum)
+    (beliefstate:add-failure-to-active-node datum)))
 
 (defmethod desig::on-equate-designators (successor parent)
   (beliefstate:equate-designators successor parent))
