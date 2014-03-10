@@ -28,6 +28,13 @@
 
 (in-package :pr2-controllers)
 
+(defclass pr2-controller-manager-handle ()
+  ((client :initarg :client :accessor client :type roslisp:persistent-service
+           :documentation "For internal use. Persistent service to controller manager."))
+  (:documentation "Handle to PR2 controller manager."))
+
+(defparameter *pr2-controller-manager-ns* "pr2_controller_manager")
+
 (defparameter *pr2-velocity-controllers*
   (let ((vel-controllers (make-hash-table)))
     (setf (gethash 'left vel-controllers) '("l_arm_vel"))
@@ -42,7 +49,59 @@
     (setf (gethash 'all vel-controllers) '("l_arm_controller" "r_arm_controller"))
     vel-controllers))
 
-(defparameter *pr2-controller-manager-ns* "pr2_controller_manager")
+(defun make-pr2-controller-manager-handle (&key (namespace *pr2-controller-manager-ns*))
+  (make-instance 
+   'pr2-controller-manager-handle
+   :client (make-instance 
+            'roslisp:persistent-service
+            :service-name (concatenate 'string namespace "/switch_controller")
+            :service-type "pr2_mechanism_msgs/SwitchController")))
+
+(defun cleanup-pr2-controller-manager-handle (handle)
+  (declare (type pr2-controller-manager-handle handle))
+  (when (client handle) (roslisp:close-persistent-service (client handle))))
+
+(define-condition switch-controller-error (simple-error) ())
+
+(defun switch-controllers (handle start stop)
+  "Calls the switch_controller service in pr2-controller-manager-handle `handle' starting
+ all controllers in sequence `start' and stopping all controllers in sequence `stop'.
+ Controllers are refered to by their names."
+  (declare (type pr2-controller-manager-handle handle)
+           (type sequence start stop))
+  (roslisp:with-fields (ok)
+      (roslisp:call-persistent-service
+       (client handle)
+       :start_controllers (map 'vector #'identity start)
+       :stop_controllers (map 'vector #'identity stop)
+       :strictness (roslisp-msg-protocol:symbol-code
+                    'pr2_mechanism_msgs-srv:switchcontroller-request
+                    :strict))
+    (when (eql ok 0)
+      (error 'switch-controller
+             :format-control "Switching controllers failed. Start: ~a, stop: ~a."
+             :format-arguments (list start stop)))
+    t))
+
+(defun ensure-vel-controllers (handle &key (arms 'all))
+  "Uses pr2-controller-manager-handle `handle' to make sure `arms' are running
+ velocity-resolved controllers."
+  (let ((pos-ctrls (get-position-controller-names arms))
+        (vel-ctrls (get-velocity-controller-names arms)))
+    (switch-controllers handle vel-ctrls pos-ctrls)))
+
+(defun ensure-pos-controllers (handle &key (arms 'all))
+  "Uses pr2-controller-manager-handle `handle' to make sure `arms' are running
+ position-resolved controllers."
+  (let ((pos-ctrls (get-position-controller-names arms))
+        (vel-ctrls (get-velocity-controller-names arms)))
+    (switch-controllers handle pos-ctrls vel-ctrls)))
+
+(defun stop-controllers (handle &key (arms 'all))
+  "Uses pr2-controller-manager-handle `handle' to stop all controllers for `arm'."
+  (let ((pos-ctrls (get-position-controller-names arms))
+        (vel-ctrls (get-velocity-controller-names arms)))
+    (switch-controllers handle nil (concatenate 'list pos-ctrls vel-ctrls))))
 
 (defun get-velocity-controller-names (arms)
   "Returns list of names of velocity-resolved controllers for symbol `arms'."
@@ -63,44 +122,3 @@
              :format-control "Could not lookup pr2 position controllers for: ~a."
              :format-arguments (list arms)))
     controllers))
-
-(define-condition switch-controller-error (simple-error) ())
-
-(defun switch-controllers (start stop &key (namespace *pr2-controller-manager-ns*))
-  "Calls the switch_controller service in `namespace' starting all controllers in
-list `start' and stopping all controllers in list `stop'. Controllers are refered
-to by their names."
-  (declare (type sequence start stop)
-           (type string namespace))
-  (roslisp:with-fields (ok)
-      (roslisp:call-service
-       (concatenate 'string namespace "/switch_controller")
-       "pr2_mechanism_msgs/SwitchController"
-       :start_controllers (map 'vector #'identity start)
-       :stop_controllers (map 'vector #'identity stop)
-       :strictness (roslisp-msg-protocol:symbol-code
-                    'pr2_mechanism_msgs-srv:switchcontroller-request
-                    :strict))
-    (when (eql ok 0)
-      (error 'switch-controller
-             :format-control "Switching controllers failed. Start: ~a, stop: ~a."
-             :format-arguments (list start stop)))
-    t))
-
-(defun ensure-vel-controllers (&key (arms 'all))
-  "Makes sure `arms' are running velocity-resolved controllers."
-  (let ((pos-ctrls (get-position-controller-names arms))
-        (vel-ctrls (get-velocity-controller-names arms)))
-    (switch-controllers vel-ctrls pos-ctrls)))
-
-(defun ensure-pos-controllers (&key (arms 'all))
-  "Makes sure `arms' are running position-resolved controllers."
-  (let ((pos-ctrls (get-position-controller-names arms))
-        (vel-ctrls (get-velocity-controller-names arms)))
-    (switch-controllers pos-ctrls vel-ctrls)))
-
-(defun stop-controllers (&key (arms 'all))
-  "Stops all controllers for `arm'."
-  (let ((pos-ctrls (get-position-controller-names arms))
-        (vel-ctrls (get-velocity-controller-names arms)))
-    (switch-controllers nil (concatenate 'list pos-ctrls vel-ctrls))))

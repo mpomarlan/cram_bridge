@@ -33,5 +33,6 @@
   (:use #:common-lisp)
   (:export 
    ;; controller manager
-   switch-controllers namespace ensure-vel-controllers ensure-pos-controllers arms
-   stop-controllers switch-controller-error))
+   pr2-controller-manager-handle make-pr2-controller-manager-handle namespace
+   cleanup-pr2-controller-manager-handle switch-controllers ensure-vel-controllers 
+   ensure-pos-controllers arms left right both stop-controllers switch-controller-error))
