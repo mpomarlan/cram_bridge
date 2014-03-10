@@ -7,5 +7,9 @@
 
   <rosdep name="sbcl"/>
   <depend package="roslisp"/>
+  <depend package="actionlib_lisp"/>
+  <depend package="cl_robot_models"/>
   <depend package="pr2_mechanism_msgs"/>
+  <depend package="pr2_controllers_msgs"/>
+  <depend package="trajectory_msgs"/>
 </package>
