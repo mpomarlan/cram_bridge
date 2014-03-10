@@ -79,13 +79,8 @@
 (defun make-trajectory-point (handle goal-state execution-time)
   (let ((goal-configuration
           (mapcar (lambda (joint)
-                    (multiple-value-bind (joint-state joint-present-p)
-                        (gethash joint (cl-robot-models:joint-states goal-state))
-                      (if joint-present-p
-                          (cl-robot-models:joint-position joint-state)
-                          (error 'pr2-arm-controller-error
-                                 :format-control "Joint '~a' not found in goal-state."
-                                 :format-arguments (list joint)))))
+                    (cl-robot-models:joint-position
+                     (cl-robot-models:get-joint-state goal-state joint)))
                   (joint-names handle))))
     (roslisp:make-msg 
      "trajectory_msgs/JointTrajectoryPoint"
