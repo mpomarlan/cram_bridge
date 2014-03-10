@@ -30,7 +30,7 @@
 
 (defpackage :cram-pr2-controllers
   (:nicknames :pr2-controllers)
-  (:use #:common-lisp)
+  (:use #:common-lisp #:sb-thread)
   (:export 
    ;; controller manager
    pr2-controller-manager-handle make-pr2-controller-manager-handle namespace

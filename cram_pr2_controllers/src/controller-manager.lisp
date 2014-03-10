@@ -30,7 +30,10 @@
 
 (defclass pr2-controller-manager-handle ()
   ((client :initarg :client :accessor client :type roslisp:persistent-service
-           :documentation "For internal use. Persistent service to controller manager."))
+           :documentation "For internal use. Persistent service to controller manager.")
+   (lock :initform (make-mutex :name (string (gensym "PR2-CONTROLLER-MANAGER-LOCK-")))
+         :accessor lock :type mutex
+         :documentation "For internal use. Mutex to guard pr2 controller manager."))
   (:documentation "Handle to PR2 controller manager."))
 
 (defparameter *pr2-controller-manager-ns* "pr2_controller_manager")
@@ -59,7 +62,8 @@
 
 (defun cleanup-pr2-controller-manager-handle (handle)
   (declare (type pr2-controller-manager-handle handle))
-  (when (client handle) (roslisp:close-persistent-service (client handle))))
+  (with-recursive-lock ((lock handle))
+    (when (client handle) (roslisp:close-persistent-service (client handle)))))
 
 (define-condition switch-controller-error (simple-error) ())
 
@@ -70,13 +74,14 @@
   (declare (type pr2-controller-manager-handle handle)
            (type sequence start stop))
   (roslisp:with-fields (ok)
-      (roslisp:call-persistent-service
-       (client handle)
-       :start_controllers (map 'vector #'identity start)
-       :stop_controllers (map 'vector #'identity stop)
-       :strictness (roslisp-msg-protocol:symbol-code
-                    'pr2_mechanism_msgs-srv:switchcontroller-request
-                    :strict))
+      (with-recursive-lock ((lock handle))
+        (roslisp:call-persistent-service
+         (client handle)
+         :start_controllers (map 'vector #'identity start)
+         :stop_controllers (map 'vector #'identity stop)
+         :strictness (roslisp-msg-protocol:symbol-code
+                      'pr2_mechanism_msgs-srv:switchcontroller-request
+                      :strict)))
     (when (eql ok 0)
       (error 'switch-controller
              :format-control "Switching controllers failed. Start: ~a, stop: ~a."
