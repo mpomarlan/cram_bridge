@@ -44,7 +44,7 @@
 
 (defparameter *pr2-controller-manager-ns* "pr2_controller_manager")
 
-(defun get-velocity-controllers (arms)
+(defun get-velocity-controller-names (arms)
   "Returns list of names of velocity-resolved controllers for symbol `arms'."
   (multiple-value-bind (controllers controllers-present)
       (gethash arms *pr2-velocity-controllers*)
@@ -54,7 +54,7 @@
              :format-arguments (list arms)))
     controllers))
 
-(defun get-position-controllers (arms)
+(defun get-position-controller-names (arms)
   "Returns list of names of position-resolved controllers for symbol `arms'."
   (multiple-value-bind (controllers controllers-present)
       (gethash arms *pr2-position-controllers*)
@@ -89,18 +89,18 @@ to by their names."
 
 (defun ensure-vel-controllers (&key (arms 'all))
   "Makes sure `arms' are running velocity-resolved controllers."
-  (let ((pos-ctrls (get-position-controllers arms))
-        (vel-ctrls (get-velocity-controllers arms)))
+  (let ((pos-ctrls (get-position-controller-names arms))
+        (vel-ctrls (get-velocity-controller-names arms)))
     (switch-controllers vel-ctrls pos-ctrls)))
 
 (defun ensure-pos-controllers (&key (arms 'all))
   "Makes sure `arms' are running position-resolved controllers."
-  (let ((pos-ctrls (get-position-controllers arms))
-        (vel-ctrls (get-velocity-controllers arms)))
+  (let ((pos-ctrls (get-position-controller-names arms))
+        (vel-ctrls (get-velocity-controller-names arms)))
     (switch-controllers pos-ctrls vel-ctrls)))
 
 (defun stop-controllers (&key (arms 'all))
   "Stops all controllers for `arm'."
-  (let ((pos-ctrls (get-position-controllers arms))
-        (vel-ctrls (get-velocity-controllers arms)))
+  (let ((pos-ctrls (get-position-controller-names arms))
+        (vel-ctrls (get-velocity-controller-names arms)))
     (switch-controllers nil (concatenate 'list pos-ctrls vel-ctrls))))
