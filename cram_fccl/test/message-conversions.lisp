@@ -35,7 +35,7 @@
                            :feature-type 'point
                            :origin (cl-transforms:make-3d-vector 0.1 0.2 0.3)
                            :orientation (cl-transforms:make-3d-vector -1 -2 -3))))
-    (assert-true (equal-p feature (from-msg (to-msg feature))))))
+    (assert-true (equal-p feature (cram-fccl::from-msg (cram-fccl::to-msg feature))))))
 
 (define-test converting-feature-constraints ()
   (let* ((feature (make-geometric-feature
@@ -50,12 +50,12 @@
             :id "my constraint"
             :relation (make-feature-relation
                        :id relation-id
-                       :reference "here"
+                       :frame-id "here"
                        :function-type 'above
                        :tool-feature (copy-geometric-feature feature)
                        :object-feature (copy-geometric-feature feature :id "another feature"))
             :lower-boundary -0.1
             :upper-boundary 0.3))
-         (constraint2 (from-msg (to-msg constraint))))
+         (constraint2 (cram-fccl::from-msg (cram-fccl::to-msg constraint))))
     (setf (id (relation constraint2)) relation-id)
     (assert-true (equal-p constraint constraint2))))
