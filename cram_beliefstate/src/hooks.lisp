@@ -207,6 +207,35 @@
   (beliefstate:add-topic-image-to-active-node cram-beliefstate::*kinect-topic-rgb*)
   (beliefstate:stop-node id :success (not (eql result nil))))
 
+(defmethod cpl-impl::on-with-failure-handling-begin cram-beliefstate (clauses)
+  (prog1
+      (beliefstate:start-node "WITH-FAILURE-HANDLING" (mapcar (lambda (clause)
+                                                                `(clause ,clause))
+                                                              clauses) 2)
+    (beliefstate:add-designator-to-active-node
+     (make-designator
+      'cram-designators:action
+      (mapcar (lambda (clause)
+                `(clause ,clause))
+              clauses))
+     :annotation "with-failure-handling-clauses")))
+
+(defmethod cpl-impl::on-with-failure-handling-end cram-beliefstate (id)
+  (beliefstate:stop-node id))
+
+(defmethod cpl::on-with-policy-begin (name parameters)
+  (prog1
+      (beliefstate:start-node "WITH-POLICY" (append `(policy ,name) parameters) 2)
+    (beliefstate:add-designator-to-active-node
+     (make-designator
+      'cram-designators:action
+      `((name ,name)
+        (parameters ,parameters)))
+     :annotation "with-policy-details")))
+
+(defmethod cpl::on-with-policy-end (id success)
+  (beliefstate:stop-node id :success success))
+
 ;; Switch off prolog logging for now
 ;; (defmethod cram-reasoning::on-prepare-prolog-prove cram-beliefstate (query binds)
 ;;   (beliefstate:start-node "PROLOG"
