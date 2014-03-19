@@ -1,0 +1,15 @@
+<package>
+  <description brief="cram_pr2_controllers">
+     Interface package between CRAM and standard PR2 controllers.
+  </description>
+  <author>Georg Bartels</author>
+  <license>BSD</license>
+
+  <rosdep name="sbcl"/>
+  <depend package="roslisp"/>
+  <depend package="actionlib_lisp"/>
+  <depend package="cl_robot_models"/>
+  <depend package="pr2_mechanism_msgs"/>
+  <depend package="pr2_controllers_msgs"/>
+  <depend package="trajectory_msgs"/>
+</package>

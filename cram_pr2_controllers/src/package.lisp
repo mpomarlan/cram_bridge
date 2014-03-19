@@ -1,4 +1,4 @@
-;;; Copyright (c) 2013, Georg Bartels <georg.bartels@cs.uni-bremen.de>
+;;; Copyright (c) 2014, Georg Bartels <georg.bartels@cs.uni-bremen.de>
 ;;; All rights reserved.
 ;;;
 ;;; Redistribution and use in source and binary forms, with or without
@@ -28,11 +28,11 @@
 
 (in-package :cl-user)
 
-(defpackage :cram-fccl
-  (:use #:common-lisp
-        #:sb-thread
-        #:roslisp
-        #:actionlib
-        #:cl-feature-constraints)
-  (:export make-fccl-action-client command-motion cancel-motion get-state-fluent
-           get-constraints-fulfilled-fluent make-kinematic-chain base-frame-id tip-frame-id))
+(defpackage :cram-pr2-controllers
+  (:nicknames :pr2-controllers)
+  (:use #:common-lisp #:sb-thread)
+  (:export 
+   ;; controller manager
+   pr2-controller-manager-handle make-pr2-controller-manager-handle namespace
+   cleanup-pr2-controller-manager-handle switch-controllers ensure-vel-controllers 
+   ensure-pos-controllers arms left right both stop-controllers switch-controller-error))

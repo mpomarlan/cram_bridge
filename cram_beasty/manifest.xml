@@ -11,9 +11,9 @@
   <depend package="cl_transforms"/>
   <depend package="actionlib_lisp"/>
   <depend package="dlr_msgs"/>
-  <depend pacakge="visualization_msgs"/>
-  <depend pacakge="cl_human_spapes"/>
-  <depend pacakge="cl_3d_spapes"/>
-  <depend pacakge="cl_transforms"/>
+  <depend package="visualization_msgs"/>
+  <depend package="cl_human_shapes"/>
+  <depend package="cl_3d_shapes"/>
+  <depend package="cl_transforms"/>
 
 </package>

@@ -40,7 +40,7 @@
    "fccl_msgs/constraint"
    name (to-msg (id constraint))
    reference (to-msg (reference relation))
-   function (to-msg (symbol-name (function-type relation)))
+   function (to-msg (string-downcase (symbol-name (function-type relation))))
    tool_feature (to-msg (tool-feature relation))
    object_feature (to-msg (object-feature relation))
    ; TODO(Georg): refactor message to use primitive types
@@ -102,6 +102,10 @@
 (defmethod from-msg ((vector-of-msgs vector))
   (map 'list #'identity
        (map 'vector #'from-msg vector-of-msgs)))
+
+(defmethod from-msg ((msg fccl_msgs-msg:SingleArmMotionFeedback))
+  (with-fields (constraints) msg
+    (map 'list #'from-msg constraints)))
 
 (defmethod from-msg ((msg fccl_msgs-msg:ConstraintFeedback))
   (with-fields (command output) msg

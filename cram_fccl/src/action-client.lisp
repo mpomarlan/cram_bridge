@@ -28,22 +28,28 @@
 
 (in-package :cram-fccl)
 
+;;; CLASS ASSOCIATED WITH AN FCCL ACTION CLIENT
+
 (defclass fccl-action-client ()
   ((action-client :initarg :action-client :reader action-client
                   :type actionlib::action-client)
    (kinematic-chain :initarg :kinematic-chain :reader kinematic-chain
                     :type kinematic-chain)
+   (state-fluent :initform (cram-language:make-fluent :value nil)
+                 :accessor state-fluent :type cram-language:value-fluent)
    (cancel-request :initform nil :accessor cancel-request :type boolean)
    (execution-lock :initform (make-mutex :name (string (gensym "FCCL-EXECUTION-LOCK-")))
                    :accessor execution-lock :type mutex)
    (data-lock :initform (make-mutex :name (string (gensym "FCCL-DATA-LOCK-")))
               :accessor data-lock :type mutex)))
 
+;;; IMPLEMENTATION OF EXPORTED METHODS
+
 (defmethod make-fccl-action-client ((action-client actionlib::action-client)
                                 (kinematics kinematic-chain))
   (actionlib:wait-for-server action-client 2.0)
   (make-instance 
-   'fccl-action-interface :action-client action-client :kinematic-chain kinematics))
+   'fccl-action-client :action-client action-client :kinematic-chain kinematics))
 
 (defmethod make-fccl-action-client ((action-name string) (kinematics kinematic-chain))
   (make-fccl-action-client
@@ -52,7 +58,24 @@
 
 (defmethod command-motion ((interface fccl-action-client) (motion motion-phase))
   (with-recursive-lock ((execution-lock interface))
+    (reset-state-fluent interface)
     (send-cancelable-goal interface (make-single-arm-motion-goal interface motion))))
+
+(defmethod get-state-fluent ((interface fccl-action-client))
+  (state-fluent interface))
+
+(defmethod get-constraints-fulfilled-fluent ((interface fccl-action-client))
+  (cram-language-implementation:fl-funcall
+   (lambda (constraint-states)
+     (when constraint-states
+       (every #'feature-constraint-fulfilled-p constraint-states)))
+   (get-state-fluent interface)))
+
+(defmethod cancel-motion ((interface fccl-action-client))
+  (set-cancel-request-signal interface t)
+  (with-recursive-lock ((execution-lock interface)) nil))
+
+;;; INTERNAL HELPER FUNCTIONS
 
 (defun make-single-arm-motion-goal (interface motion)
   (declare (type fccl-action-client)
@@ -60,6 +83,11 @@
   (actionlib:make-action-goal (action-client interface)
     :constraints (to-msg motion)
     :kinematics (to-msg (kinematic-chain interface))))
+
+(defun reset-state-fluent (interface)
+  (declare (type fccl-action-client interface))
+  (with-recursive-lock ((data-lock interface))
+    (setf (cram-language:value (state-fluent interface)) nil)))
 
 (defun send-cancelable-goal (interface goal-msg)
   (declare (type fccl-action-client interface)
@@ -79,13 +107,13 @@
            (type fccl_msgs-msg:singlearmmotiongoal goal-msg))
   (with-recursive-lock ((execution-lock interface))
     (multiple-value-bind (result status)
-        (actionlib:send-goal-and-wait (action-client interface) goal-msg)
+        (actionlib:send-goal-and-wait 
+         (action-client interface) goal-msg
+         :feedback-cb (lambda (msg)
+                        (setf (cram-language:value (state-fluent interface))
+                              (from-msg msg))))
       (declare (ignore status)) ; TODO(Georg): think about a good low-level interface
       result)))
-
-(defmethod cancel-motion ((interface fccl-action-client))
-  (set-cancel-request-signal interface t)
-  (with-recursive-lock ((execution-lock interface)) nil))
 
 (defun set-cancel-request-signal (interface cancel-requested-p)
   (declare (type fccl-action-client interface)

@@ -1,4 +1,4 @@
-;;; Copyright (c) 2013, Georg Bartels <georg.bartels@cs.uni-bremen.de>
+;;; Copyright (c) 2014, Georg Bartels <georg.bartels@cs.uni-bremen.de>
 ;;; All rights reserved.
 ;;;
 ;;; Redistribution and use in source and binary forms, with or without
@@ -26,13 +26,20 @@
 ;;; ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ;;; POSSIBILITY OF SUCH DAMAGE.
 
-(in-package :cl-user)
+(defsystem cram-pr2-controllers
+  :author "Georg Bartels <georg.bartels@cs.uni-bremen.de>"
+  :license "BSD"
+  :description "Interface package between CRAM and standard PR2 controllers."
 
-(defpackage :cram-fccl
-  (:use #:common-lisp
-        #:sb-thread
-        #:roslisp
-        #:actionlib
-        #:cl-feature-constraints)
-  (:export make-fccl-action-client command-motion cancel-motion get-state-fluent
-           get-constraints-fulfilled-fluent make-kinematic-chain base-frame-id tip-frame-id))
+  :depends-on (roslisp
+               actionlib
+               cl-robot-models
+               pr2_mechanism_msgs-srv
+               pr2_controllers_msgs-msg
+               trajectory_msgs-msg)
+  :components
+  ((:module "src"
+    :components
+    ((:file "package")
+     (:file "arm-position-controllers" :depends-on ("package"))
+     (:file "controller-manager" :depends-on ("package"))))))

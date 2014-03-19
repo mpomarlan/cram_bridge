@@ -33,3 +33,7 @@
 (defgeneric command-motion (interface motion))
 
 (defgeneric cancel-motion (interface))
+
+(defgeneric get-state-fluent (interface))
+
+(defgeneric get-constraints-fulfilled-fluent (interface))
