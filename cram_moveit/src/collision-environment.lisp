@@ -264,24 +264,14 @@ bridge.")
     (when (and col-obj current-pose-stamped)
       (let ((primitive-shapes (slot-value col-obj 'primitive-shapes))
             (mesh-shapes (slot-value col-obj 'mesh-shapes))
-            (plane-shapes (slot-value col-obj 'plane-shapes))
-            (time (roslisp:ros-time)))
+            (plane-shapes (slot-value col-obj 'plane-shapes)))
         (roslisp:ros-info (moveit) "Transforming link from ~a into ~a"
                           (tf:frame-id current-pose-stamped)
                           target-link)
-        (loop while (not (tf:wait-for-transform
-                          *tf*
-                          :time time
-                          :timeout 3.0
-                          :source-frame (tf:frame-id current-pose-stamped)
-                          :target-frame target-link))
-              do (sleep 0.1))
-        (let* ((pose-in-link (tf:transform-pose
-                              *tf*
-                              :pose (tf:copy-pose-stamped
-                                     current-pose-stamped
-                                     :stamp time)
-                              :target-frame target-link))
+        (let* ((pose-in-link 
+                 (ensure-pose-stamped-transformed
+                  current-pose-stamped target-link
+                  :ros-time t))
                (obj-msg-plain (create-collision-object-message
                                name pose-in-link
                                :primitive-shapes primitive-shapes

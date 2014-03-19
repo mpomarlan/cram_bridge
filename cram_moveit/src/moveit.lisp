@@ -34,6 +34,7 @@
   "List of current joint states as published by /joint_states.")
 (defvar *joint-states-subscriber* nil
   "Subscriber to /joint_states.")
+(defvar *tf-subscriber* nil)
 
 (defparameter *scene-msg* nil)
 
@@ -56,16 +57,28 @@ MoveIt! framework and registers known conditions."
         (roslisp:subscribe "/joint_states"
                            "sensor_msgs/JointState"
                            #'joint-states-callback))
-  (connect-action-client :reconnect nil))
+  (connect-action-client :reconnect t :reconnection-tries 5))
 
-(defun connect-action-client (&key (reconnect t))
+(defun connect-action-client (&key (reconnect t) reconnection-tries)
   (cond (reconnect
-         (loop while (or (not *move-group-action-client*)
-                         (not (actionlib:wait-for-server
-                               *move-group-action-client* 3.0)))
-               do (setf *move-group-action-client*
-                        (actionlib:make-action-client
-                         "/move_group" "moveit_msgs/MoveGroupAction"))))
+         (cond (reconnection-tries
+                (loop for i from 1 to reconnection-tries
+                      while (or (not *move-group-action-client*)
+                                (not (actionlib:wait-for-server
+                                      *move-group-action-client*
+                                      3.0)))
+                      do (setf *move-group-action-client*
+                               (actionlib:make-action-client
+                                "/move_group"
+                                "moveit_msgs/MoveGroupAction"))))
+               (t (loop while (or (not *move-group-action-client*)
+                                  (not (actionlib:wait-for-server
+                                        *move-group-action-client*
+                                        3.0)))
+                        do (setf *move-group-action-client*
+                                 (actionlib:make-action-client
+                                  "/move_group"
+                                  "moveit_msgs/MoveGroupAction"))))))
         (t (setf *move-group-action-client*
                  (actionlib:make-action-client
                   "/move_group" "moveit_msgs/MoveGroupAction")))))
@@ -81,8 +94,14 @@ MoveIt! framework and registers known conditions."
 
 (roslisp-utilities:register-ros-init-function init-moveit-bridge)
 
-(defun joint-states ()
-  *joint-states*)
+(defun joint-states (&optional names)
+  (cond (names
+         (mapcar (lambda (name)
+                   (find name *joint-states*
+                         :test (lambda (name joint-state)
+                                 (string= name (car joint-state)))))
+                 names))
+        (t *joint-states*)))
 
 (defun get-joint-value (name)
   (let* ((joint-states (joint-states))
@@ -172,7 +191,8 @@ MoveIt! framework and registers known conditions."
                          default-collision-entries
                          ignore-collisions
                          corridor
-                         (wait-until-finished t))
+                         (wait-until-finished t)
+                         (tolerance-sphere-radius 0.01))
   "Calls the MoveIt! MoveGroup action. The link identified by
   `link-name' is tried to be positioned in the pose given by
   `pose-stamped'. Returns `T' on success and `nil' on failure, in
@@ -219,6 +239,26 @@ MoveIt! framework and registers known conditions."
                    :group_name planning-group
                    :num_planning_attempts 10
                    :allowed_planning_time 10
+                   :workspace_parameters
+                   (make-message
+                    "moveit_msgs/WorkspaceParameters"
+                    :header
+                    (make-message
+                     "std_msgs/Header"
+                     :frame_id link-name
+                     :stamp (tf:stamp pose-stamped))
+                    :min_corner
+                    (make-message
+                     "geometry_msgs/Vector3"
+                        :x -2
+                        :y -2
+                        :z -2)
+                    :max_corner
+                    (make-message
+                     "geometry_msgs/Vector3"
+                        :x 2
+                        :y 2
+                        :z 2))
                    :goal_constraints
                    (vector
                     (make-message
@@ -242,8 +282,8 @@ MoveIt! framework and registers known conditions."
                          (make-message
                           "shape_msgs/SolidPrimitive"
                           :type (roslisp-msg-protocol:symbol-code
-                                 'shape_msgs-msg:solidprimitive :box)
-                          :dimensions (vector 0.01 0.01 0.01)))
+                                 'shape_msgs-msg:solidprimitive :sphere)
+                          :dimensions (vector tolerance-sphere-radius)))
                         :primitive_poses
                         (vector
                          (tf:pose->msg pose-stamped)))))
@@ -265,9 +305,9 @@ MoveIt! framework and registers known conditions."
                         :y (tf:y (tf:orientation pose-stamped))
                         :z (tf:z (tf:orientation pose-stamped))
                         :w (tf:w (tf:orientation pose-stamped)))
-                       :absolute_x_axis_tolerance 0.005
-                       :absolute_y_axis_tolerance 0.005
-                       :absolute_z_axis_tolerance 0.005))))
+                       :absolute_x_axis_tolerance 0.01
+                       :absolute_y_axis_tolerance 0.01
+                       :absolute_z_axis_tolerance 0.01))))
                    :path_constraints path-constraints))
                    ;:trajectory_constraints
                    ;(make-message
@@ -331,7 +371,7 @@ MoveIt! framework and registers known conditions."
                         (let ((result (actionlib:call-goal
                                        *move-group-action-client*
                                        goal
-                                       :result-timeout 10.0 :timeout 10.0)))
+                                       :result-timeout 20.0 :timeout 20.0)))
                           (cond (result
                                  (roslisp:with-fields (error_code
                                                        trajectory_start
@@ -354,6 +394,66 @@ MoveIt! framework and registers known conditions."
             (t (ros-error (moveit) "Lost actionlib connection while waiting.")
                (connect-action-client)
                (error 'planning-failed))))))
+
+(defun move-link-joint-states (link-name planning-group joint-states)
+  (let* ((mpreq (make-message
+                 "moveit_msgs/MotionPlanRequest"
+                 :group_name planning-group
+                 :num_planning_attempts 10
+                 :allowed_planning_time 10
+                 :goal_constraints
+                 (vector
+                  (make-message
+                   "moveit_msgs/Constraints"
+                   :joint_constraints
+                   (map 'vector (lambda (joint-state)
+                                  (make-message
+                                   "moveit_msgs/JointConstraint"
+                                   :joint_name (car joint-state)
+                                   :position (cdr joint-state)
+                                   :tolerance_below 0.0
+                                   :tolerance_above 0.0
+                                   :weight 1.0))
+                        joint-states))))))
+    (cond ((actionlib:wait-for-server *move-group-action-client* 5.0)
+           (cpl:with-failure-handling
+               ((actionlib:server-lost (f)
+                  (declare (ignore f))
+                  (ros-error (moveit)
+                             "Lost actionlib connection while executing.")
+                  (connect-action-client)
+                  (cpl:fail 'planning-failed))
+                (invalid-motion-plan (f)
+                  (declare (ignore f))
+                  (ros-warn (moveit) "Invalid motion plan. Rethrowing.")
+                  (error 'manipulation-failed)))
+             (let ((goal (actionlib:make-action-goal
+                             *move-group-action-client*
+                           :request mpreq)))
+               (let ((result (actionlib:call-goal
+                              *move-group-action-client*
+                              goal
+                              :result-timeout 20.0 :timeout 20.0)))
+                 (cond (result
+                        (roslisp:with-fields (error_code
+                                              trajectory_start
+                                              planned_trajectory)
+                            result
+                          (roslisp:with-fields (val) error_code
+                            (unless
+                                (eql val
+                                     (roslisp-msg-protocol:symbol-code
+                                      'moveit_msgs-msg:moveiterrorcodes
+                                      :success))
+                              (signal-moveit-error val))
+                            (values
+                             trajectory_start planned_trajectory))))
+                       (t (ros-error (moveit)
+                                     "Empty actionlib response.")
+                          (error 'actionlib:server-lost)))))))
+          (t (ros-error (moveit) "Lost actionlib connection while waiting.")
+             (connect-action-client)
+             (error 'planning-failed)))))
 
 (defun execute-trajectory (trajectory &key (wait-for-execution t))
   (let ((result (call-service "/execute_kinematic_path"
@@ -454,60 +554,6 @@ as only the final configuration IK is generated."
               :touch-links touch-links
               :default-collision-entries default-collision-entries
               :ignore-collisions ignore-collisions)))))
-
-(defun ensure-pose-stamped-transformable (pose-stamped target-frame
-                                          &key ros-time)
-  (ros-info (moveit) "Ensuring pose transformable (~a -> ~a)."
-            (tf:frame-id pose-stamped) target-frame)
-  (let ((first-run t))
-    (loop for sleepiness = (or first-run (sleep 1.0))
-          for time = (ros-time)
-          when (tf:wait-for-transform
-                *tf*
-                :source-frame (tf:frame-id pose-stamped)
-                :target-frame target-frame
-                :timeout 2.0
-                :time (cond (ros-time time)
-                            (t (tf:stamp pose-stamped))))
-            do (setf first-run nil)
-               (return (cond
-                         (ros-time
-                          (tf:copy-pose-stamped pose-stamped :stamp (ros-time)))
-                         (t pose-stamped))))))
-
-(defun ensure-transform-available (reference-frame target-frame)
-  (cpl:with-failure-handling
-      ((cl-tf:tf-cache-error (f)
-         (declare (ignore f))
-         (ros-warn (moveit) "Failed to make transform available. Retrying.")
-         (cpl:retry)))
-    (let ((first-run t))
-      (loop for sleepiness = (or first-run (sleep 1.0))
-            for time = (ros-time)
-            for transform = (when (tf:wait-for-transform
-                                   *tf* :timeout 2.0
-                                        :time time
-                                        :source-frame reference-frame
-                                        :target-frame target-frame)
-                              (tf:lookup-transform
-                               *tf* :time time
-                                    :source-frame reference-frame
-                                    :target-frame target-frame))
-            when transform
-              do (setf first-run nil)
-                 (return transform)))))
-  
-(defun ensure-pose-stamped-transformed (pose-stamped target-frame
-                                        &key ros-time)
-  (cpl:with-failure-handling
-      ((cl-tf:tf-cache-error (f)
-         (declare (ignore f))
-         (ros-warn (moveit) "Failed to transform pose. Retrying.")
-         (cpl:retry)))
-    (tf:transform-pose
-     *tf* :pose (ensure-pose-stamped-transformable
-                 pose-stamped target-frame :ros-time ros-time)
-          :target-frame target-frame)))
 
 (defun pose-distance (link-frame pose-stamped)
   "Returns the distance of stamped pose `pose-stamped' from the origin
