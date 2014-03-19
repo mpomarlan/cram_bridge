@@ -58,6 +58,9 @@
     (roslisp:ros-info (beliefstate) "Switching ON beliefstate logging."))
   (setf *logging-enabled* (not *logging-enabled*)))
 
+(defun enable-logging (bool)
+  (setf *logging-enabled* bool))
+
 (defun start-node (name log-parameters detail-level)
   (when (wait-for-logging "begin_context")
     (let* ((parameters
@@ -195,7 +198,7 @@
       (let* ((desig-id (desig-prop-value (first result) 'desig-props::id)))
         desig-id))))
 
-(defun set-metadata (&key robot creator experiment description)
+(defun set-metadata (&key (robot "PR2") (creator "IAI") experiment description)
   (when robot (set-experiment-meta-data "robot" robot))
   (when creator (set-experiment-meta-data "creator" creator))
   (when experiment (set-experiment-meta-data "experiment" experiment))
@@ -227,7 +230,7 @@
         (type-parent ,type-parent)
         (description-parent ,desc-parent))))))
 
-(defun extract-files (name)
+(defun extract-files (&optional (name "cram_log"))
   (let ((owl-name (concatenate 'string name ".owl"))
         (dot-name (concatenate 'string name ".dot"))
         (owl-name-no-details (concatenate 'string name "-no-details.owl"))
