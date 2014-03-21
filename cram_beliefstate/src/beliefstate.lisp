@@ -154,6 +154,12 @@
     (when result
       (desig-prop-value (first result) 'desig-props::id)))) ;; desig_id
 
+(defun catch-current-failure-with-active-node (id)
+  (alter-node (cram-designators:make-designator
+               'cram-designators:action
+               (list (list 'command 'catch-failure)
+                     (list 'context-id id)))))
+
 (defun set-experiment-meta-data (field value)
   (alter-node
    (cram-designators:make-designator
