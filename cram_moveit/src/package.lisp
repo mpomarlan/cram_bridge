@@ -98,4 +98,5 @@
    ;; Display
    display-robot-state)
   (:desig-properties #:shape #:dimensions #:box #:cylinder
-                     #:sphere #:cone #:round #:name))
+                     #:sphere #:cone #:round #:name #:yellow
+                     #:color))
