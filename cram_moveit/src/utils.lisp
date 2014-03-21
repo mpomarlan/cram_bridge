@@ -89,3 +89,18 @@
      *tf* :pose (ensure-pose-stamped-transformable
                  pose-stamped target-frame :ros-time ros-time)
           :target-frame target-frame)))
+
+(defun transform-stamped->msg (transform-stamped)
+  (with-fields (stamp frame-id child-frame-id rotation translation) transform-stamped
+    (make-message
+     "geometry_msgs/TransformStamped"
+     (stamp header) stamp
+     (frame_id header) frame-id
+     (child_frame_id) child-frame-id
+     (x translation transform) (tf:x translation)
+     (y translation transform) (tf:y translation)
+     (z translation transform) (tf:z translation)
+     (x rotation transform) (tf:x rotation)
+     (y rotation transform) (tf:y rotation)
+     (z rotation transform) (tf:z rotation)
+     (w rotation transform) (tf:w rotation))))
