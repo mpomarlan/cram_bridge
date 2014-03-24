@@ -192,7 +192,8 @@ MoveIt! framework and registers known conditions."
                          ignore-collisions
                          corridor
                          (wait-until-finished t)
-                         (tolerance-sphere-radius 0.01))
+                         (tolerance-sphere-radius 0.01)
+                         (fixed-map-odomcombined t))
   "Calls the MoveIt! MoveGroup action. The link identified by
   `link-name' is tried to be positioned in the pose given by
   `pose-stamped'. Returns `T' on success and `nil' on failure, in
@@ -349,8 +350,16 @@ MoveIt! framework and registers known conditions."
                 :default_entry_values (map
                                        'vector (lambda (x)
                                                  (cdr x))
-                                       default-collision-entries)))
-              :plan_only plan-only)))
+                                       default-collision-entries))
+               :fixed_frame_transforms
+               (cond (fixed-map-odomcombined
+                      (vector (transform-stamped->msg
+                               (ensure-transform-available
+                                "/map" "/odom_combined"))))
+                     (t (vector))))
+              :plan_only plan-only
+              :replan t
+              :replan_attempts 3)))
       (cond ((actionlib:wait-for-server *move-group-action-client* 5.0)
              (cpl:with-failure-handling
                  ((actionlib:server-lost (f)
