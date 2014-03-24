@@ -31,10 +31,10 @@
 (defvar *uima-result-subscriber* nil)
 (defvar *uima-result-fluent* nil)
 (defvar *uima-result-msg* nil)
-(defvar *uima-comm-mode* :service)
+(defvar *uima-comm-mode* :topic)
 (defvar *uima-service-topic* "/naive_perception")
-(defvar *uima-trigger-service-topic* "/uima/uima_trigger")
-(defvar *uima-results-topic* "/uima/uima_result")
+(defvar *uima-trigger-service-topic* "/kinect_uima_bridge/trigger_uima_pipeline")
+(defvar *uima-results-topic* "/kinect_uima_bridge/uima_result")
 
 (define-condition uima-not-running () ())
 

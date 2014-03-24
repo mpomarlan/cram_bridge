@@ -1,4 +1,4 @@
-;;; Copyright (c) 2013, Jan Winkler <winkler@cs.uni-bremen.de>
+;;; Copyright (c) 2014, Jan Winkler <winkler@cs.uni-bremen.de>
 ;;; All rights reserved.
 ;;; 
 ;;; Redistribution and use in source and binary forms, with or without
@@ -9,7 +9,7 @@
 ;;;     * Redistributions in binary form must reproduce the above copyright
 ;;;       notice, this list of conditions and the following disclaimer in the
 ;;;       documentation and/or other materials provided with the distribution.
-;;;     * Neither the name of Universitaet Bremen, nor the names of its
+;;;     * Neither the name of the Universitaet Bremen nor the names of its
 ;;;       contributors may be used to endorse or promote products derived from
 ;;;       this software without specific prior written permission.
 ;;; 
@@ -25,35 +25,28 @@
 ;;; ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ;;; POSSIBILITY OF SUCH DAMAGE.
 
-(defsystem cram-moveit
-  :author "Jan Winkler <winkler@cs.uni-bremen.de>"
-  :license "BSD"
-  :description "CRAM MoveIt! Interface"
+(in-package :cram-moveit)
 
-  :depends-on (cram-roslisp-common
-               cram-language
-               cram-reasoning
-               process-modules
-               cram-utilities
-               cram-plan-knowledge
-               designators
-               designators-ros
-               actionlib
-               std_msgs-msg
-               cram-plan-failures
-               moveit_msgs-msg
-               moveit_msgs-srv
-               roslisp-utilities)
-  :components
-  ((:module "src"
-    :components
-    ((:file "package")
-     (:file "utils" :depends-on ("package"))
-     (:file "failures" :depends-on ("package"))
-     (:file "collision-environment" :depends-on ("package" "utils"))
-     (:file "display" :depends-on ("package" "utils"))
-     (:file "moveit" :depends-on ("package"
-                                  "failures"
-                                  "collision-environment"
-                                  "display"
-                                  "utils"))))))
+(defparameter *robot-state-display-publisher* nil)
+(defvar *robot-state-display-topic* "/display_robot_state");_planning")
+
+(defun display-robot-state (state &key highlight)
+  (when (and *robot-state-display-publisher* state)
+    (let ((highlights
+            (map 'vector
+                 (lambda (link-name)
+                   (roslisp:make-message
+                    "moveit_msgs/ObjectColor"
+                    :id link-name
+                    :color (roslisp:make-message
+                            "std_msgs/ColorRGBA"
+                            :r 1.0
+                            :g 1.0
+                            :b 0.0
+                            :a 1.0)))
+                 highlight)))
+      (roslisp:publish
+       *robot-state-display-publisher*
+       (roslisp:make-message "moveit_msgs/DisplayRobotState"
+                             :state state
+                             :highlight_links highlights)))))
