@@ -95,8 +95,8 @@
     (make-message
      "geometry_msgs/TransformStamped"
      (stamp header) stamp
-     (frame_id header) frame-id
-     (child_frame_id) child-frame-id
+     (frame_id header) child-frame-id;frame-id
+     (child_frame_id) frame-id;child-frame-id
      (x translation transform) (tf:x translation)
      (y translation transform) (tf:y translation)
      (z translation transform) (tf:z translation)
