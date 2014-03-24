@@ -204,11 +204,12 @@
       (let* ((desig-id (desig-prop-value (first result) 'desig-props::id)))
         desig-id))))
 
-(defun set-metadata (&key (robot "PR2") (creator "IAI") experiment description)
+(defun set-metadata (&key (robot "PR2") (creator "IAI") experiment description (cram-beliefstate-version "0.4"))
   (when robot (set-experiment-meta-data "robot" robot))
   (when creator (set-experiment-meta-data "creator" creator))
   (when experiment (set-experiment-meta-data "experiment" experiment))
-  (when description (set-experiment-meta-data "description" description)))
+  (when description (set-experiment-meta-data "description" description))
+  (when cram-beliefstate-version (set-experiment-meta-data "cram-beliefstate-version" cram-beliefstate-version)))
 
 (defun equate-designators (desig-child desig-parent)
   (let* ((mem-addr-child (write-to-string
