@@ -220,7 +220,7 @@
               clauses))
      :annotation "with-failure-handling-clauses")))
 
-(defmethod cpl-impl::on-with-failure-handling-retry cram-beliefstate (id)
+(defmethod cpl-impl::on-with-failure-handling-handled cram-beliefstate (id)
   (catch-current-failure-with-active-node id))
 
 (defmethod cpl-impl::on-with-failure-handling-end cram-beliefstate (id)
