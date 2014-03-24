@@ -35,8 +35,8 @@
          :initarg :pose
          :reader :pose)
    (color :initform nil
-          :initarg :pose
-          :reader :pose)
+          :initarg :color
+          :reader :color)
    (primitive-shapes :initform nil
                      :initarg :primitive-shapes
                      :reader :primitive-shapes)
@@ -92,16 +92,18 @@ bridge.")
                                 "shape_msgs/SolidPrimitive"
                                 type shape
                                 dimensions dimensions))
-       :pose-stamped pose-stamped)
+       :pose-stamped pose-stamped
+       :color (desig-prop-value object 'desig-props:color))
       (when add
-        (add-collision-object name)))))
+        (add-collision-object name pose-stamped t)))))
 
 (defmethod register-collision-object ((name string)
                                       &key
                                         primitive-shapes
                                         mesh-shapes
                                         plane-shapes
-                                        pose-stamped)
+                                        pose-stamped
+                                        color)
   (let ((name (string-upcase (string name)))
         (obj (or (named-collision-object name)
                  (let ((obj-create
@@ -109,7 +111,8 @@ bridge.")
                                         :name name
                                         :primitive-shapes primitive-shapes
                                         :mesh-shapes mesh-shapes
-                                        :plane-shapes plane-shapes)))
+                                        :plane-shapes plane-shapes
+                                        :color color)))
                    (push obj-create *known-collision-objects*)
                    obj-create))))
     (when (and obj pose-stamped)
@@ -145,7 +148,7 @@ bridge.")
                                           primitive-shapes
                                           mesh-shapes
                                           plane-shapes)
-  (let ((name (string name)))
+  (let* ((name (string name)))
     (unless (or primitive-shapes mesh-shapes plane-shapes)
       (cpl:fail 'no-collision-shapes-defined))
     (flet* ((resolve-pose (pose-msg)
@@ -175,7 +178,7 @@ bridge.")
         obj-msg))))
 
 (defun make-object-color (id color)
-  (let ((col-vec (case (intern (string-upcase (string color)))
+  (let ((col-vec (case (intern (string-upcase (string color)) 'desig-props)
                    (blue (vector 0.0 0.0 1.0))
                    (red (vector 1.0 0.0 0.0))
                    (green (vector 0.0 1.0 0.0))
@@ -191,7 +194,8 @@ bridge.")
      (b color) (elt col-vec 2)
      (a color) 1.0)))
 
-(defun add-collision-object (name &optional pose-stamped)
+(defun add-collision-object (name &optional pose-stamped
+                                    (fixed-map-odomcombined nil))
   (let* ((name (string name))
          (col-obj (named-collision-object name))
          (pose-stamped (or pose-stamped
@@ -218,7 +222,13 @@ bridge.")
                            "moveit_msgs/PlanningScene"
                            world world-msg
                            object_colors (vector (make-object-color name color))
-                           is_diff t)))
+                           is_diff t
+                           :fixed_frame_transforms
+                           (cond (fixed-map-odomcombined
+                                  (vector (transform-stamped->msg
+                                           (ensure-transform-available
+                                            "/map" "/odom_combined"))))
+                                 (t (vector))))))
           (prog1 (roslisp:publish *planning-scene-publisher* scene-msg)
             (roslisp:ros-info
              (moveit)
@@ -268,7 +278,7 @@ bridge.")
         (roslisp:ros-info (moveit) "Transforming link from ~a into ~a"
                           (tf:frame-id current-pose-stamped)
                           target-link)
-        (let* ((pose-in-link 
+        (let* ((pose-in-link
                  (ensure-pose-stamped-transformed
                   current-pose-stamped target-link
                   :ros-time t))
