@@ -35,4 +35,7 @@
    ;; controller manager
    pr2-controller-manager-handle make-pr2-controller-manager-handle namespace
    cleanup-pr2-controller-manager-handle switch-controllers ensure-vel-controllers 
-   ensure-pos-controllers arms left right both stop-controllers switch-controller-error))
+   ensure-pos-controllers arms left right both stop-controllers switch-controller-error
+   ;; pr2 position controllers
+   pr2-arm-position-controller-handle pr2-arm-controller-error
+   make-pr2-arm-position-controller-handle move-arm))
