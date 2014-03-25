@@ -77,6 +77,9 @@
    :points (coerce `(,(make-trajectory-point handle goal-state execution-time)) 'vector)))
 
 (defun make-trajectory-point (handle goal-state execution-time)
+  (declare (type pr2-arm-position-controller-handle handle)
+           (type cl-robot-models:robot-state goal-state)
+           (type number execution-time))
   (let ((goal-configuration
           (mapcar (lambda (joint)
                     (cl-robot-models:joint-position
