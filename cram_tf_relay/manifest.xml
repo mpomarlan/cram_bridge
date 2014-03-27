@@ -1,0 +1,11 @@
+<package>
+  <description brief="cram_tf_relay">
+
+     CRAM bridge to command the iai_tf_relay which
+     broadcasts transforms to TF.
+
+  </description>
+  <author>Georg Bartels</author>
+  <license>BSD</license>
+
+</package>
