@@ -96,7 +96,8 @@
    ensure-pose-stamped-transformed
    ensure-transform-available
    ;; Display
-   display-robot-state)
+   display-robot-state
+   set-object-color)
   (:desig-properties #:shape #:dimensions #:box #:cylinder
                      #:sphere #:cone #:round #:name #:yellow
                      #:color))

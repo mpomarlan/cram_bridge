@@ -232,7 +232,8 @@ bridge.")
           (prog1 (roslisp:publish *planning-scene-publisher* scene-msg)
             (roslisp:ros-info
              (moveit)
-             "Added collision object `~a' to environment server." name)))))))
+             "Added collision object `~a' to environment server." name)
+            (publish-object-colors)))))))
 
 (defun remove-collision-object (name)
   (let* ((name (string name))
