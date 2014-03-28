@@ -29,12 +29,12 @@
 
 (defun ensure-pose-stamped-transformable (pose-stamped target-frame
                                           &key ros-time)
-  (ros-info (moveit) "Ensuring pose transformable (~a -> ~a)."
+  (ros-info (moveit) "TF transform (~a -> ~a)"
             (tf:frame-id pose-stamped) target-frame)
   (let ((first-run t))
     (loop for sleepiness = (or first-run (sleep 1.0))
           for time = (ros-time)
-          for tst = (format t "Retry~%")
+          for tst = (or first-run (format t "Retry~%"))
           when (tf:wait-for-transform
                 *tf*
                 :source-frame (tf:frame-id pose-stamped)
