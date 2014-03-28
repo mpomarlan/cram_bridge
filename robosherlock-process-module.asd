@@ -43,6 +43,7 @@
                cram-plan-failures
                pr2-manipulation-knowledge
                cl-semantic-map-utils
+               semantic-map-costmap
                actionlib
                cram-uima
                cram-moveit)
