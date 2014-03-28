@@ -40,11 +40,39 @@
 
 (defparameter *pr2-velocity-controllers*
   (let ((vel-controllers (make-hash-table)))
-    (setf (gethash 'left vel-controllers) '("l_arm_vel"))
-    (setf (gethash 'right vel-controllers) '("r_arm_vel"))
-    (setf (gethash 'all vel-controllers) '("l_arm_vel" "r_arm_vel"))
+    (setf (gethash 'left vel-controllers) 
+          '("l_shoulder_pan_velocity_controller"
+            "l_shoulder_lift_velocity_controller"
+            "l_upper_arm_roll_velocity_controller"
+            "l_elbow_flex_velocity_controller"
+            "l_forearm_roll_velocity_controller"
+            "l_wrist_flex_velocity_controller"
+            "l_wrist_roll_velocity_controller"))
+    (setf (gethash 'right vel-controllers) 
+          '("r_shoulder_pan_velocity_controller"
+            "r_shoulder_lift_velocity_controller"
+            "r_upper_arm_roll_velocity_controller"
+            "r_elbow_flex_velocity_controller"
+            "r_forearm_roll_velocity_controller"
+            "r_wrist_flex_velocity_controller"
+            "r_wrist_roll_velocity_controller"))
+    (setf (gethash 'all vel-controllers) 
+          '("l_shoulder_pan_velocity_controller"
+            "l_shoulder_lift_velocity_controller"
+            "l_upper_arm_roll_velocity_controller"
+            "l_elbow_flex_velocity_controller"
+            "l_forearm_roll_velocity_controller"
+            "l_wrist_flex_velocity_controller"
+            "l_wrist_roll_velocity_controller"
+            "r_shoulder_pan_velocity_controller"
+            "r_shoulder_lift_velocity_controller"
+            "r_upper_arm_roll_velocity_controller"
+            "r_elbow_flex_velocity_controller"
+            "r_forearm_roll_velocity_controller"
+            "r_wrist_flex_velocity_controller"
+            "r_wrist_roll_velocity_controller"))
     vel-controllers))
-
+ 
 (defparameter *pr2-position-controllers*
   (let ((vel-controllers (make-hash-table)))
     (setf (gethash 'left vel-controllers) '("l_arm_controller"))
