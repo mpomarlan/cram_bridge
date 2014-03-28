@@ -46,4 +46,4 @@
                      #:grasp-pose #:grasp-poses #:object-identifier #:dimensions
                      #:pose #:identifier #:grasp-type #:unknown #:spatula
                      #:pancakemaker #:milkbox #:pancakemix
-                     #:cylinder #:box #:yellow))
+                     #:cylinder #:box #:yellow #:pancake))
