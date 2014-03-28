@@ -44,4 +44,6 @@
   (:desig-properties #:to #:perceive #:obj #:examine #:property #:properties
                      #:color #:size #:shape #:pose-on-plane #:z-offset
                      #:grasp-pose #:grasp-poses #:object-identifier #:dimensions
-                     #:pose #:identifier))
+                     #:pose #:identifier #:grasp-type #:unknown #:spatula
+                     #:pancakemaker #:milkbox #:pancakemix
+                     #:cylinder #:box #:yellow))
