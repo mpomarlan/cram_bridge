@@ -28,6 +28,7 @@
 (in-package :robosherlock-process-module)
 
 (defparameter *proximity-threshold* 0.3)
+(defparameter *object-marker-color* `(1.0 0.0 0.0 1.0))
 
 (defclass perceived-object (desig:object-designator-data
                             cram-manipulation-knowledge:object-shape-data-mixin)
@@ -165,6 +166,8 @@
          (cons 'desig-props:box (vector 0.32 0.08 0.06)))
         ((eql type 'desig-props:pancakemaker)
          (cons 'desig-props:cylinder (vector 0.08 0.14)))
+        ((eql type 'desig-props:pancake)
+         (cons 'desig-props:cylinder (vector 0.02 0.06)))
         (t (cons 'desig-props:box (vector 0.06 0.09 0.2)))))
 
 (defun get-object-name (parent pose type &key (threshold 0.2))
@@ -176,27 +179,26 @@
             (crs:prolog `(and (btr::bullet-world ?w)
                               (btr::object ?w ?n)
                               (btr::object-pose ?w ?n ?p)
-                              (btr::poses-equal ?p ,pose (,threshold 6.4))))))))
-    (loop for i from 0 below (length near-objects)
+                              (btr::poses-equal ?p ,pose (,threshold 6.4)))))))
+        (all-objects
+          (crs::force-ll
+           (crs::lazy-mapcar
+            (lambda (n)
+              (crs::var-value '?n n))
+            (crs:prolog
+             `(and (btr::bullet-world ?w)
+                   (btr::object ?w ?n)))))))
+    (loop for i from 0 below (length all-objects)
           for temp-name = (indexed-name type i)
           when (find temp-name near-objects)
             do (return-from get-object-name temp-name))
-    (format t "gogogo: ~a~%" near-objects)
     (let ((parent-name (desig-prop-value parent 'desig-props:name)))
       (cond (parent-name parent-name)
-            (t (let ((all-objects
-                       (crs::force-ll
-                        (crs::lazy-mapcar
-                         (lambda (n)
-                           (crs::var-value '?n n))
-                         (crs:prolog
-                          `(and (btr::bullet-world ?w)
-                                (btr::object ?w ?n)))))))
-                 (loop for i from 0 to (length all-objects)
-                       for temp-name = (indexed-name type i)
-                       when (not (crs:prolog `(and (btr::bullet-world ?w)
-                                                   (btr::object ?w ,temp-name))))
-                         do (return-from get-object-name temp-name))))))))
+            (t (loop for i from 0 to (length all-objects)
+                     for temp-name = (indexed-name type i)
+                     when (not (crs:prolog `(and (btr::bullet-world ?w)
+                                                 (btr::object ?w ,temp-name))))
+                       do (return-from get-object-name temp-name)))))))
 
 (defun replace-all (string part replacement &key (test #'char=))
   "Returns a new string in which all the occurences of `part' are
@@ -255,10 +257,11 @@ replaced with `replacement'."
                                                          (cram-designators:desig-prop-value
                                                           object 'desig-props:pose)))
                                              (orientation (tf:orientation pose-temp)))
-                                        (and (eql (tf:x orientation) 0.0d0)
-                                             (eql (tf:y orientation) 0.0d0)
-                                             (eql (tf:z orientation) 0.0d0)
-                                             (eql (tf:w orientation) 1.0d0))))
+                                        (or (eql type 'desig-props:pancake)
+                                            (and (eql (tf:x orientation) 0.0d0)
+                                                 (eql (tf:y orientation) 0.0d0)
+                                                 (eql (tf:z orientation) 0.0d0)
+                                                 (eql (tf:w orientation) 1.0d0)))))
           for pose = (when (cram-designators:desig-prop-value object 'desig-props:pose)
                        (let* ((pose-in-map (moveit:ensure-pose-stamped-transformed
                                             (tf:msg->pose-stamped
@@ -380,9 +383,9 @@ replaced with `replacement'."
     (dolist (designator perceived-designators)
       (moveit:register-collision-object
        designator :add t)
-      ;(let ((pose (reference (desig-prop-value designator 'desig-props:at)))
-       ;     (name (desig-prop-value designator 'desig-props:name)))
-        ;(register-object name pose))
+      (moveit:set-object-color (desig-prop-value
+                                designator 'desig-props:name)
+                               *object-marker-color*)
       (cram-plan-knowledge:on-event
        (make-instance
         'cram-plan-knowledge:object-perceived-event
