@@ -41,6 +41,7 @@
 (defun init-uima-bridge ()
   "Sets up the basic action client communication handles for the
 UIMA framework."
+  (config-uima)
   (setf *uima-result-fluent*
         (cpl:make-fluent
          :name 'uima-result
@@ -122,12 +123,14 @@ for a reply on another topic."
               (ecase *uima-comm-mode*
                 (:topic
                  (trigger designator-request-plus-id)
-                 (when (cpl:wait-for *uima-result-fluent*)
-                   (roslisp:with-fields (designators)
-                       (cpl:value *uima-result-fluent*)
-                     (map 'list (lambda (x)
-                                  (desig-int::msg->designator x))
-                          designators))))
+                 (cpl:pursue
+                   (cpl:sleep* 5) ;; Timeout
+                   (when (cpl:wait-for *uima-result-fluent*)
+                     (roslisp:with-fields (designators)
+                         (cpl:value *uima-result-fluent*)
+                       (map 'list (lambda (x)
+                                    (desig-int::msg->designator x))
+                            designators)))))
                 (:service
                  (desig-int::call-designator-service
                   *uima-service-topic* designator-request-plus-id))))))
