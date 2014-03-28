@@ -148,6 +148,7 @@
                    'cram-designators:action
                    (list (list 'command 'add-object)
                          (list 'type "OBJECT")
+                         (list 'annotation annotation)
                          (list 'memory-address memory-address)
                          (list 'description description))))))
     (add-designator-to-active-node designator :annotation annotation)
