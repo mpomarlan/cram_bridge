@@ -39,7 +39,7 @@
   (roslisp:make-msg
    "fccl_msgs/constraint"
    name (to-msg (id constraint))
-   reference (to-msg (reference relation))
+   reference (to-msg (frame-id relation))
    function (to-msg (string-downcase (symbol-name (function-type relation))))
    tool_feature (to-msg (tool-feature relation))
    object_feature (to-msg (object-feature relation))
@@ -125,7 +125,7 @@
      :id (from-msg name)
      :relation
      (make-feature-relation
-      :reference (from-msg reference)
+      :frame-id (from-msg reference)
       :function-type (lookup-relation-type-from-msg function)
       :tool-feature (from-msg tool_feature)
       :object-feature (from-msg object_feature))
