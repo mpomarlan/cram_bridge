@@ -192,7 +192,7 @@ MoveIt! framework and registers known conditions."
                          ignore-collisions
                          corridor
                          (wait-until-finished t)
-                         (tolerance-sphere-radius 0.01)
+                         (tolerance-sphere-radius 0.005)
                          (fixed-map-odomcombined t))
   "Calls the MoveIt! MoveGroup action. The link identified by
   `link-name' is tried to be positioned in the pose given by

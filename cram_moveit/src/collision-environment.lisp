@@ -50,8 +50,6 @@
 (defvar *known-collision-objects* nil
   "List of collision object instances registered with the CRAM/MoveIt!
 bridge.")
-(defvar *planning-scene-publisher* nil
-  "Publisher handle for the planning scene topic.")
 
 (defgeneric register-collision-object (object &rest rest))
 
@@ -232,7 +230,8 @@ bridge.")
           (prog1 (roslisp:publish *planning-scene-publisher* scene-msg)
             (roslisp:ros-info
              (moveit)
-             "Added collision object `~a' to environment server." name)))))))
+             "Added collision object `~a' to environment server." name)
+            (publish-object-colors)))))))
 
 (defun remove-collision-object (name)
   (let* ((name (string name))

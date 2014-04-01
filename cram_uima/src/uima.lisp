@@ -34,13 +34,14 @@
 (defvar *uima-comm-mode* :topic)
 (defvar *uima-service-topic* "/naive_perception")
 (defvar *uima-trigger-service-topic* "/kinect_uima_bridge/trigger_uima_pipeline")
-(defvar *uima-results-topic* "/kinect_uima_bridge/uima_result")
+(defvar *uima-results-topic* "/rs_collection_reader/result_advertiser")
 
 (define-condition uima-not-running () ())
 
 (defun init-uima-bridge ()
   "Sets up the basic action client communication handles for the
 UIMA framework."
+  (config-uima)
   (setf *uima-result-fluent*
         (cpl:make-fluent
          :name 'uima-result
@@ -79,9 +80,13 @@ for a reply on another topic."
   (cpl:setf (cpl:value *uima-result-fluent*) msg))
 
 (defun trigger (designator-request)
-  (cpl:setf (cpl:value *uima-result-fluent*) nil)
-  (desig-int::call-designator-service
-   *uima-trigger-service-topic* designator-request))
+  (cpl:with-failure-handling
+      ((sb-bsd-sockets:connection-refused-error (f)
+         (declare (ignore f))
+         (cpl:retry)))
+    (cpl:setf (cpl:value *uima-result-fluent*) nil)
+    (desig-int::call-designator-service
+     *uima-trigger-service-topic* designator-request)))
   ;; (roslisp:wait-for-service *uima-trigger-service-topic*)
   ;; (roslisp:call-service
   ;;  *uima-trigger-service-topic*
@@ -121,25 +126,29 @@ for a reply on another topic."
                    (cpl:retry)))
               (ecase *uima-comm-mode*
                 (:topic
-                 (trigger designator-request-plus-id)
-                 (when (cpl:wait-for *uima-result-fluent*)
-                   (roslisp:with-fields (designators)
-                       (cpl:value *uima-result-fluent*)
-                     (map 'list (lambda (x)
-                                  (desig-int::msg->designator x))
-                          designators))))
+                 ;;(trigger designator-request-plus-id)
+                 (cpl:pursue
+                   (cpl:sleep* 5) ;; Timeout
+                   (when (cpl:wait-for *uima-result-fluent*)
+                     (roslisp:with-fields (designators)
+                         (cpl:value *uima-result-fluent*)
+                       (map 'list (lambda (x)
+                                    (desig-int::msg->designator x))
+                            designators)))))
                 (:service
                  (desig-int::call-designator-service
                   *uima-service-topic* designator-request-plus-id))))))
       (roslisp:ros-info (uima) "Post processing perception results")
       (on-finish-request log-id result-designators)
-      result-designators)))
+      (progn
+        (format t "Returning~%")
+        result-designators))))
 
 (defun config-uima ()
   (cram-uima:set-comm-mode
    :topic
-   :trigger-service-topic "/kinect_uima_bridge/trigger_uima_pipeline"
-   :results-topic "/kinect_uima_bridge/uima_result"))
+   :trigger-service-topic *uima-trigger-service-topic*
+   :results-topic *uima-results-topic*))
 
 (defun config-naive-perception ()
   (cram-uima:set-comm-mode

@@ -29,6 +29,9 @@
 
 (defparameter *robot-state-display-publisher* nil)
 (defvar *robot-state-display-topic* "/display_robot_state");_planning")
+(defparameter *object-colors* nil)
+(defparameter *planning-scene-publisher* nil
+  "Publisher handle for the planning scene topic.")
 
 (defun display-robot-state (state &key highlight)
   (when (and *robot-state-display-publisher* state)
@@ -50,3 +53,41 @@
        (roslisp:make-message "moveit_msgs/DisplayRobotState"
                              :state state
                              :highlight_links highlights)))))
+
+(defun publish-object-colors ()
+  (let* ((msgs
+           (loop for assignment in *object-colors*
+                 collecting (destructuring-bind
+                                (object-name . (r g b a)) assignment
+                              (make-message
+                               "moveit_msgs/ObjectColor"
+                               (id) (symbol-name object-name)
+                               (r color) r
+                               (g color) g
+                               (b color) b
+                               (a color) a))))
+         (msg (make-message
+               "moveit_msgs/PlanningScene"
+               (object_colors) (map 'vector #'identity msgs)
+               (is_diff) t)))
+    (roslisp:publish *planning-scene-publisher* msg)))
+
+(defun clear-object-colors ()
+  (prog1
+      (setf *object-colors* nil)
+    (publish-object-colors)))
+
+(defun set-object-color (name color)
+  (set-object-colors `(,(cons name color))))
+
+(defun set-object-colors (assignments)
+  (prog1
+      (setf
+       *object-colors*
+       (append (remove-if (lambda (assignment)
+                            (find assignment assignments
+                                  :test (lambda (x y)
+                                          (eql (car x) (car y)))))
+                          *object-colors*)
+               assignments))
+    (publish-object-colors)))
