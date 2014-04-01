@@ -32,21 +32,18 @@
   (ros-info (moveit) "TF transform (~a -> ~a)"
             (tf:frame-id pose-stamped) target-frame)
   (let ((first-run t))
-    (loop for sleepiness = (or first-run (sleep 1.0))
-          for time = (ros-time)
+    (loop for sleepiness = (or first-run (sleep 0.5))
+          for time = (cond (ros-time (ros-time))
+                           (t (tf:stamp pose-stamped)))
           for tst = (or first-run (format t "Retry~%"))
           when (tf:wait-for-transform
                 *tf*
                 :source-frame (tf:frame-id pose-stamped)
                 :target-frame target-frame
                 :timeout 2.0
-                :time (cond (ros-time time)
-                            (t (tf:stamp pose-stamped))))
+                :time time)
             do (setf first-run nil)
-               (return (cond
-                         (ros-time
-                          (tf:copy-pose-stamped pose-stamped :stamp (ros-time)))
-                         (t pose-stamped))))))
+               (return (tf:copy-pose-stamped pose-stamped :stamp time)))))
 
 (defun ensure-transform-available (reference-frame target-frame)
   (cpl:with-failure-handling
@@ -77,18 +74,19 @@
          (declare (ignore f))
          (ros-warn (moveit) "Failed to transform pose. Retrying.")
          (cpl:retry)))
-    (unless (tf:wait-for-transform
-             *tf*
-             :timeout 1.5
-             :time (cond (ros-time (roslisp:ros-time))
-                         (t (tf:stamp pose-stamped)))
-             :source-frame (tf:frame-id pose-stamped)
-             :target-frame target-frame)
-      (cpl:fail 'cl-tf:tf-cache-error))
-    (tf:transform-pose
-     *tf* :pose (ensure-pose-stamped-transformable
-                 pose-stamped target-frame :ros-time ros-time)
-          :target-frame target-frame)))
+    (let ((rostime (cond (ros-time (roslisp:ros-time))
+                         (t (tf:stamp pose-stamped)))))
+      (unless (tf:wait-for-transform
+               *tf*
+               :timeout 1.5
+               :time rostime
+               :source-frame (tf:frame-id pose-stamped)
+               :target-frame target-frame)
+        (cpl:fail 'cl-tf:tf-cache-error))
+      (tf:transform-pose
+       *tf* :pose (ensure-pose-stamped-transformable
+                   pose-stamped target-frame)
+            :target-frame target-frame))))
 
 (defun transform-stamped->msg (transform-stamped)
   (with-fields (stamp frame-id child-frame-id rotation translation) transform-stamped
