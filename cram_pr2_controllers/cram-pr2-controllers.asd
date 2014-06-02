@@ -33,13 +33,16 @@
 
   :depends-on (roslisp
                actionlib
+               actionlib-lisp
                cl-robot-models
-               pr2_mechanism_msgs-srv
+               cl-tf
                pr2_controllers_msgs-msg
+               pr2_mechanism_msgs-srv
                trajectory_msgs-msg)
   :components
   ((:module "src"
     :components
     ((:file "package")
      (:file "arm-position-controllers" :depends-on ("package"))
-     (:file "controller-manager" :depends-on ("package"))))))
+     (:file "controller-manager" :depends-on ("package"))
+     (:file "point-head-controllers" :depends-on ("package"))))))
