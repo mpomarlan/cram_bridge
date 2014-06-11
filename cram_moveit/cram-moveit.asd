@@ -43,7 +43,8 @@
                cram-plan-failures
                moveit_msgs-msg
                moveit_msgs-srv
-               roslisp-utilities)
+               roslisp-utilities
+               cl-tf2)
   :components
   ((:module "src"
     :components
