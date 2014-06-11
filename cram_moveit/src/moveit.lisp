@@ -34,7 +34,6 @@
   "List of current joint states as published by /joint_states.")
 (defvar *joint-states-subscriber* nil
   "Subscriber to /joint_states.")
-(defvar *tf-subscriber* nil)
 
 (defparameter *scene-msg* nil)
 
@@ -52,11 +51,12 @@ MoveIt! framework and registers known conditions."
          "moveit_msgs/DisplayRobotState" :latch t))
   (roslisp:publish *planning-scene-publisher* *scene-msg*)
   (setf *joint-states-fluent*
-        (cram-language:make-fluent :name "joint-state-tracker"))
+        (cram-language:make-fluent :name "joint-state-tracker" :allow-tracing nil))
   (setf *joint-states-subscriber*
         (roslisp:subscribe "/joint_states"
                            "sensor_msgs/JointState"
                            #'joint-states-callback))
+  (setf *tf2* (make-instance 'cl-tf2:buffer-client))
   (connect-action-client :reconnect t :reconnection-tries 5))
 
 (defun connect-action-client (&key (reconnect t) reconnection-tries)
@@ -193,7 +193,9 @@ MoveIt! framework and registers known conditions."
                          corridor
                          (wait-until-finished t)
                          (tolerance-sphere-radius 0.005)
-                         (fixed-map-odomcombined t))
+                         (fixed-map-odomcombined t)
+                         (min-group-z 0.0)
+                         start-state)
   "Calls the MoveIt! MoveGroup action. The link identified by
   `link-name' is tried to be positioned in the pose given by
   `pose-stamped'. Returns `T' on success and `nil' on failure, in
@@ -203,7 +205,8 @@ MoveIt! framework and registers known conditions."
   ;; NOTE(winkler): Since MoveIt! crashes once it receives a frame-id
   ;; which includes the "/" character at the beginning, we change the
   ;; frame-id here just in case.
-  (let ((allowed-collision-objects
+  (let ((start-state (or start-state (make-message "moveit_msgs/RobotState")))
+        (allowed-collision-objects
           (cond (ignore-collisions
                  (loop for obj in *known-collision-objects*
                        collect (slot-value obj 'name)))
@@ -218,27 +221,11 @@ MoveIt! framework and registers known conditions."
                                 (subseq str 1))
                                (t str)))
                        (tf:stamp pose-stamped)
-                       pose-stamped))
-        (path-constraints
-          (cond (corridor (make-message
-                           "moveit_msgs/Constraints"
-                           :position_constraints
-                           (vector
-                            (make-message
-                             "moveit_msgs/PositionConstraint"
-                             :header
-                             (make-message
-                              "std_msgs/Header"
-                              :frame_id (tf:frame-id pose-stamped)
-                              :stamp (tf:stamp pose-stamped))
-                             :link_name link-name
-                             :constraint_region corridor
-                             :weight 0.1))))
-                (t (make-message "moveit_msgs/Constraints")))))
+                       pose-stamped)))
     (let* ((mpreq (make-message
                    "moveit_msgs/MotionPlanRequest"
                    :group_name planning-group
-                   :num_planning_attempts 10
+                   :num_planning_attempts 3
                    :allowed_planning_time 10
                    :workspace_parameters
                    (make-message
@@ -251,15 +238,15 @@ MoveIt! framework and registers known conditions."
                     :min_corner
                     (make-message
                      "geometry_msgs/Vector3"
-                        :x -2
-                        :y -2
-                        :z -2)
+                     :x -2
+                     :y -2
+                     :z -2)
                     :max_corner
                     (make-message
                      "geometry_msgs/Vector3"
-                        :x 2
-                        :y 2
-                        :z 2))
+                     :x 2
+                     :y 2
+                     :z 2))
                    :goal_constraints
                    (vector
                     (make-message
@@ -308,12 +295,7 @@ MoveIt! framework and registers known conditions."
                         :w (tf:w (tf:orientation pose-stamped)))
                        :absolute_x_axis_tolerance 0.01
                        :absolute_y_axis_tolerance 0.01
-                       :absolute_z_axis_tolerance 0.01))))
-                   :path_constraints path-constraints))
-                   ;:trajectory_constraints
-                   ;(make-message
-                   ; "moveit_msgs/TrajectoryConstraints"
-                   ; :constraints (vector path-constraints))))
+                       :absolute_z_axis_tolerance 0.01))))))
            (touch-links-concat (concatenate 'vector allowed-collision-objects
                                             touch-links))
            (options
@@ -322,6 +304,8 @@ MoveIt! framework and registers known conditions."
               :planning_scene_diff
               (make-message
                "moveit_msgs/PlanningScene"
+               :name "(noname)+"
+               :robot_model_name "pr2"
                :is_diff t
                :allowed_collision_matrix
                (make-message
@@ -351,12 +335,8 @@ MoveIt! framework and registers known conditions."
                                        'vector (lambda (x)
                                                  (cdr x))
                                        default-collision-entries))
-               :fixed_frame_transforms
-               (cond (fixed-map-odomcombined
-                      (vector (transform-stamped->msg
-                               (ensure-transform-available
-                                "/map" "/odom_combined"))))
-                     (t (vector))))
+               
+               :robot_state start-state)
               :plan_only plan-only
               :replan t
               :replan_attempts 3)))
@@ -404,12 +384,214 @@ MoveIt! framework and registers known conditions."
                (connect-action-client)
                (error 'planning-failed))))))
 
-(defun move-link-joint-states (link-name planning-group joint-states)
+(defun move-links-poses (link-names planning-group poses-stamped
+                         &key allowed-collision-objects
+                           plan-only touch-links
+                           default-collision-entries
+                           ignore-collisions
+                           (wait-until-finished t)
+                           (tolerance-sphere-radius 0.005)
+                           (fixed-map-odomcombined t))
+  "Calls the MoveIt! MoveGroup action. The link identified by
+  `link-name' is tried to be positioned in the pose given by
+  `pose-stamped'. Returns `T' on success and `nil' on failure, in
+  which case a failure condition is signalled, based on the error code
+  returned by the MoveIt! service (as defined in
+  moveit_msgs/MoveItErrorCodes)."
+  ;; NOTE(winkler): Since MoveIt! crashes once it receives a frame-id
+  ;; which includes the "/" character at the beginning, we change the
+  ;; frame-id here just in case.
+  (let ((allowed-collision-objects
+          (cond (ignore-collisions
+                 (loop for obj in *known-collision-objects*
+                       collect (slot-value obj 'name)))
+                (t (mapcar (lambda (x)
+                             (string x))
+                           allowed-collision-objects))))
+        (touch-links
+          (mapcar (lambda (x) (string x)) touch-links))
+        (poses-stamped (mapcar (lambda (pose-stamped)
+                                 (tf:pose->pose-stamped
+                                  (let ((str (tf:frame-id pose-stamped)))
+                                    (cond ((string= (elt str 0) "/")
+                                           (subseq str 1))
+                                          (t str)))
+                                  (tf:stamp pose-stamped)
+                                  pose-stamped))
+                               poses-stamped)))
+    (let* ((mpreq (make-message
+                   "moveit_msgs/MotionPlanRequest"
+                   :group_name planning-group
+                   :num_planning_attempts 10
+                   :allowed_planning_time 10
+                   :workspace_parameters
+                   (make-message
+                    "moveit_msgs/WorkspaceParameters"
+                    :header
+                    (make-message
+                     "std_msgs/Header"
+                     :frame_id (first link-names)
+                     :stamp (tf:stamp (first poses-stamped)))
+                    :min_corner
+                    (make-message
+                     "geometry_msgs/Vector3"
+                     :x -2
+                     :y -2
+                     :z -2)
+                    :max_corner
+                    (make-message
+                     "geometry_msgs/Vector3"
+                     :x 2
+                     :y 2
+                     :z 2))
+                   :goal_constraints
+                   (map 'vector
+                        (lambda (link-name pose-stamped)
+                          (make-message
+                           "moveit_msgs/Constraints"
+                           :position_constraints
+                           (vector
+                            (make-message
+                             "moveit_msgs/PositionConstraint"
+                             :weight 1.0
+                             :link_name link-name
+                             :header
+                             (make-message
+                              "std_msgs/Header"
+                              :frame_id (tf:frame-id pose-stamped)
+                              :stamp (tf:stamp pose-stamped))
+                             :constraint_region
+                             (make-message
+                              "moveit_msgs/BoundingVolume"
+                              :primitives
+                              (vector
+                               (make-message
+                                "shape_msgs/SolidPrimitive"
+                                :type (roslisp-msg-protocol:symbol-code
+                                       'shape_msgs-msg:solidprimitive :sphere)
+                                :dimensions (vector tolerance-sphere-radius)))
+                              :primitive_poses
+                              (vector
+                               (tf:pose->msg pose-stamped)))))
+                           :orientation_constraints
+                           (vector
+                            (make-message
+                             "moveit_msgs/OrientationConstraint"
+                             :weight 1.0
+                             :link_name link-name
+                             :header
+                             (make-message
+                              "std_msgs/Header"
+                              :frame_id (tf:frame-id pose-stamped)
+                              :stamp (tf:stamp pose-stamped))
+                             :orientation
+                             (make-message
+                              "geometry_msgs/Quaternion"
+                              :x (tf:x (tf:orientation pose-stamped))
+                              :y (tf:y (tf:orientation pose-stamped))
+                              :z (tf:z (tf:orientation pose-stamped))
+                              :w (tf:w (tf:orientation pose-stamped)))
+                             :absolute_x_axis_tolerance 0.01
+                             :absolute_y_axis_tolerance 0.01
+                             :absolute_z_axis_tolerance 0.01))))
+                        link-names poses-stamped)))
+           (touch-links-concat (concatenate 'vector allowed-collision-objects
+                                            touch-links))
+           (options
+             (make-message
+              "moveit_msgs/PlanningOptions"
+              :planning_scene_diff
+              (make-message
+               "moveit_msgs/PlanningScene"
+               :is_diff t
+               :allowed_collision_matrix
+               (make-message
+                "moveit_msgs/AllowedCollisionMatrix"
+                :entry_names touch-links-concat
+                :entry_values
+                ;; NOTE(winkler): This loop is kind
+                ;; of ugly. There sure must be a
+                ;; more elegant solution to this.
+                (map 'vector
+                     (lambda (x1)
+                       (declare (ignore x1))
+                       (make-message
+                        "moveit_msgs/AllowedCollisionEntry"
+                        :enabled
+                        (map 'vector
+                             (lambda (x2)
+                               (declare (ignore x2))
+                               t)
+                             touch-links-concat)))
+                     touch-links-concat)
+                :default_entry_names (map
+                                      'vector (lambda (x)
+                                                (car x))
+                                      default-collision-entries)
+                :default_entry_values (map
+                                       'vector (lambda (x)
+                                                 (cdr x))
+                                       default-collision-entries)))
+              :plan_only plan-only
+              :replan t
+              :replan_attempts 3)))
+      (cond ((actionlib:wait-for-server *move-group-action-client* 5.0)
+             (cpl:with-failure-handling
+                 ((actionlib:server-lost (f)
+                    (declare (ignore f))
+                    (ros-error (moveit)
+                               "Lost actionlib connection while executing.")
+                    (connect-action-client)
+                    (cpl:fail 'planning-failed))
+                  (invalid-motion-plan (f)
+                    (declare (ignore f))
+                    (ros-warn (moveit) "Invalid motion plan. Rethrowing.")
+                    (error 'manipulation-failed)))
+               (let ((goal (actionlib:make-action-goal
+                               *move-group-action-client*
+                             :request mpreq
+                             :planning_options options)))
+                 (cond (wait-until-finished
+                        (let ((result (actionlib:call-goal
+                                       *move-group-action-client*
+                                       goal
+                                       :result-timeout 20.0 :timeout 20.0)))
+                          (cond (result
+                                 (roslisp:with-fields (error_code
+                                                       trajectory_start
+                                                       planned_trajectory)
+                                     result
+                                   (roslisp:with-fields (val) error_code
+                                     (unless
+                                         (eql val
+                                              (roslisp-msg-protocol:symbol-code
+                                               'moveit_msgs-msg:moveiterrorcodes
+                                               :success))
+                                       (signal-moveit-error val))
+                                     (values
+                                      trajectory_start planned_trajectory))))
+                                (t (ros-error (moveit)
+                                              "Empty actionlib response.")
+                                   (error 'actionlib:server-lost)))))
+                       (t (actionlib:send-goal *move-group-action-client*
+                                               goal))))))
+            (t (ros-error (moveit) "Lost actionlib connection while waiting.")
+               (connect-action-client)
+               (error 'planning-failed))))))
+
+(defun plan-base-movement (x y theta)
+  (move-link-joint-states
+   "base"
+   (list (cons "virtual_joint/theta" theta)
+         (cons "virtual_joint/x" x)
+         (cons "virtual_joint/y" y))))
+
+(defun move-link-joint-states (planning-group joint-states)
   (let* ((mpreq (make-message
                  "moveit_msgs/MotionPlanRequest"
                  :group_name planning-group
-                 :num_planning_attempts 10
-                 :allowed_planning_time 10
+                 :num_planning_attempts 1
+                 :allowed_planning_time 1
                  :goal_constraints
                  (vector
                   (make-message
@@ -420,10 +602,18 @@ MoveIt! framework and registers known conditions."
                                    "moveit_msgs/JointConstraint"
                                    :joint_name (car joint-state)
                                    :position (cdr joint-state)
-                                   :tolerance_below 0.0
-                                   :tolerance_above 0.0
+                                   :tolerance_below 0.1
+                                   :tolerance_above 0.1
                                    :weight 1.0))
-                        joint-states))))))
+                        joint-states)))))
+         (options
+           (make-message
+            "moveit_msgs/PlanningOptions"
+            :planning_scene_diff
+            (make-message
+             "moveit_msgs/PlanningScene"
+             :is_diff t)
+            :plan_only t)))
     (cond ((actionlib:wait-for-server *move-group-action-client* 5.0)
            (cpl:with-failure-handling
                ((actionlib:server-lost (f)
@@ -438,11 +628,12 @@ MoveIt! framework and registers known conditions."
                   (error 'manipulation-failed)))
              (let ((goal (actionlib:make-action-goal
                              *move-group-action-client*
-                           :request mpreq)))
+                           :request mpreq
+                           :planning_options options)))
                (let ((result (actionlib:call-goal
                               *move-group-action-client*
                               goal
-                              :result-timeout 20.0 :timeout 20.0)))
+                              :result-timeout 2000.0 :timeout 2000.0)))
                  (cond (result
                         (roslisp:with-fields (error_code
                                               trajectory_start
@@ -477,7 +668,7 @@ MoveIt! framework and registers known conditions."
           (signal-moveit-error val))))
     t))
 
-(defun compute-ik (link-name planning-group pose-stamped)
+(defun compute-ik (link-name planning-group pose-stamped &key robot-state)
   "Computes an inverse kinematics solution (if possible) of the given
 kinematics goal (given the link name `link-name' to position, the
 `planning-group' to take into consideration, and the final goal pose
@@ -492,7 +683,9 @@ success, and `nil' otherwise."
                   :group_name planning-group
                   :ik_link_names (vector link-name)
                   :pose_stamped_vector (vector (tf:pose-stamped->msg
-                                                pose-stamped))))))
+                                                pose-stamped))
+                  :robot_state (or robot-state
+                                   (make-message "moveit_msgs/RobotState"))))))
     (roslisp:with-fields (solution error_code) result
       (roslisp:with-fields (val) error_code
         (unless (eql val (roslisp-msg-protocol:symbol-code

@@ -204,6 +204,7 @@ bridge.")
             (mesh-shapes (slot-value col-obj 'mesh-shapes))
             (plane-shapes (slot-value col-obj 'plane-shapes))
             (color (slot-value col-obj 'color)))
+        (declare (ignorable color))
         (let* ((obj-msg (roslisp:modify-message-copy
                          (create-collision-object-message
                           name pose-stamped
@@ -219,14 +220,8 @@ bridge.")
                (scene-msg (roslisp:make-msg
                            "moveit_msgs/PlanningScene"
                            world world-msg
-                           object_colors (vector (make-object-color name color))
-                           is_diff t
-                           :fixed_frame_transforms
-                           (cond (fixed-map-odomcombined
-                                  (vector (transform-stamped->msg
-                                           (ensure-transform-available
-                                            "/map" "/odom_combined"))))
-                                 (t (vector))))))
+                           ;object_colors (vector (make-object-color name color))
+                           is_diff t)))
           (prog1 (roslisp:publish *planning-scene-publisher* scene-msg)
             (roslisp:ros-info
              (moveit)

@@ -28,7 +28,7 @@
 (in-package :cram-moveit)
 
 (defparameter *robot-state-display-publisher* nil)
-(defvar *robot-state-display-topic* "/display_robot_state");_planning")
+(defvar *robot-state-display-topic* "/display_robot_state")
 (defparameter *object-colors* nil)
 (defparameter *planning-scene-publisher* nil
   "Publisher handle for the planning scene topic.")
