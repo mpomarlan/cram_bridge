@@ -46,7 +46,8 @@
                semantic-map-costmap
                actionlib
                cram-uima
-               cram-moveit)
+               cram-moveit
+               ubiquitous-utilities)
   :components
   ((:module "src"
     :components

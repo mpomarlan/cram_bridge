@@ -27,8 +27,9 @@
 
 (in-package :robosherlock-process-module)
 
-(defparameter *proximity-threshold* 0.4)
+(defparameter *proximity-threshold* 0.2)
 (defparameter *object-marker-color* `(1.0 0.0 0.0 1.0))
+(defparameter *object-reference-frame* "/map")
 
 (defclass perceived-object (desig:object-designator-data
                             cram-manipulation-knowledge:object-shape-data-mixin)
@@ -104,69 +105,9 @@
                default))
           :desig-props))
 
-(defun elevate-if-necessary (pose-stamped supporting-z dimensions &key head-to-map)
-  (declare (ignorable supporting-z dimensions))
-  (let ((pose-in-map (cond (head-to-map
-                             (tf:pose->pose-stamped
-                              "/map" 0.0
-                              (cl-transforms:transform-pose head-to-map pose-stamped)))
-                           (t (moveit:ensure-pose-stamped-transformed
-                               pose-stamped "/map" :ros-time t)))))
-    (values pose-in-map 0.0)))
-    ;; (cond (supporting-z
-    ;;        (values pose-in-map supporting-z)
-    ;; (cond ((and supporting-z (> 0.0 supporting-z))
-    ;;        (let* ((diff-z (- (tf:z (tf:origin pose-in-map)) supporting-z))
-    ;;               (pose-elevated (tf:copy-pose-stamped pose-in-map
-    ;;                                                    :origin (tf:v- (tf:origin pose-stamped)
-    ;;                                                                   (tf:make-3d-vector
-    ;;                                                                    0.0 0.0 diff-z)))))
-    ;;          (values pose-elevated diff-z)))
-    ;;       (t (values pose-in-map 0.0)))))
-    
-  ;; (multiple-value-bind (pose-elevated diff-z)
-  ;;     (cond (supporting-z
-  ;;            (let* ((pose-in-map
-  ;;                     (cond (head-to-map
-  ;;                            (tf:pose->pose-stamped
-  ;;                             "/map" 0.0
-  ;;                             (cl-transforms:transform-pose head-to-map pose-stamped)))
-  ;;                           (t (moveit:ensure-pose-stamped-transformed
-  ;;                               pose-stamped "/map" :ros-time t))))
-  ;;                   (pose-z (tf:z (tf:origin pose-in-map)))
-  ;;                   (diff-z (- pose-z supporting-z)))
-  ;;              (format t "popp: ~a, diff-z: ~a~%" pose-in-map diff-z)
-  ;;              (values
-  ;;               (tf:make-pose-stamped
-  ;;                "/map" (tf:stamp pose-in-map)
-  ;;                (tf:v+ (tf:origin pose-in-map)
-  ;;                       (tf:make-3d-vector
-  ;;                        0 0 (- diff-z)))
-  ;;                (tf:orientation pose-in-map))
-  ;;               diff-z)))
-  ;;           (t (values pose-stamped 0.0)))
-  ;;   (format t "dimensions: ~a, pose-elevated: ~a~%" dimensions pose-elevated)
-  ;;   (values (tf:copy-pose-stamped
-  ;;            pose-elevated
-  ;;            :origin (tf:v+ (tf:origin pose-elevated)
-  ;;                           (tf:make-3d-vector
-  ;;                            0 0 0))) ;(/ (aref dimensions (1- (length dimensions))) 2))))
-  ;;           (+ diff-z))))
-
-(defun last-supporting-object (designator)
-  (when designator
-    (let* ((at (desig-prop-value designator 'desig-props:at))
-           (supporting-object
-             (when at (first
-                       (sem-map-utils:designator->semantic-map-objects
-                        at)))))
-      ;(format t "SUPPORTING OBJECT: ~a~%" (slot-value supporting-object 'desig-props::name))
-      (cond (supporting-object supporting-object)
-            (t (last-supporting-object (parent designator)))))))
-
 (defun pose-pointing-away-from-base (object-pose)
   (let ((ref-frame "/base_link")
-        (fin-frame "/map"))
+        (fin-frame *object-reference-frame*))
     (let* ((base-transform-map
              (moveit:ensure-transform-available
               ref-frame fin-frame))
@@ -205,62 +146,63 @@
          (cons 'desig-props:cylinder (vector 0.02 0.06)))
         (t (cons 'desig-props:box (vector 0.06 0.09 0.2)))))
 
-(defun get-object-name (parent pose type &key (threshold 0.2))
-  (format t "1: ~a~%" type)
-  (let ((near-objects
-          (crs::force-ll
-           (crs::lazy-mapcar
-            (lambda (n)
-              (crs::var-value '?n n))
-            (crs:prolog `(and (btr::bullet-world ?w)
-                              (btr::object ?w ?n)
-                              (not (equal ?n nil))
-                              (btr::object-pose ?w ?n ?p)
-                              (btr::poses-equal ?p ,pose (,threshold 6.4)))))))
-        (all-objects
-          (crs::force-ll
-           (crs::lazy-mapcar
-            (lambda (n)
-              (crs::var-value '?n n))
-            (crs:prolog
-             `(and (btr::bullet-world ?w)
-                   (btr::object ?w ?n)))))))
-    (loop for i from 0 below (length all-objects)
-          for temp-name = (indexed-name type i)
-          when (find temp-name near-objects)
-            do (return-from get-object-name temp-name))
-    ;; Check if there are any *very close* objects that were not
-    ;; detected as proper type yet. If that is the case, ignore this
-    ;; object (as it most probably was perceived wrongly).
-    (format t "2~%")
-    (let ((very-close-objects
+(defun get-object-name (parent pose type &key (threshold *proximity-threshold*))
+  (let ((pose-in-map
+          (when pose (moveit:ensure-pose-stamped-transformed
+                      pose "/map"))))
+    (let ((near-objects
+            (when pose-in-map
+              (crs::force-ll
+               (crs::lazy-mapcar
+                (lambda (n)
+                  (crs::var-value '?n n))
+                (crs:prolog `(and (btr::bullet-world ?w)
+                                  (btr::object ?w ?n)
+                                  (not (equal ?n nil))
+                                  (btr::object-pose ?w ?n ?p)
+                                  (btr::poses-equal ?p ,pose-in-map (,threshold 6.4))))))))
+          (all-objects
             (crs::force-ll
              (crs::lazy-mapcar
               (lambda (n)
                 (crs::var-value '?n n))
-              (crs:prolog `(and (btr::bullet-world ?w)
-                                (btr::object ?w ?n)
-                                (btr::object-pose ?w ?n ?p)
-                                (btr::poses-equal ?p ,pose (0.01 6.4)))))))
-          (parent-name (desig-prop-value parent 'desig-props:name)))
-      (format t "vco: ~a~%" very-close-objects)
-      (let ((type (or (and
-                       very-close-objects
-                       (when (eql type 'desig-props:pancakemaker)
-                         (dolist (close-object very-close-objects)
-                           (crs:prolog `(and (btr:bullet-world ?w)
-                                             (btr:retract ?w (btr:object ,close-object)))))
-                         'desig-props:pancakemaker))
-                      (and (not very-close-objects)
-                           type))))
-        (format t "Through~%")
-        (when type
-          (cond (parent-name parent-name)
-                (t (loop for i from 0 to (length all-objects)
-                         for temp-name = (indexed-name type i)
-                         when (not (crs:prolog `(and (btr::bullet-world ?w)
-                                                     (btr::object ?w ,temp-name))))
-                           do (return-from get-object-name temp-name)))))))))
+              (crs:prolog
+               `(and (btr::bullet-world ?w)
+                     (btr::object ?w ?n)))))))
+      (loop for i from 0 below (length all-objects)
+            for temp-name = (indexed-name type i)
+            when (find temp-name near-objects)
+              do (return-from get-object-name temp-name))
+      ;; Check if there are any *very close* objects that were not
+      ;; detected as proper type yet. If that is the case, ignore this
+      ;; object (as it most probably was perceived wrongly).
+      (let ((very-close-objects
+              (when pose-in-map
+                (crs::force-ll
+                 (crs::lazy-mapcar
+                  (lambda (n)
+                    (crs::var-value '?n n))
+                  (crs:prolog `(and (btr::bullet-world ?w)
+                                    (btr::object ?w ?n)
+                                    (btr::object-pose ?w ?n ?p)
+                                    (btr::poses-equal ?p ,pose-in-map (0.01 6.4))))))))
+            (parent-name (desig-prop-value parent 'desig-props:name)))
+        (let ((type (or (and
+                         very-close-objects
+                         (when (eql type 'desig-props:pancakemaker)
+                           (dolist (close-object very-close-objects)
+                             (crs:prolog `(and (btr:bullet-world ?w)
+                                               (btr:retract ?w (btr:object ,close-object)))))
+                           'desig-props:pancakemaker))
+                        (and (not very-close-objects)
+                             type))))
+          (when type
+            (cond (parent-name parent-name)
+                  (t (loop for i from 0 to (length all-objects)
+                           for temp-name = (indexed-name type i)
+                           when (not (crs:prolog `(and (btr::bullet-world ?w)
+                                                       (btr::object ?w ,temp-name))))
+                             do (return-from get-object-name temp-name))))))))))
 
 (defun replace-all (string part replacement &key (test #'char=))
   "Returns a new string in which all the occurences of `part' are
@@ -277,174 +219,112 @@ replaced with `replacement'."
           when pos do (write-string replacement out)
             while pos)))
 
-(defun find-object (designator)
-  ;; Wait for two seconds as UIMA needs a moment to produce concise,
+(defun desig-msg-field->pose-stamped (desig &key
+                                              (field 'desig-props:pose)
+                                              (to-fixed-frame t)
+                                              (reorient nil))
+  (when (cram-designators:desig-prop-value desig field)
+    (let* ((pose-stamped (tf:msg->pose-stamped
+                          (cram-designators:desig-prop-value
+                           desig field)))
+           (maybe-transformed-pose
+             (cond (to-fixed-frame
+                    (moveit:ensure-pose-stamped-transformed pose-stamped *object-reference-frame*
+                                                            :ros-time t))
+                   (t pose-stamped))))
+      (cond (reorient (pose-pointing-away-from-base maybe-transformed-pose))
+            (t maybe-transformed-pose)))))
+
+(defun get-perceived-objects (designator)
+  ;; Wait for a few seconds as UIMA needs a moment to produce concise,
   ;; current results.
-  (cpl:sleep* 2)
-  (let* ((at (desig-prop-value designator 'desig-props:at))
-         (pose-stamped (when at (desig-prop-value at 'desig-props:pose)))
-         (pose-stamped-expected
-           (when pose-stamped (moveit:ensure-pose-stamped-transformed
-                               pose-stamped "/map" :ros-time t)))
-         (supporting-object (last-supporting-object designator))
-         (supporting-z-value
-           (when supporting-object
-             (semantic-map-costmap::obj-z-value supporting-object)))
-         (objects (uima:get-uima-result designator))
-         (head-to-map-trafo (moveit:ensure-transform-available
-                             "/head_mount_kinect_rgb_optical_frame" "/map")))
-    (format t "Head to map trafo: ~a~%" head-to-map-trafo)
-    (flet ((pose-head-to-map (pose-head)
-             (tf:pose->pose-stamped
-              "/map" 0.0
-              (cl-transforms:transform-pose head-to-map-trafo pose-head))))
-      (roslisp:ros-info (perception) "Processing ~a object(s)" (length objects))
-      (let* ((registered-objects nil)
-             (found-objects
-               (loop for object in objects
-                     for sssss = (format t "Object: ~a~%" object)
-                     for type = (let ((type-sym (or (cram-designators:desig-prop-value
-                                                     object 'desig-props:type)
-                                                    'desig-props:pancakemix)))
-                                  (when type-sym
-                                    (intern (replace-all (string-upcase type-sym) "_" "")
-                                            'desig-props)))
-                     for dbg0 = (format t "Found object of type: ~a~%" type)
-                     for dimensions = (cdr (deduce-model-properties
-                                            (cram-designators:desig-prop-value
-                                             designator 'desig-props:dimensions)
-                                            type))
-                     for pose-on-plane-pre = (when (cram-designators:desig-prop-value
-                                                    object 'desig-props:pose-on-plane)
-                                               (let ((pose-value (tf:msg->pose-stamped
-                                                                  (cram-designators:desig-prop-value
-                                                                   object 'desig-props:pose-on-plane))))
-                                                 pose-value))
-                     for pose-center = (when (cram-designators:desig-prop-value
-                                              object 'desig-props:pose-center)
-                                         (let ((pose-center (tf:msg->pose-stamped
-                                                             (cram-designators:desig-prop-value
-                                                              object 'desig-props:pose-center))))
-                                           pose-center))
-                     for pose-on-plane-correction = (when pose-on-plane-pre
-                                                      (multiple-value-bind
-                                                            (pose diff-z)
-                                                          (elevate-if-necessary
-                                                           pose-on-plane-pre
-                                                           supporting-z-value
-                                                           dimensions)
-                                                        (cons pose diff-z)))
-                     for pose-on-plane = (car pose-on-plane-correction)
-                     for needs-reorientation = (when (cram-designators:desig-prop-value
-                                                      object 'desig-props:pose)
-                                                 (let* ((pose-temp (tf:msg->pose-stamped
-                                                                    (cram-designators:desig-prop-value
-                                                                     object 'desig-props:pose)))
-                                                        (orientation (tf:orientation pose-temp)))
-                                                   (or (eql type 'desig-props:pancake)
-                                                       (and (eql (tf:x orientation) 0.0d0)
-                                                            (eql (tf:y orientation) 0.0d0)
-                                                            (eql (tf:z orientation) 0.0d0)
-                                                            (eql (tf:w orientation) 1.0d0)))))
-                     for pose = (when (cram-designators:desig-prop-value object 'desig-props:pose)
-                                  (let* ((pose-in-map
-                                           (cond ((and pose-center
-                                                       (eql type 'desig-props:pancakemaker))
-                                                  (tf:copy-pose-stamped
-                                                   pose-center
-                                                   :origin (tf:v+ (tf:origin pose-center)
-                                                                  (tf:make-3d-vector 0 0 -0.035))))
-                                                 (t (pose-head-to-map
-                                                     (tf:msg->pose-stamped
-                                                      (cram-designators:desig-prop-value
-                                                       object 'desig-props:pose))))))
-                                         (pose-in-map-corr
-                                           (cond (needs-reorientation
-                                                  (pose-pointing-away-from-base pose-in-map))
-                                                 (t pose-in-map))))
-                                    (tf:make-pose-stamped
-                                     "/map" (tf:stamp pose-in-map-corr)
-                                     (tf:v+ (tf:origin pose-in-map-corr)
-                                            (tf:make-3d-vector
-                                             (+
-                                              (cond ((eql type 'desig-props:pancakemaker)
-                                                     -0.0)
-                                                    (t 0.0)))
-                                             0
-                                             (+
-                                              (or (and pose-on-plane-correction
-                                                       (cond ((> (tf:z
-                                                                  (tf:origin
-                                                                   (car pose-on-plane-correction)))
-                                                                 (tf:z (tf:origin
-                                                                        pose-in-map)))
-                                                              (- (tf:z (tf:origin
-                                                                        (car
-                                                                         pose-on-plane-correction)))
-                                                                 (tf:z (tf:origin
-                                                                        pose-in-map))))
-                                                             (t 0.0)))
-                                                  0.0)
-                                              (+ (cond ((eql type 'desig-props:pancakemaker)
-                                                        0.02)
-                                                       ((eql type 'desig-props:pancake)
-                                                        0.02)
-                                                       (t 0.0))))))
-                                     (tf:orientation pose-in-map-corr))))
-                     for name = (get-object-name designator pose type)
-                     for grasp-poses = (let ((gp (cram-designators:desig-prop-values
-                                                  object 'desig-props:grasp-pose)))
-                                         (mapcar
-                                          (lambda (g)
-                                            (pose-head-to-map (tf:msg->pose-stamped g)))
-                                        ;(moveit:ensure-pose-stamped-transformed
-                                        ; (tf:msg->pose-stamped g)
-                                        ; "/map" :ros-time t))
-                                          gp))
-                     for z-offset = (max (cond ((and pose pose-on-plane-pre)
-                                                (- (tf:z (tf:origin pose))
-                                                   (tf:z (tf:origin pose-on-plane))))
-                                               ((and pose supporting-z-value)
-                                                (- (tf:z (tf:origin pose)) supporting-z-value))
-                                               (t 0.0))
-                                         0.0)
-                     for shape = (car (deduce-model-properties
-                                       (cram-designators:desig-prop-value
-                                        designator 'desig-props:dimensions)
-                                       type))
-                     for color = (symbol-or-unknown object designator
-                                                    'desig-props:color 'desig-props:yellow)
-                     for size = (symbol-or-unknown object designator 'desig-props:size)
-                     when (and name
-                               pose
-                               (or (not pose-stamped-expected)
-                                   (<= (tf:v-dist
-                                        (tf:make-3d-vector
-                                         (tf:x (tf:origin pose-stamped-expected))
-                                         (tf:y (tf:origin pose-stamped-expected)) 0)
-                                        (tf:make-3d-vector
-                                         (tf:x (tf:origin pose))
-                                         (tf:y (tf:origin pose)) 0))
-                                       *proximity-threshold*)))
-                       collect (progn
-                                 (push name registered-objects)
-                                 (register-object name type pose dimensions)
-                                 (make-instance
-                                  'perceived-object
-                                  :object-identifier name
-                                  :identifier name
-                                  :pose pose
-                                  :type type
-                                  :shape shape
-                                  :color color
-                                  :size size
-                                  :z-offset z-offset
-                                  :dimensions dimensions
-                                  :grasp-poses grasp-poses)))))
-        (dolist (registered-object registered-objects)
-          (crs:prolog `(and (btr:bullet-world ?w)
-                            (btr:retract ?w (btr:object ,registered-object)))))
-        found-objects))))
+  (let ((waiting-time 4))
+    (roslisp:ros-info () "Waiting for perception to settle on correct images (~a sec)." waiting-time)
+    (cpl:sleep* waiting-time))
+  (roslisp:ros-info () "Continuing.")
+  (let ((objects (uima:get-uima-result designator))
+        (default-object-type 'desig-props:pancakemix))
+    (mapcar (lambda (object)
+                     (let* ((type (or (intern
+                                       (replace-all (string-upcase
+                                                     (cram-designators:desig-prop-value
+                                                      object 'desig-props:type)) "_" "")
+                                       'desig-props)  default-object-type))
+                            (dimensions (cdr (deduce-model-properties
+                                              (cram-designators:desig-prop-value
+                                               designator 'desig-props:dimensions)
+                                              type)))
+                            (needs-reorientation t)
+                            (pose-on-plane (desig-msg-field->pose-stamped
+                                            object
+                                            :field 'desig-props:pose-on-plane
+                                            :reorient needs-reorientation))
+                            (pose (desig-msg-field->pose-stamped
+                                   object
+                                   :reorient needs-reorientation))
+                            (name (get-object-name designator pose type))
+                            (grasp-poses (cram-designators:desig-prop-values
+                                          object 'desig-props:grasp-pose))
+                            (z-offset (max (cond ((and pose pose-on-plane)
+                                                  (tf:v-dist (tf:origin pose)
+                                                             (tf:origin pose-on-plane)))
+                                                 (t 0.0))
+                                           0.0))
+                            (shape (car (deduce-model-properties
+                                         (cram-designators:desig-prop-value
+                                          designator 'desig-props:dimensions)
+                                         type)))
+                            (color (symbol-or-unknown object designator
+                                                      'desig-props:color 'desig-props:yellow))
+                            (size (symbol-or-unknown object designator 'desig-props:size)))
+                       (make-instance
+                        'perceived-object
+                        :object-identifier name
+                        :identifier name
+                        :pose pose
+                        :type type
+                        :shape shape
+                        :color color
+                        :size size
+                        :z-offset z-offset
+                        :dimensions dimensions
+                        :grasp-poses grasp-poses)))
+            objects)))
+
+(defun find-object (designator)
+  (let ((perceived-objs (get-perceived-objects designator))
+        (registered-objects nil))
+    (let* ((at (desig-prop-value designator 'desig-props:at))
+           (pose-stamped (when at (desig-prop-value at 'desig-props:pose)))
+           (pose-stamped-expected
+             (when pose-stamped (moveit:ensure-pose-stamped-transformed
+                                 pose-stamped *object-reference-frame* :ros-time t)))
+           (valid-objects
+             (loop for object in perceived-objs
+                   for name = (slot-value object 'identifier)
+                   for pose = (slot-value object 'pose)
+                   for type = (slot-value object 'type)
+                   for dimensions = (slot-value object 'desig-props:dimensions)
+                   when (and name
+                             pose
+                             (or (not pose-stamped-expected)
+                                 (<= (tf:v-dist
+                                      (tf:make-3d-vector
+                                       (tf:x (tf:origin pose-stamped-expected))
+                                       (tf:y (tf:origin pose-stamped-expected)) 0)
+                                      (tf:make-3d-vector
+                                       (tf:x (tf:origin pose))
+                                       (tf:y (tf:origin pose)) 0))
+                                     *proximity-threshold*)))
+                     collect
+                     (progn
+                       (push name registered-objects)
+                       (register-object name type pose dimensions)
+                       object))))
+      (dolist (registered-object registered-objects)
+        (crs:prolog `(and (btr:bullet-world ?w)
+                          (btr:retract ?w (btr:object ,registered-object)))))
+      valid-objects)))
 
 (defun found-object-fits-prototype (found-object prototype-object)
   (let ((prot-type (desig-prop-value prototype-object 'desig-props:type))
@@ -469,13 +349,9 @@ replaced with `replacement'."
     (on-finish-request log-id fitting-objects)
     fitting-objects))
 
-(defun register-object (name type pose dimensions)
-  (let ((pose (cl-transforms:transform-pose
-               (tf:make-transform
-                (tf:make-3d-vector
-                 0.0 0.0 0.0)
-                (tf:make-identity-rotation))
-               pose)))
+(defun register-object (name type pose dimensions &key (z-offset 0.0))
+  (declare (ignorable dimensions))
+  (let ((pose (ubiquitous-utilities:transform-pose pose "/map")))
     (cond ((or (eql type 'desig-props:pancake)
                (eql type 'desig-props:pancakemaker))
            (crs:prolog `(and (btr:bullet-world ?w)
@@ -485,9 +361,9 @@ replaced with `replacement'."
                                           'desig-props:pancake)
                                          (t 'btr::pancake-maker))
                                ,name ,(tf:copy-pose
-                                       pose :origin (tf:v+ (tf:origin pose)
+                                       pose :origin (tf:v- (tf:origin pose)
                                                            (tf:make-3d-vector
-                                                            0 0 (/ (aref dimensions 0) -2))))
+                                                            0 0 z-offset)))
                                :size ,(cond ((eql type 'desig-props:pancakemaker)
                                              `(0.15 0.15 0.035))
                                             (t `(0.05 0.05 0.01)))
@@ -495,13 +371,16 @@ replaced with `replacement'."
           (t (crs:prolog `(and (btr:bullet-world ?w)
                                (btr:assert
                                 (btr:object
-                                 ?w btr:mesh ,name ,pose
+                                 ?w btr:mesh ,name ,(tf:copy-pose
+                                                     pose :origin (tf:v- (tf:origin pose)
+                                                                         (tf:make-3d-vector
+                                                                          0 0 (/ z-offset 2))))
                                  :mesh ,(cond ((eql type 'desig-props:pancakemix)
                                                'btr:mondamin)
                                               (t type))
                                  :mass 0.1))))))))
 
-(def-action-handler perceive (object-designator)
+(defun perceive-with-designator (object-designator)
   (let* ((perceived-designators
            (find-with-designator (or (newest-effective-designator
                                       object-designator)
@@ -514,26 +393,32 @@ replaced with `replacement'."
              (object-dimensions (desig-prop-value designator 'desig-props:dimensions))
              (object-type (desig-prop-value designator 'desig-props:type))
              (object-at (desig-prop-value designator 'desig-props:at))
-             (object-pose (desig-prop-value object-at 'desig-props:pose)))
-        (moveit:register-collision-object
-         designator
-         :add t
-         :pose-stamped (tf:copy-pose-stamped
-                        object-pose :origin (tf:v- (tf:origin object-pose)
-                                                   (tf:make-3d-vector
-                                                    0 0 (/ (aref object-dimensions
-                                                                 (1- (length object-dimensions)))
-                                                           4)))))
-        (register-object
-         object-name object-type object-pose object-dimensions)
-        (moveit:set-object-color object-name
-                                 *object-marker-color*))
+             (object-pose (desig-prop-value object-at 'desig-props:pose))
+             (z-offset (desig-prop-value designator 'desig-props:z-offset)))
+        ;; TODO(winkler): The object-pose here is in a wrong
+        ;; frame. This changed due to the fact that bullet reasoning
+        ;; expects '/map' to be the object reference frame, while
+        ;; MoveIt! expects '/odom_combined'. Solving this next.
+        (moveit:register-collision-object designator :add t :pose-stamped object-pose)
+        (register-object object-name object-type object-pose object-dimensions :z-offset z-offset)
+        (moveit:set-object-color object-name *object-marker-color*))
       (cram-plan-knowledge:on-event
        (make-instance
         'cram-plan-knowledge:object-perceived-event
-        :perception-source :robosherlock
-        :object-designator designator)))
+        :perception-source :robosherlock :object-designator designator)))
     perceived-designators))
+
+(def-action-handler perceive (object-designator)
+  (ros-info (perception) "Perceiving object.")
+  (perceive-with-designator object-designator))
+
+(def-action-handler perceive-scene ()
+  (ros-info (perception) "Perceiving scene.")
+  (perceive-with-designator (make-designator 'object nil)))
+
+(def-action-handler examine (object-designator)
+  (declare (ignorable object-designator))
+  (ros-info (perception) "Examining object."))
 
 (def-process-module robosherlock-process-module (desig)
   (apply #'call-action (reference desig)))

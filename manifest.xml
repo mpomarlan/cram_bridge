@@ -29,6 +29,7 @@
   <depend package="cram_designators" />
   <depend package="cram_uima" />
   <depend package="cram_moveit" />
+  <depend package="ubiquitous_utilities" />
 
 </package>
 
