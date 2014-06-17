@@ -100,8 +100,15 @@
 (defun signal-moveit-error (error-code &rest arguments)
   "Signals the error condition identified by the given error code
   `error-code'. Signals a generic `moveit-failure' condition when the
-  error-code could not be identified."
-  (let ((condition (cdr (assoc error-code *known-failures*))))
-    (cond (condition
-           (error condition arguments))
-          (t (error 'moveit-failure arguments)))))
+  error-code could not be identified. If the error code coincides with
+  the SUCCESS constant in the MoveIt! message definition, no error is
+  thrown."
+  (unless
+      (eql error-code
+           (roslisp-msg-protocol:symbol-code
+            'moveit_msgs-msg:moveiterrorcodes
+            :success))
+    (let ((condition (cdr (assoc error-code *known-failures*))))
+      (cond (condition
+             (error condition arguments))
+            (t (error 'moveit-failure arguments))))))

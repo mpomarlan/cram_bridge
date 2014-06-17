@@ -28,6 +28,7 @@
 (in-package :cram-moveit)
 
 (defvar *tf2* nil)
+(defvar *tf-mutex* (sb-thread:make-mutex))
 
 (defun unslash-frame (frame)
   (cond ((string= (elt frame 0) "/")
@@ -36,85 +37,88 @@
 
 (defun ensure-pose-stamped-transformable (pose-stamped target-frame
                                           &key ros-time)
-  (let ((target-frame (unslash-frame target-frame))
-        (source-frame (unslash-frame (tf:frame-id pose-stamped))))
-    (ros-info (moveit) "TF2 transform (~a -> ~a)"
-              source-frame target-frame)
-    (let ((first-run t))
-      (loop for sleepiness = (or first-run (sleep 0.5))
-            for time = (cond (ros-time (ros-time))
-                             (t (tf:stamp pose-stamped)))
-            for tst = (or first-run (ros-warn (moveit) "Retrying."))
-            for can-tr = (cl-tf2:can-transform
-                          *tf2*
-                          target-frame
-                          source-frame
-                          time 2.0)
-            when (progn
-                   (when first-run
-                     (setf first-run nil)
-                     (setf ros-time t))
-                   can-tr)
-              do (return (tf:copy-pose-stamped pose-stamped :stamp time))))))
+  (sb-thread:with-mutex (*tf-mutex*)
+    (let ((target-frame (unslash-frame target-frame))
+          (source-frame (unslash-frame (tf:frame-id pose-stamped))))
+      ;;(ros-info (moveit) "TF2 transform (~a -> ~a)"
+      ;;          source-frame target-frame)
+      (let ((first-run t))
+        (loop for sleepiness = (or first-run (sleep 0.5))
+              for time = (cond (ros-time (ros-time))
+                               (t (tf:stamp pose-stamped)))
+              for tst = (or first-run (ros-warn (moveit) "Retrying."))
+              for can-tr = (cl-tf2:can-transform
+                            *tf2*
+                            target-frame
+                            source-frame
+                            time 2.0)
+              when (progn
+                     (when first-run
+                       (setf first-run nil)
+                       (setf ros-time t))
+                     can-tr)
+                do (return (tf:copy-pose-stamped pose-stamped :stamp time)))))))
 
 (defun ensure-transform-available (reference-frame target-frame)
-  (let ((target-frame (unslash-frame target-frame))
-        (reference-frame (unslash-frame reference-frame)))
-    (cpl:with-failure-handling
-        ((cl-tf:tf-cache-error (f)
-           (declare (ignore f))
-           (ros-warn (moveit) "Failed to make transform available. Retrying.")
-           (cpl:retry)))
-      (let ((first-run t))
-        (loop for sleepiness = (or first-run (sleep 1.0))
-              for time = (ros-time)
-              for can-tr = (let ((can-tr (cl-tf2:can-transform
-                                          *tf2*
-                                          target-frame
-                                          reference-frame
-                                          time 2.0)))
-                             (when can-tr
-                               (tf:transform->stamped-transform
-                                reference-frame
-                                target-frame
-                                time
-                                (cl-tf2::transform can-tr))))
-              when (progn
-                     (setf first-run nil)
-                     can-tr)
-                do (return can-tr))))))
+  (sb-thread:with-mutex (*tf-mutex*)
+    (let ((target-frame (unslash-frame target-frame))
+          (reference-frame (unslash-frame reference-frame)))
+      (cpl:with-failure-handling
+          ((cl-tf:tf-cache-error (f)
+             (declare (ignore f))
+             (ros-warn (moveit) "Failed to make transform available. Retrying.")
+             (cpl:retry)))
+        (let ((first-run t))
+          (loop for sleepiness = (or first-run (sleep 1.0))
+                for time = (ros-time)
+                for can-tr = (let ((can-tr (cl-tf2:can-transform
+                                            *tf2*
+                                            target-frame
+                                            reference-frame
+                                            time 2.0)))
+                               (when can-tr
+                                 (tf:transform->stamped-transform
+                                  reference-frame
+                                  target-frame
+                                  time
+                                  (cl-tf2::transform can-tr))))
+                when (progn
+                       (setf first-run nil)
+                       can-tr)
+                  do (return can-tr)))))))
 
 (defun ensure-pose-stamped-transformed (pose-stamped target-frame
                                         &key ros-time)
-  (let ((target-frame (unslash-frame target-frame))
-        (source-frame (unslash-frame (tf:frame-id pose-stamped))))
-    (ros-info (moveit) "TF2 transform (~a -> ~a)"
-              source-frame target-frame)
-    (cpl:with-failure-handling
-        ((cl-tf:tf-cache-error (f)
-           (declare (ignore f))
-           (ros-warn (moveit) "Failed to transform pose. Retrying.")
-           (cpl:retry)))
-      (let* ((rostime (cond (ros-time (roslisp:ros-time))
-                            (t (tf:stamp pose-stamped))))
-             (transform (cl-tf2:can-transform
-                         *tf2*
-                         target-frame
-                         source-frame
-                         rostime 3.0)))
-        (unless transform
-          (cpl:fail 'cl-tf:tf-cache-error))
-        (let* ((cl-transforms-transform
-                 (cl-tf2::transform transform))
-               (transformed-pose
-                 (cl-transforms:transform-pose
-                  cl-transforms-transform
-                  pose-stamped)))
-          (tf:make-pose-stamped
-           target-frame
-           rostime
-           (cl-transforms:origin transformed-pose)
-           (cl-transforms:orientation transformed-pose)))))))
+  (sb-thread:with-mutex (*tf-mutex*)
+    (let ((target-frame (unslash-frame target-frame))
+          (source-frame (unslash-frame (tf:frame-id pose-stamped))))
+      ;;(ros-info (moveit) "TF2 transform (~a -> ~a)"
+      ;;          source-frame target-frame)
+      (cpl:with-failure-handling
+          ((cl-tf:tf-cache-error (f)
+             (declare (ignore f))
+             (ros-warn (moveit) "Failed to transform pose. Retrying.")
+             (cpl:retry)))
+        (let* ((rostime (cond (ros-time (roslisp:ros-time))
+                              (t (tf:stamp pose-stamped))))
+               (transform (cl-tf2:can-transform
+                           *tf2*
+                           target-frame
+                           source-frame
+                           rostime 3.0)))
+          (unless transform
+            (cpl:fail 'cl-tf:tf-cache-error))
+          (let* ((cl-transforms-transform
+                   (cl-tf2::transform transform))
+                 (transformed-pose
+                   (cl-transforms:transform-pose
+                    cl-transforms-transform
+                    pose-stamped)))
+            (tf:make-pose-stamped
+             target-frame
+             rostime
+             (cl-transforms:origin transformed-pose)
+             (cl-transforms:orientation transformed-pose))))))))
 
 (defun transform-stamped->msg (transform-stamped)
   (with-fields (stamp frame-id child-frame-id rotation translation) transform-stamped
@@ -142,3 +146,29 @@
      (y rotation) (tf:y rotation)
      (z rotation) (tf:z rotation)
      (w rotation) (tf:w rotation))))
+
+(defun pose-distance (link-frame pose-stamped)
+  "Returns the distance of stamped pose `pose-stamped' from the origin
+coordinates of link `link-frame'. This can be for example used for
+checking how far away a given grasp pose is from the gripper frame."
+  (tf:v-dist (tf:make-identity-vector)
+             (tf:origin (ensure-pose-stamped-transformed
+                         pose-stamped link-frame :ros-time t))))
+
+(defun motion-length (link-name planning-group pose-stamped
+                        &key allowed-collision-objects
+                          highlight-links)
+  (let* ((pose-stamped-transformed
+           (ensure-pose-stamped-transformed
+            pose-stamped "/torso_lift_link" :ros-time t))
+         (state-0 (moveit:plan-link-movement
+                   link-name planning-group
+                   pose-stamped-transformed
+                   :allowed-collision-objects
+                   allowed-collision-objects
+                   :destination-validity-only t
+                   :highlight-links highlight-links)))
+    (when state-0
+      (pose-distance
+       link-name
+       pose-stamped-transformed))))
