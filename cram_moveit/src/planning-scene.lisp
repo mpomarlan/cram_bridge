@@ -106,8 +106,7 @@
                  :enabled
                  (map 'vector #'identity
                       (loop for j from 0 below (elt dimensions 1)
-                            collecting
-                            (aref entries i j)))))))))
+                            collecting (aref entries i j)))))))))
 
 (defmethod relative-collision-matrix (names-groups-1 names-groups-2 values &key matrix)
   (cond (matrix
@@ -137,5 +136,67 @@
                        (get-allowed-collision-matrix)))))))
 
 (defmethod relative-collision-matrix-msg (names-groups-1 names-groups-2 values &key matrix)
+  (declare (ignore matrix))
   (collision-matrix->msg
-   (relative-collision-matrix names-groups-1 names-groups-2 values :matrix matrix)))
+   (combine-collision-matrices `(,@(generate-collision-matrices
+                                    names-groups-1 names-groups-2 values)
+                                 ,(msg->collision-matrix (get-allowed-collision-matrix))))))
+
+(defun generate-collision-matrices (names-groups-1 names-groups-2 values)
+  (mapcar (lambda (names-1 names-2 value)
+            (let ((all-names (remove-duplicates
+                              (append names-1 names-2)
+                              :test #'string=)))
+              (make-instance
+               'collision-matrix
+               :names all-names
+               :entries
+               (make-array
+                `(,(length all-names) ,(length all-names))
+                :initial-contents
+                (map
+                 'vector (lambda (name-1)
+                           (map
+                            'vector (lambda (name-2)
+                                      (cond ((or (and (find name-1 names-1 :test #'string=)
+                                                      (find name-2 names-2 :test #'string=))
+                                                 (and (find name-1 names-2 :test #'string=)
+                                                      (find name-2 names-1 :test #'string=)))
+                                             value)
+                                            (t :maybe)))
+                            all-names))
+                     all-names)))))
+          names-groups-1 names-groups-2 values))
+
+(defun combine-collision-matrices (matrices)
+  (let ((all-names
+          (remove-duplicates
+           (loop for matrix in matrices
+                 appending (names matrix))
+           :test #'string=)))
+    (make-instance
+     'collision-matrix
+     :names all-names
+     :entries
+     (make-array
+      `(,(length all-names) ,(length all-names))
+      :initial-contents
+      (map
+       'vector #'identity
+       (loop for name-1 in all-names
+             collecting
+             (map
+              'vector #'identity
+              (loop for name-2 in all-names
+                    collecting
+                    (cond ((string= name-1 name-2) t)
+                          (t (block check
+                               (loop for matrix in matrices
+                                     for names = (names matrix)
+                                     for present = (and (find name-1 names :test #'string=)
+                                                        (find name-2 names :test #'string=))
+                                     when present
+                                       do (let ((value (get-collision-matrix-entry
+                                                        matrix name-1 name-2)))
+                                            (when (not (eql value :maybe))
+                                              (return-from check value)))))))))))))))

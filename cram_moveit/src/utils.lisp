@@ -97,7 +97,8 @@
       (cpl:with-failure-handling
           ((cl-tf:tf-cache-error (f)
              (declare (ignore f))
-             (ros-warn (moveit) "Failed to transform pose. Retrying.")
+             (ros-warn (moveit) "Failed to transform pose (~a -> ~a). Retrying."
+                       source-frame target-frame)
              (cpl:retry)))
         (let* ((rostime (cond (ros-time (roslisp:ros-time))
                               (t (tf:stamp pose-stamped))))

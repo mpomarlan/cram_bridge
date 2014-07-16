@@ -60,7 +60,8 @@ MoveIt! framework and registers known conditions."
                        &key allowed-collision-objects
                          plan-only touch-links
                          ignore-collisions
-                         start-state)
+                         start-state
+                         collidable-objects)
   "Calls the MoveIt! MoveGroup action. The link identified by
   `link-name' is tried to be positioned in the pose given by
   `pose-stamped'. Returns `T' on success and `nil' on failure, in
@@ -70,12 +71,15 @@ MoveIt! framework and registers known conditions."
   ;; NOTE(winkler): Since MoveIt! crashes once it receives a frame-id
   ;; which includes the "/" character at the beginning, we change the
   ;; frame-id here just in case.
+  (ros-info (moveit) "Move link: ~a (~a, ignore collisions: ~a)"
+            link-name planning-group ignore-collisions)
   (let* ((start-state (or start-state (make-message "moveit_msgs/RobotState")))
          (allowed-collision-objects
-           (cond (ignore-collisions
-                  (loop for obj in *known-collision-objects*
-                        collect (slot-value obj 'name)))
-                 (t (mapcar #'string allowed-collision-objects))))
+           (mapcar #'string
+                   (cond (ignore-collisions
+                          (loop for obj in *known-collision-objects*
+                                collect (slot-value obj 'name)))
+                         (t allowed-collision-objects))))
          (touch-links
            (mapcar (lambda (x) (string x)) touch-links))
          (link-names (cond ((listp link-name) link-name)
@@ -101,13 +105,15 @@ MoveIt! framework and registers known conditions."
               :planning_scene_diff
               (make-message
                "moveit_msgs/PlanningScene"
-               :name "(noname)+"
-               :robot_model_name "pr2"
                :is_diff t
                :allowed_collision_matrix
                (relative-collision-matrix-msg
-                `(,touch-links) `(,allowed-collision-objects)
-                (mapcar (lambda (x) (declare (ignorable x)) t) touch-links))
+                `(,touch-links
+                  ,collidable-objects)
+                `(,allowed-collision-objects
+                  ,(when collidable-objects (loop for obj in *known-collision-objects*
+                                                  collect (slot-value obj 'name))))
+                `(t t))
                :robot_state start-state)
               :plan_only plan-only
               :replan t
@@ -167,35 +173,27 @@ MoveIt! framework and registers known conditions."
            (declare (ignore f))
            (ros-warn (moveit) "Invalid motion plan. Rethrowing.")
            (error 'manipulation-failed)))
-      (let ((goal ;; (actionlib-lisp:make-simple-action-goal
-                  ;;     *move-group-action-client*
-                  ;;   :request mpreq
-                  ;;   :planning_options options)
-                  ))
-        (let ((result (actionlib:call-goal
-                       *move-group-action-client*
-                       goal
-                       :result-timeout 2000.0 :timeout 2000.0)))
-          (cond (result
-                 (roslisp:with-fields (error_code
-                                       trajectory_start
-                                       planned_trajectory)
-                     result
-                   (roslisp:with-fields (val) error_code
-                     (unless
-                         (eql val
-                              (roslisp-msg-protocol:symbol-code
-                               'moveit_msgs-msg:moveiterrorcodes
-                               :success))
-                       (signal-moveit-error val))
-                     (values
-                      trajectory_start planned_trajectory))))
-                (t (ros-error (moveit)
-                              "Empty actionlib response.")
-                   (error 'actionlib:server-lost)))))))
-  (t (ros-error (moveit) "Lost actionlib connection while waiting.")
-     (connect-action-client)
-     (error 'planning-failed)))
+      (let ((result (send-action *move-group-action-client*
+                                 :request mpreq
+                                 :planning_options options)))
+        (cond (result
+               (roslisp:with-fields (error_code
+                                     trajectory_start
+                                     planned_trajectory)
+                   result
+                 (roslisp:with-fields (val) error_code
+                   (unless
+                       (eql val
+                            (roslisp-msg-protocol:symbol-code
+                             'moveit_msgs-msg:moveiterrorcodes
+                             :success))
+                     (signal-moveit-error val))
+                   (values
+                    trajectory_start planned_trajectory))))
+              (t (ros-error (moveit)
+                            "Empty actionlib response.")
+                 (connect-action-client)
+                 (error 'planning-failed)))))))
 
 (defun execute-trajectory (trajectory &key (wait-for-execution t))
   (let ((result (call-service "/execute_kinematic_path"
@@ -246,7 +244,6 @@ success, and `nil' otherwise."
             link-name planning-group pose-stamped
             :allowed-collision-objects allowed-collision-objects
             :touch-links touch-links
-            :default-collision-entries default-collision-entries
             :ignore-collisions ignore-collisions
             :destination-validity-only destination-validity-only))
          poses-stamped))
@@ -292,8 +289,7 @@ as only the final configuration IK is generated."
           (t (moveit:move-link-pose
               link-name
               planning-group pose-stamped
-              :allowed-collision-objects
-              allowed-collision-objects
+              :allowed-collision-objects allowed-collision-objects
               :plan-only t
               :touch-links touch-links
               :ignore-collisions ignore-collisions)))))
