@@ -38,14 +38,16 @@
                cram-plan-knowledge
                designators
                designators-ros
-               actionlib
+               actionlib-lisp
                std_msgs-msg
                cram-plan-failures
                roslisp-utilities
                designator-integration-lisp
-               designator_integration_msgs-msg)
+               designator_integration_msgs-msg
+               iai_robosherlock_actions-msg)
   :components
   ((:module "src"
     :components
     ((:file "package")
-     (:file "uima" :depends-on ("package"))))))
+     (:file "uima" :depends-on ("package"))
+     (:file "uima-action-interface" :depends-on ("package"))))))

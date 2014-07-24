@@ -17,5 +17,6 @@
   <depend package="roslisp_utilities" />
   <depend package="designator_integration_lisp" />
   <depend package="designator_integration_msgs" />
-  
+  <depend package="iai_robosherlock_actions" />  
+
 </package>
