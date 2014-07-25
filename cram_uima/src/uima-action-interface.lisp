@@ -27,66 +27,58 @@
 
 (in-package :cram-uima)
 
-(defparameter *uima-action-client* nil)
-
 (defparameter *uima-action-name* "/RoboSherlock_common/some_action")
+(defparameter *uima-action-type* "iai_robosherlock_actions/SimplePerceiveObjectAction")
 (defparameter *init-timeout* 3.0)
 (defparameter *exec-timeout* 5.0)
 (defparameter *preempt-timeout* 3.0)
 
-(defun init-uima-action-bridge (&key (action-name *uima-action-name*) (timeout *init-timeout*))
-  (init-uima-action-client action-name timeout)
-  (init-uima-result-fluent))
+(defclass uima-action-interface ()
+  ((action-client :initarg :action-client :reader action-client
+                  :type actionlib-lisp:simple-action-client))
+  (:documentation "Action interface to UIMA perception system."))
 
-(defun destroy-uima-action-bridge ()
-  (destroy-uima-action-client)
-  (destroy-uima-result-fluent))
+(defun make-uima-action-interface (&key (action-name *uima-action-name*)
+                                       (action-type *uima-action-type*)
+                                       (timeout *init-timeout*))
+  "Creates an UIMA action interface with `action-name', and `action-type'.
+ Waits for the server show for `timeout' seconds."
+  (let ((action-client (actionlib-lisp:make-simple-action-client 
+                        action-name action-type)))
+    (actionlib-lisp:wait-for-server action-client timeout)
+    (make-instance 'uima-action-interface :action-client action-client)))
 
-(defun query-uima (&key (desigs nil) (exec-timeout *exec-timeout*) 
-                     (preempt-timeout *preempt-timeout*))
-  "Queries UIMA for the objects it currently perceives. `desigs' denots a list
- of all the object designators we are looking for."
-  (when *uima-action-client*
-    (actionlib-lisp:send-goal-and-wait 
-     *uima-action-client* 
-     (make-uima-action-goal desigs)
-     exec-timeout preempt-timeout)
-    (when (eql (actionlib-lisp:state *uima-action-client*) :SUCCEEDED)
-      (unpack-uima-action-result (actionlib-lisp:result *uima-action-client*)))))
+(defun cleanup-uima-action-interface (interface)
+  "Cleans up UIMA `interface', i.e. tears down action-client. Returns the cleaned
+ `interface'"
+  (declare (type uima-action-interface interface))
+  (with-slots (action-client) interface
+    (actionlib-lisp:stop-tracking-goal action-client)
+    (setf action-client nil)
+    interface))
+    
+(defun query-uima-and-wait (interface &key (desigs nil) (exec-timeout *exec-timeout*) 
+                                        (preempt-timeout *preempt-timeout*))
+  "Queries UIMA `interface' for the objects it currently perceives, and waits for the
+ result. Perceived objects will be returned as a list of designators. `desigs' denots a
+ list of all the object designators we are looking for."
+  (declare (type uima-action-interface interface))
+  (with-slots (action-client) interface
+    (send-uima-goal-and-wait action-client desigs exec-timeout preempt-timeout)
+    (get-successful-uima-results action-client)))
+
 ;;;
 ;;; INTERNAL
 ;;;
 
-(defun init-uima-action-client (action-name timeout)
-  (unless *uima-action-client*
-    (setf *uima-action-client*
-          (actionlib-lisp:make-simple-action-client 
-           action-name "iai_robosherlock_actions/SimplePerceiveObjectAction"))
-    (actionlib-lisp:wait-for-server *uima-action-client* timeout)))
+(defun send-uima-goal-and-wait (action-client desigs exec-timeout preempt-timeout)
+  (actionlib-lisp:send-goal-and-wait 
+   action-client
+   (actionlib-lisp:make-action-goal-msg action-client
+     :requests (coerce (mapcar #'desig-int::designator->msg desigs) 'vector))
+   exec-timeout preempt-timeout))
 
-(defun init-uima-result-fluent ()
-  (unless *uima-result-fluent*
-    (setf *uima-result-fluent*
-          (cpl:make-fluent :name 'uima-result 
-                           :value nil 
-                           :allow-tracing nil))))
-
-(defun destroy-uima-action-client ()
-  (when *uima-action-client*
-    (actionlib-lisp:stop-tracking-goal *uima-action-client*)
-    (setf *uima-action-client* nil)))
-
-(defun destroy-uima-result-fluent ()
-  (when *uima-result-fluent*
-    (setf *uima-result-fluent* nil)))
-
-(defun make-uima-action-goal (desigs)
-  "Creates an action goal for UIMA from `desigs', a list of designators."
-  (roslisp:make-message
-   "iai_robosherlock_actions/SimplePerceiveObjectGoal"
-   :requests (coerce (mapcar #'desig-int::designator->msg desigs) 'vector)))
-
-(defun unpack-uima-action-result (result-msg)
-  "Returns all perceived objects designators returned from UIMA in `result-msg'."
-  (roslisp:with-fields (percepts) result-msg
-    (mapcar #'desig-int::msg->designator (coerce percepts 'list))))
+(defun get-successful-uima-results (action-client)
+  (when (eql (actionlib-lisp:state action-client) :SUCCEEDED)
+    (roslisp:with-fields (percepts) (actionlib-lisp:result action-client)
+      (mapcar #'desig-int::msg->designator (coerce percepts 'list)))))
