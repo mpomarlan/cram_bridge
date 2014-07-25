@@ -46,4 +46,9 @@
    ;; Functions
    init-uima-bridge
    set-comm-mode
-   get-uima-result))
+   get-uima-result
+   ;; Action interface
+   uima-action-interface 
+   make-uima-action-interface 
+   cleanup-uima-action-interface 
+   query-uima-and-wait))

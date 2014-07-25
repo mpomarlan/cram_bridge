@@ -27,11 +27,19 @@
 
 (in-package :cram-uima)
 
+;;;
+;;; STANDARD UIMA ACTION-INTERFACE PARAMETERS
+;;;
+
 (defparameter *uima-action-name* "/RoboSherlock_common/some_action")
 (defparameter *uima-action-type* "iai_robosherlock_actions/SimplePerceiveObjectAction")
 (defparameter *init-timeout* 3.0)
 (defparameter *exec-timeout* 5.0)
 (defparameter *preempt-timeout* 3.0)
+
+;;;
+;;; EXPORTED INTERFACE
+;;;
 
 (defclass uima-action-interface ()
   ((action-client :initarg :action-client :reader action-client
