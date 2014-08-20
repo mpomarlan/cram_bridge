@@ -45,5 +45,5 @@
                      #:color #:size #:shape #:pose-on-plane #:z-offset
                      #:grasp-pose #:grasp-poses #:object-identifier #:dimensions
                      #:pose #:identifier #:grasp-type #:unknown #:spatula
-                     #:pancakemaker #:milkbox #:pancakemix
+                     #:pancakemaker #:milkbox #:pancakemix #:scene
                      #:cylinder #:box #:yellow #:pancake #:pose-center))

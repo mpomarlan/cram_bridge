@@ -32,7 +32,16 @@
   (<- (action-desig ?designator (perceive ?object-desig))
     (desig-prop ?designator (to perceive))
     (desig-prop ?designator (obj ?object-desig))
-    (obj-desig? ?object-desig)))
+    (obj-desig? ?object-desig))
+  
+  (<- (action-desig ?designator (perceive-scene))
+    (desig-prop ?designator (to perceive))
+    (desig-prop ?designator (obj scene)))
+  
+  (<- (action-desig ?designator (examine ?object-desig))
+    (desig-prop ?designator (to examine))
+    (desig-prop ?designator (obj ?object-desig))
+    (obj-desig ?object-desig)))
 
 (def-fact-group robosherlock-process-module (matching-process-module available-process-module)
 
