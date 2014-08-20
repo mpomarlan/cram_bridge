@@ -249,6 +249,14 @@
   ;; (beliefstate:add-topic-image-to-active-node cram-beliefstate::*kinect-topic-rgb*)
   ;; (beliefstate:stop-node id :success (not (eql result nil))))
 
+(defmethod robosherlock-process-module::on-begin-belief-state-update
+    cram-beliefstate ()
+  (beliefstate:start-node "BELIEF-STATE-UPDATE" `() 2))
+
+(defmethod robosherlock-process-module::on-finish-belief-state-update
+    cram-beliefstate (id)
+  (beliefstate:stop-node id))
+
 (defmethod robosherlock-process-module::on-begin-object-identity-resolution
     cram-beliefstate (object-type)
   (let ((id (beliefstate:start-node "OBJECT-IDENTITY-RESOLUTION" `() 2)))

@@ -78,7 +78,7 @@ MoveIt! framework and registers known conditions."
   ;; frame-id here just in case.
   (ros-info (moveit) "Move link: ~a (~a, ignore collisions: ~a, plan only: ~a)"
             link-name planning-group ignore-collisions plan-only)
-  (let* ((log-id (on-begin-motion-planning link-name))
+  (let* ((log-id (first (on-begin-motion-planning link-name)))
          (planning-results
            (unwind-protect
                 (let* ((start-state (or start-state
@@ -144,16 +144,14 @@ MoveIt! framework and registers known conditions."
                                        :planning_options options)
                         (roslisp:with-fields (val) error_code
                           (signal-moveit-error val))
-                        (values trajectory_start planned_trajectory)))))
+                        (list trajectory_start planned_trajectory)))))
              (on-finish-motion-planning log-id))))
-    (cond (plan-only planning-results)
-          (t (let ((log-id (on-begin-motion-execution)))
-               (unwind-protect
-                    (multiple-value-bind (trajectory_start planned_trajectory)
-                        planning-results
-                      (declare (ignore trajectory_start))
-                      (execute-trajectory planned_trajectory))
-                 (on-finish-motion-execution log-id)))))))
+    (cond ((not plan-only)
+           (let ((log-id (first (on-begin-motion-execution))))
+             (unwind-protect
+                  (execute-trajectory (second planning-results))
+               (on-finish-motion-execution log-id)))))
+    (values (first planning-results) (second planning-results))))
 
 (defun plan-base-movement (x y theta)
   (move-link-joint-states
