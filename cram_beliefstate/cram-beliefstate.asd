@@ -45,10 +45,12 @@
                designator-integration-lisp
                designator_integration_msgs-msg
                designator_integration_msgs-srv
+               cram-moveit
                cram-reasoning
                cram-uima
                pr2-manipulation-process-module
-               point-head-process-module)
+               point-head-process-module
+               robosherlock-process-module)
   :components
   ((:module "src"
     :components
