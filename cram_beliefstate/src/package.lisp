@@ -70,5 +70,6 @@
    end-experiment
    query-input
    ;; General
+   enable-logging
    toggle-logging)
   (:designator-properties))

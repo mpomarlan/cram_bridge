@@ -161,6 +161,12 @@
                (list (list 'command 'catch-failure)
                      (list 'context-id id)))))
 
+(defun rethrow-current-failure-with-active-node (id)
+  (alter-node (cram-designators:make-designator
+               'cram-designators:action
+               (list (list 'command 'rethrow-failure)
+                     (list 'context-id id)))))
+
 (defun set-experiment-meta-data (field value)
   (alter-node
    (cram-designators:make-designator
@@ -238,24 +244,26 @@
         (type-parent ,type-parent)
         (description-parent ,desc-parent))))))
 
-(defun extract-files (&optional (name "cram_log"))
-  (let ((owl-name (concatenate 'string name ".owl"))
-        (dot-name (concatenate 'string name ".dot"))
-        (owl-name-no-details (concatenate 'string name "-no-details.owl"))
-        (dot-name-no-details (concatenate 'string name "-no-details.dot")))
-    (extract-dot-file dot-name)
-    (extract-owl-file owl-name)
-    (extract-meta-file)))
-    ;(extract-dot-file dot-name-no-details :max-detail-level 2)
-    ;(extract-owl-file owl-name-no-details :max-detail-level 2)))
+(defun extract-files (&key (name "cram_log") detail-level)
+  (extract-meta-file)
+  (unless detail-level
+    (let ((owl-name (concatenate 'string name ".owl"))
+          (dot-name (concatenate 'string name ".dot")))
+      (extract-dot-file dot-name)
+      (extract-owl-file owl-name)))
+  (when detail-level
+    (let ((owl-name-low-details (concatenate 'string name "_low_details.owl"))
+          (dot-name-low-details (concatenate 'string name "_low_details.dot")))
+      (extract-dot-file dot-name-low-details :max-detail-level detail-level)
+      (extract-owl-file owl-name-low-details :max-detail-level detail-level))))
 
 (defun extract (name)
-  (extract-files name))
+  (extract-files :name name))
 
 (defun begin-experiment ()
   (let ((results (query-input `((experiment "Experiment name" "Pick and Place")
                                 (robot "Robot" "PR2")
-                                (creator "Creator" "Jan Winkler")))))
+                                (creator "Creator" "IAI")))))
     (dolist (result results)
       (set-metadata (car result) (cdr result)))))
 
@@ -264,8 +272,8 @@
     (dolist (result results)
       (set-metadata (car result) (cdr result))))
   (let ((results (query-input `((:identifier "Identifier" "pick-and-place")))))
-    (extract-files (find :identifier results :test (lambda (x y)
-                                                     (eql x (car y)))))))
+    (extract-files :name (find :identifier results :test (lambda (x y)
+                                                           (eql x (car y)))))))
 
 (defun query-input (data-fields)
   (mapcar (lambda (entry)
@@ -280,3 +288,28 @@
                                      (t read-value))))
               (cons (first entry) read-value)))
           data-fields))
+
+(defun annotate-parameter (symbol value)
+  (add-designator-to-active-node
+   (make-designator 'object `((,symbol ,value)))
+   :annotation "parameter-annotation"))
+
+(defun annotate-parameters (parameters)
+  (add-designator-to-active-node
+   (make-designator 'object `(,parameters))
+   :annotation "parameter-annotation"))
+
+(defun load-prediction-model (file)
+  "Load model for prediction."
+  (designator-integration-lisp:call-designator-service
+   "/beliefstate_ros/load"
+   (make-designator
+    'action
+    `((load "model")
+      (file ,(string file))))))
+
+(defun predict (parameters)
+  "Predict the outcome of the current branch."
+  (designator-integration-lisp:call-designator-service
+   "/beliefstate_ros/predict"
+   (make-designator 'action parameters)))
