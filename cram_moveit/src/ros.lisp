@@ -32,7 +32,8 @@
 (defun connect-action-client ()
   (setf *move-group-action-client*
         (actionlib-lisp::make-action-client
-         "/move_group" "moveit_msgs/MoveGroupAction")))
+         "/move_group" "moveit_msgs/MoveGroupAction"
+         20.0)))
 
 (defmethod send-goal (client goal &key (timeout 0.0))
   (actionlib-lisp:wait-for-server client)
