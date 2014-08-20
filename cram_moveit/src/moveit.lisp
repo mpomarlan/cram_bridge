@@ -56,6 +56,11 @@ MoveIt! framework and registers known conditions."
 
 (roslisp-utilities:register-ros-init-function init-moveit-bridge)
 
+(cut:define-hook on-begin-motion-planning (link-name))
+(cut:define-hook on-finish-motion-planning (id))
+(cut:define-hook on-begin-motion-execution ())
+(cut:define-hook on-finish-motion-execution (id))
+
 (defun move-link-pose (link-name planning-group pose-stamped
                        &key allowed-collision-objects
                          plan-only touch-links
@@ -71,67 +76,84 @@ MoveIt! framework and registers known conditions."
   ;; NOTE(winkler): Since MoveIt! crashes once it receives a frame-id
   ;; which includes the "/" character at the beginning, we change the
   ;; frame-id here just in case.
-  (ros-info (moveit) "Move link: ~a (~a, ignore collisions: ~a)"
-            link-name planning-group ignore-collisions)
-  (let* ((start-state (or start-state (make-message "moveit_msgs/RobotState")))
-         (allowed-collision-objects
-           (mapcar #'string
-                   (cond (ignore-collisions
-                          (loop for obj in *known-collision-objects*
-                                collect (slot-value obj 'name)))
-                         (t allowed-collision-objects))))
-         (touch-links
-           (mapcar (lambda (x) (string x)) touch-links))
-         (link-names (cond ((listp link-name) link-name)
-                           (t `(,link-name))))
-         (poses-stamped (mapcar
-                         (lambda (pose-stamped)
-                           (tf:pose->pose-stamped
-                            (unslash-frame (tf:frame-id pose-stamped))
-                            (tf:stamp pose-stamped)
-                            pose-stamped))
-                         (cond ((listp pose-stamped) pose-stamped)
-                               (t `(,pose-stamped))))))
-    (let* ((mpreq (make-message
-                   "moveit_msgs/MotionPlanRequest"
-                   :group_name planning-group
-                   :num_planning_attempts 3
-                   :allowed_planning_time 5.0
-                   :goal_constraints
-                   (make-pose-goal-constraints link-names poses-stamped)))
-           (options
-             (make-message
-              "moveit_msgs/PlanningOptions"
-              :planning_scene_diff
-              (make-message
-               "moveit_msgs/PlanningScene"
-               :is_diff t
-               :allowed_collision_matrix
-               (relative-collision-matrix-msg
-                `(,touch-links
-                  ,collidable-objects)
-                `(,allowed-collision-objects
-                  ,(when collidable-objects (loop for obj in *known-collision-objects*
-                                                  collect (slot-value obj 'name))))
-                `(t t))
-               :robot_state start-state)
-              :plan_only plan-only
-              :replan t
-              :replan_attempts 3)))
-      (cpl:with-failure-handling
-          ((invalid-motion-plan (f)
-             (declare (ignore f))
-             (ros-warn (moveit) "Invalid motion plan. Rethrowing.")
-             (error 'manipulation-failed)))
-        (roslisp:with-fields (error_code
-                              trajectory_start
-                              planned_trajectory)
-            (send-action *move-group-action-client*
-                         :request mpreq
-                         :planning_options options)
-          (roslisp:with-fields (val) error_code
-            (signal-moveit-error val))
-          (values trajectory_start planned_trajectory))))))
+  (ros-info (moveit) "Move link: ~a (~a, ignore collisions: ~a, plan only: ~a)"
+            link-name planning-group ignore-collisions plan-only)
+  (let* ((log-id (on-begin-motion-planning link-name))
+         (planning-results
+           (unwind-protect
+                (let* ((start-state (or start-state
+                                        (make-message "moveit_msgs/RobotState")))
+                       (allowed-collision-objects
+                         (mapcar
+                          #'string
+                          (cond (ignore-collisions
+                                 (loop for obj in *known-collision-objects*
+                                       collect (slot-value obj 'name)))
+                                (t allowed-collision-objects))))
+                       (touch-links
+                         (mapcar (lambda (x) (string x)) touch-links))
+                       (link-names (cond ((listp link-name) link-name)
+                                         (t `(,link-name))))
+                       (poses-stamped (mapcar
+                                       (lambda (pose-stamped)
+                                         (tf:pose->pose-stamped
+                                          (unslash-frame (tf:frame-id
+                                                          pose-stamped))
+                                          (tf:stamp pose-stamped)
+                                          pose-stamped))
+                                       (cond ((listp pose-stamped) pose-stamped)
+                                             (t `(,pose-stamped))))))
+                  (let* ((mpreq (make-message
+                                 "moveit_msgs/MotionPlanRequest"
+                                 :group_name planning-group
+                                 :num_planning_attempts 3
+                                 :allowed_planning_time 5.0
+                                 :goal_constraints
+                                 (make-pose-goal-constraints
+                                  link-names poses-stamped)))
+                         (options
+                           (make-message
+                            "moveit_msgs/PlanningOptions"
+                            :planning_scene_diff
+                            (make-message
+                             "moveit_msgs/PlanningScene"
+                             :is_diff t
+                             :allowed_collision_matrix
+                             (relative-collision-matrix-msg
+                              `(,touch-links
+                                ,collidable-objects)
+                              `(,allowed-collision-objects
+                                ,(when collidable-objects
+                                   (loop for obj in *known-collision-objects*
+                                         collect (slot-value obj 'name))))
+                              `(t t))
+                             :robot_state start-state)
+                            :plan_only t;plan-only
+                            :replan t
+                            :replan_attempts 3)))
+                    (cpl:with-failure-handling
+                        ((invalid-motion-plan (f)
+                           (declare (ignore f))
+                           (ros-warn (moveit) "Invalid motion plan. Rethrowing as failed manipulation attempt.")
+                           (error 'manipulation-failed)))
+                      (roslisp:with-fields (error_code
+                                            trajectory_start
+                                            planned_trajectory)
+                          (send-action *move-group-action-client*
+                                       :request mpreq
+                                       :planning_options options)
+                        (roslisp:with-fields (val) error_code
+                          (signal-moveit-error val))
+                        (values trajectory_start planned_trajectory)))))
+             (on-finish-motion-planning log-id))))
+    (cond (plan-only planning-results)
+          (t (let ((log-id (on-begin-motion-execution)))
+               (unwind-protect
+                    (multiple-value-bind (trajectory_start planned_trajectory)
+                        planning-results
+                      (declare (ignore trajectory_start))
+                      (execute-trajectory planned_trajectory))
+                 (on-finish-motion-execution log-id)))))))
 
 (defun plan-base-movement (x y theta)
   (move-link-joint-states
@@ -239,6 +261,7 @@ success, and `nil' otherwise."
                               touch-links default-collision-entries
                               ignore-collisions
                               destination-validity-only)
+  (declare (ignore default-collision-entries))
   (every (lambda (pose-stamped)
            (plan-link-movement
             link-name planning-group pose-stamped
