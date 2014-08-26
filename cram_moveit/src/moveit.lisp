@@ -61,12 +61,23 @@ MoveIt! framework and registers known conditions."
 (cut:define-hook on-begin-motion-execution ())
 (cut:define-hook on-finish-motion-execution (id))
 
+(defun move-joints (planning-group joint-names joint-positions
+                    &key (wait-for-execution t))
+  (move-link-pose nil planning-group nil
+                  :joint-names joint-names
+                  :joint-positions joint-positions
+                  :wait-for-execution wait-for-execution))
+
 (defun move-link-pose (link-name planning-group pose-stamped
                        &key allowed-collision-objects
                          plan-only touch-links
                          ignore-collisions
                          start-state
-                         collidable-objects)
+                         collidable-objects
+                         joint-names joint-positions
+                         (wait-for-execution t)
+                         max-tilt
+                         reference-frame)
   "Calls the MoveIt! MoveGroup action. The link identified by
   `link-name' is tried to be positioned in the pose given by
   `pose-stamped'. Returns `T' on success and `nil' on failure, in
@@ -76,8 +87,11 @@ MoveIt! framework and registers known conditions."
   ;; NOTE(winkler): Since MoveIt! crashes once it receives a frame-id
   ;; which includes the "/" character at the beginning, we change the
   ;; frame-id here just in case.
-  (ros-info (moveit) "Move link: ~a (~a, ignore collisions: ~a, plan only: ~a)"
-            link-name planning-group ignore-collisions plan-only)
+  (cond ((and joint-names joint-positions)
+         (ros-info (moveit) "Move joints"))
+        (t (ros-info (moveit)
+                     "Move link: ~a (~a, ignore collisions: ~a, plan only: ~a)"
+                     link-name planning-group ignore-collisions plan-only)))
   (let* ((log-id (first (on-begin-motion-planning link-name)))
          (planning-results
            (unwind-protect
@@ -102,15 +116,32 @@ MoveIt! framework and registers known conditions."
                                           (tf:stamp pose-stamped)
                                           pose-stamped))
                                        (cond ((listp pose-stamped) pose-stamped)
-                                             (t `(,pose-stamped))))))
+                                             (t `(,pose-stamped)))))
+                       (max-tilts (cond ((listp max-tilt) max-tilt)
+                                        (t `(,max-tilt))))
+                       (reference-frames (cond ((listp reference-frame)
+                                                reference-frame)
+                                               (t `(,reference-frame)))))
                   (let* ((mpreq (make-message
                                  "moveit_msgs/MotionPlanRequest"
                                  :group_name planning-group
                                  :num_planning_attempts 3
-                                 :allowed_planning_time 5.0
+                                 :allowed_planning_time 7.5
+                                 :trajectory_constraints
+                                 (make-trajectory-constraints
+                                  :link-names link-names
+                                  :reference-frames reference-frames
+                                  :max-tilts max-tilts
+                                  :reference-orientations
+                                  (mapcar (lambda (pose)
+                                            (tf:orientation pose))
+                                          poses-stamped))
                                  :goal_constraints
-                                 (make-pose-goal-constraints
-                                  link-names poses-stamped)))
+                                 (cond ((and joint-names joint-positions)
+                                        (make-joint-goal-constraints
+                                         joint-names joint-positions))
+                                       (t (make-pose-goal-constraints
+                                           link-names poses-stamped)))))
                          (options
                            (make-message
                             "moveit_msgs/PlanningOptions"
@@ -149,7 +180,8 @@ MoveIt! framework and registers known conditions."
     (cond ((not plan-only)
            (let ((log-id (first (on-begin-motion-execution))))
              (unwind-protect
-                  (execute-trajectory (second planning-results))
+                  (execute-trajectory (second planning-results)
+                                      :wait-for-execution wait-for-execution)
                (on-finish-motion-execution log-id)))))
     (values (first planning-results) (second planning-results))))
 
@@ -258,7 +290,8 @@ success, and `nil' otherwise."
                             &key allowed-collision-objects
                               touch-links default-collision-entries
                               ignore-collisions
-                              destination-validity-only)
+                              destination-validity-only
+                              max-tilt)
   (declare (ignore default-collision-entries))
   (every (lambda (pose-stamped)
            (plan-link-movement
@@ -266,7 +299,8 @@ success, and `nil' otherwise."
             :allowed-collision-objects allowed-collision-objects
             :touch-links touch-links
             :ignore-collisions ignore-collisions
-            :destination-validity-only destination-validity-only))
+            :destination-validity-only destination-validity-only
+            :max-tilt max-tilt))
          poses-stamped))
 
 (defun plan-link-movement (link-name planning-group pose-stamped
@@ -274,7 +308,8 @@ success, and `nil' otherwise."
                              touch-links
                              ignore-collisions
                              destination-validity-only
-                             highlight-links)
+                             highlight-links
+                             max-tilt)
   "Plans the movement of link `link-name' to given goal-pose
 `pose-stamped', taking the planning group `planning-group' into
 consideration. Returns the proposed trajectory, and final joint state
@@ -313,7 +348,24 @@ as only the final configuration IK is generated."
               :allowed-collision-objects allowed-collision-objects
               :plan-only t
               :touch-links touch-links
-              :ignore-collisions ignore-collisions)))))
+              :ignore-collisions ignore-collisions
+              :max-tilt max-tilt)))))
+
+(defun make-joint-goal-constraints (names positions)
+  (vector
+   (make-message
+    "moveit_msgs/Constraints"
+    :joint_constraints
+    (map 'vector
+         (lambda (name position)
+           (make-message
+            "moveit_msgs/JointConstraint"
+            :joint_name name
+            :position position
+            :tolerance_above 0.01
+            :tolerance_below 0.01
+            :weight 1.0))
+         names positions))))
 
 (defun make-pose-goal-constraints (link-names poses-stamped
                                    &key (tolerance-radius 0.01))
@@ -362,3 +414,31 @@ as only the final configuration IK is generated."
             :absolute_y_axis_tolerance tolerance-radius
             :absolute_z_axis_tolerance tolerance-radius))))
        link-names poses-stamped))
+
+(defun make-trajectory-constraints (&key link-names reference-frames max-tilts
+                                      reference-orientations)
+  (vector
+   (make-message
+    "moveit_msgs/Constraints"
+    :orientation_constraints
+    (cond (max-tilts
+           (map
+            'vector
+            (lambda (link-name reference-frame max-tilt reference-orientation)
+              (make-message
+               "moveit_msgs/OrientationConstraint"
+               :header (make-message "std_msgs/Header"
+                                     :stamp (roslisp:ros-time)
+                                     :frame_id reference-frame)
+               :orientation (make-message "geometry_msgs/Quaternion"
+                                          :x (tf:x reference-orientation)
+                                          :y (tf:y reference-orientation)
+                                          :z (tf:z reference-orientation)
+                                          :w (tf:w reference-orientation))
+               :link_name link-name
+               :absolute_x_axis_tolerance max-tilt
+               :absolute_y_axis_tolerance max-tilt
+               :absolute_z_axis_tolerance pi
+               :weight 1.0))
+            link-names reference-frames max-tilts reference-orientations))
+          (t (make-message "moveit_msgs/OrientationConstraint"))))))
