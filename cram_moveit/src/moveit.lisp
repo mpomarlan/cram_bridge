@@ -27,6 +27,8 @@
 
 (in-package :cram-moveit)
 
+(defvar *moveit-pose-validity-check-lock* nil)
+
 (defun init-moveit-bridge ()
   "Sets up the basic action client communication handles for the
 MoveIt! framework and registers known conditions."
@@ -52,7 +54,11 @@ MoveIt! framework and registers known conditions."
   (ubiquitous-utilities:register-collision-object-adding-function
    #'add-collision-object)
   (ubiquitous-utilities:register-pose-transform-function
-   #'ensure-pose-stamped-transformed))
+   #'ensure-pose-stamped-transformed)
+  (setf *moveit-action-access-lock*
+        (make-lock :name "moveit-action-access"))
+  (setf *moveit-pose-validity-check-lock*
+        (make-lock :name "validity-check-access")))
 
 (roslisp-utilities:register-ros-init-function init-moveit-bridge)
 
@@ -119,9 +125,13 @@ MoveIt! framework and registers known conditions."
                                              (t `(,pose-stamped)))))
                        (max-tilts (cond ((listp max-tilt) max-tilt)
                                         (t `(,max-tilt))))
-                       (reference-frames (cond ((listp reference-frame)
-                                                reference-frame)
-                                               (t `(,reference-frame)))))
+                       (reference-frames
+                         (cond (reference-frame
+                                (cond ((listp reference-frame)
+                                       reference-frame)
+                                      (t `(,reference-frame))))
+                               (poses-stamped
+                                (list (tf:frame-id (car poses-stamped)))))))
                   (let* ((mpreq (make-message
                                  "moveit_msgs/MotionPlanRequest"
                                  :group_name planning-group
@@ -183,6 +193,7 @@ MoveIt! framework and registers known conditions."
                   (execute-trajectory (second planning-results)
                                       :wait-for-execution wait-for-execution)
                (on-finish-motion-execution log-id)))))
+    (ros-info (moveit) "Done moving")
     (values (first planning-results) (second planning-results))))
 
 (defun plan-base-movement (x y theta)
@@ -417,28 +428,75 @@ as only the final configuration IK is generated."
 
 (defun make-trajectory-constraints (&key link-names reference-frames max-tilts
                                       reference-orientations)
-  (vector
-   (make-message
-    "moveit_msgs/Constraints"
-    :orientation_constraints
-    (cond (max-tilts
-           (map
-            'vector
-            (lambda (link-name reference-frame max-tilt reference-orientation)
-              (make-message
-               "moveit_msgs/OrientationConstraint"
-               :header (make-message "std_msgs/Header"
-                                     :stamp (roslisp:ros-time)
-                                     :frame_id reference-frame)
-               :orientation (make-message "geometry_msgs/Quaternion"
-                                          :x (tf:x reference-orientation)
-                                          :y (tf:y reference-orientation)
-                                          :z (tf:z reference-orientation)
-                                          :w (tf:w reference-orientation))
-               :link_name link-name
-               :absolute_x_axis_tolerance max-tilt
-               :absolute_y_axis_tolerance max-tilt
-               :absolute_z_axis_tolerance pi
-               :weight 1.0))
-            link-names reference-frames max-tilts reference-orientations))
-          (t (make-message "moveit_msgs/OrientationConstraint"))))))
+  (make-message
+   "moveit_msgs/TrajectoryConstraints"
+   :constraints
+   (vector
+    (make-message
+     "moveit_msgs/Constraints"
+     :orientation_constraints
+     (cond (max-tilts
+            (map
+             'vector
+             (lambda (link-name reference-frame max-tilt reference-orientation)
+               (make-message
+                "moveit_msgs/OrientationConstraint"
+                :header (make-message "std_msgs/Header"
+                                      :stamp (roslisp:ros-time)
+                                      :frame_id reference-frame)
+                :orientation (make-message "geometry_msgs/Quaternion"
+                                           :x (tf:x reference-orientation)
+                                           :y (tf:y reference-orientation)
+                                           :z (tf:z reference-orientation)
+                                           :w (tf:w reference-orientation))
+                :link_name link-name
+                :absolute_x_axis_tolerance max-tilt
+                :absolute_y_axis_tolerance max-tilt
+                :absolute_z_axis_tolerance pi
+                :weight 5.0))
+             link-names reference-frames max-tilts reference-orientations))
+           (t (vector)))))))
+
+(defun check-base-pose-validity (pose-stamped)
+  (with-lock-held (*moveit-pose-validity-check-lock*)
+    (let* ((pose-stamped-oc (moveit:ensure-pose-stamped-transformed
+                             pose-stamped "odom_combined" :ros-time t))
+           (origin (tf:origin pose-stamped-oc))
+           (orientation (tf:orientation pose-stamped-oc)))
+      (let ((adv (roslisp:advertise "/dhdhdh" "geometry_msgs/PoseStamped")))
+        (roslisp:publish adv (tf:pose-stamped->msg pose-stamped-oc)))
+      (let ((result
+              (roslisp:call-service
+               "/check_state_validity"
+               'moveit_msgs-srv:getstatevalidity
+               :group_name "both"
+               :robot_state
+               (make-message
+                "moveit_msgs/RobotState"
+                :multi_dof_joint_state
+                (make-message
+                 "moveit_msgs/MultiDOFJointState"
+                 :header
+                 (make-message
+                  "std_msgs/Header"
+                  :frame_id (concatenate 'string "/"
+                                         (tf:frame-id pose-stamped-oc)))
+                 :joint_names (vector "virtual_joint")
+                 :joint_transforms
+                 (vector (make-message
+                          "geometry_msgs/Transform"
+                          :translation
+                          (make-message
+                           "geometry_msgs/Vector3"
+                           :x (tf:x origin)
+                           :y (tf:y origin)
+                           :z (tf:z origin))
+                          :rotation
+                          (make-message
+                           "geometry_msgs/Quaternion"
+                           :x (tf:x orientation)
+                           :y (tf:y orientation)
+                           :z (tf:z orientation)
+                           :w (tf:w orientation)))))))))
+        (with-fields (valid) result
+          valid)))))

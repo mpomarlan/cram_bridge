@@ -109,6 +109,7 @@
             'moveit_msgs-msg:moveiterrorcodes
             :success))
     (let ((condition (cdr (assoc error-code *known-failures*))))
+      (ros-error (moveit) "Signalling: ~a" condition)
       (cond (condition
              (error condition arguments))
             (t (error 'moveit-failure arguments))))))
