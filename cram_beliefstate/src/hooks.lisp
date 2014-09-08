@@ -232,6 +232,12 @@
 (defmethod cram-moveit::on-finish-motion-execution cram-beliefstate (id)
   (beliefstate:stop-node id))
 
+(defmethod cram-plan-library::on-begin-find-objects cram-beliefstate ()
+  (beliefstate:start-node "FIND-OBJECTS" `() 2))
+
+(defmethod cram-plan-library::on-finish-find-objects (id)
+  (beliefstate:stop-node id))
+
 (defmethod cram-uima::on-prepare-request cram-beliefstate (designator-request)
   )
   ;; (let ((id (beliefstate:start-node
