@@ -71,5 +71,7 @@
    query-input
    ;; General
    enable-logging
-   toggle-logging)
+   toggle-logging
+   ;; Prediction
+   choose)
   (:designator-properties))

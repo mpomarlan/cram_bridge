@@ -288,28 +288,3 @@
                                      (t read-value))))
               (cons (first entry) read-value)))
           data-fields))
-
-(defun annotate-parameter (symbol value)
-  (add-designator-to-active-node
-   (make-designator 'object `((,symbol ,value)))
-   :annotation "parameter-annotation"))
-
-(defun annotate-parameters (parameters)
-  (add-designator-to-active-node
-   (make-designator 'object `(,parameters))
-   :annotation "parameter-annotation"))
-
-(defun load-prediction-model (file)
-  "Load model for prediction."
-  (designator-integration-lisp:call-designator-service
-   "/beliefstate_ros/load"
-   (make-designator
-    'action
-    `((load "model")
-      (file ,(string file))))))
-
-(defun predict (parameters)
-  "Predict the outcome of the current branch."
-  (designator-integration-lisp:call-designator-service
-   "/beliefstate_ros/predict"
-   (make-designator 'action parameters)))
