@@ -30,6 +30,7 @@
 (defvar *planlogging-namespace* "/beliefstate_ros")
 (defvar *kinect-topic-rgb* "/kinect_head/rgb/image_color")
 (defvar *interactive-callback-fluent* (cpl:make-fluent))
+(defvar *service-access* (make-lock :name "logging-service-access-lock"))
 (defparameter *logging-enabled* t)
 
 (defun init-beliefstate ()
@@ -62,30 +63,34 @@
   (setf *logging-enabled* bool))
 
 (defun start-node (name log-parameters detail-level)
-  (when (wait-for-logging "begin_context")
-    (let* ((parameters
-             (mapcar (lambda (x) x)
-                     (append (list (list '_name name)
-                                   (list '_detail-level detail-level)
-                                   (list '_source 'cram)
-                                   log-parameters))))
-           (result (first (designator-integration-lisp:call-designator-service
-                           (fully-qualified-service-name "begin_context")
-                           (cram-designators:make-designator
-                            'cram-designators:action
-                            parameters)))))
-      (when result
-        (desig-prop-value result 'desig-props::_id)))))
+  (with-lock-held (*service-access*)
+    (when (wait-for-logging "operate")
+      (let* ((parameters
+               (mapcar (lambda (x) x)
+                       (append (list (list '_cb_type 'begin)
+                                     (list '_name name)
+                                     (list '_detail-level detail-level)
+                                     (list '_source 'cram)
+                                     log-parameters))))
+             (result (first (designator-integration-lisp:call-designator-service
+                             (fully-qualified-service-name "operate")
+                             (cram-designators:make-designator
+                              'cram-designators:action
+                              parameters)))))
+        (when result
+          (desig-prop-value result 'desig-props::_id))))))
 
 (defun stop-node (id &key (success t))
-  (when (wait-for-logging "end_context")
-    (designator-integration-lisp:call-designator-service
-     (fully-qualified-service-name "end_context")
-     (cram-designators:make-designator
-      'cram-designators:action
-      (list (list '_id id)
-            (list '_success (cond (success 1)
-                                  (t 0))))))))
+  (with-lock-held (*service-access*)
+    (when (wait-for-logging "operate")
+      (designator-integration-lisp:call-designator-service
+       (fully-qualified-service-name "operate")
+       (cram-designators:make-designator
+        'cram-designators:action
+        (list (list '_cb_type 'end)
+              (list '_id id)
+              (list '_success (cond (success 1)
+                                    (t 0)))))))))
 
 (defun extract-dot-file (filename &key
                                     (successes t)
@@ -113,22 +118,32 @@
                                        (fails t)
                                        (max-detail-level 99))
   (alter-node
-   (cram-designators:make-designator
-    'cram-designators:action
-    (list (list 'command 'export-planlog)
-          (list 'format format)
-          (list 'filename filename)
-          (list 'show-successes (cond (successes 1)
-                                      (t 0)))
-          (list 'show-fails (cond (fails 1)
-                                  (t 0)))
-          (list 'max-detail-level max-detail-level)))))
+   (list (list 'command 'export-planlog)
+         (list 'format format)
+         (list 'filename filename)
+         (list 'show-successes (cond (successes 1)
+                                     (t 0)))
+         (list 'show-fails (cond (fails 1)
+                                 (t 0)))
+         (list 'max-detail-level max-detail-level))))
 
-(defun alter-node (designator)
-  (when (wait-for-logging "alter_context")
-    (designator-integration-lisp:call-designator-service
-     (fully-qualified-service-name "alter_context")
-     designator)))
+(defun alter-node (description &key (mode :alter) (command "")
+                                 (assurance-token ""))
+  (with-lock-held (*service-access*)
+    (when (wait-for-logging "operate")
+      (designator-integration-lisp:call-designator-service
+       (fully-qualified-service-name "operate")
+       (make-designator 'action
+                        (append
+                         description
+                         (cond ((eql mode :service)
+                                `((command ,command))))
+                         (cond ((not (string= assurance-token ""))
+                                `((_assurance_token ,assurance-token))))
+                         `((_cb_type alter))
+                         `((_type ,(case mode
+                                     (:alter "alter")
+                                     (:service "service"))))))))))
 
 (defun start-new-experiment ()
   (let ((service (fully-qualified-service-name "alter_context")))
@@ -144,52 +159,40 @@
                           (sb-kernel:get-lisp-obj-address designator)))
          (description (description designator))
          (result (alter-node
-                  (cram-designators:make-designator
-                   'cram-designators:action
-                   (list (list 'command 'add-object)
-                         (list 'type "OBJECT")
-                         (list 'annotation annotation)
-                         (list 'memory-address memory-address)
-                         (list 'description description))))))
+                  (list (list 'command 'add-object)
+                        (list 'type "OBJECT")
+                        (list 'annotation annotation)
+                        (list 'memory-address memory-address)
+                        (list 'description description)))))
     (add-designator-to-active-node designator :annotation annotation)
     (when result
       (desig-prop-value (first result) 'desig-props::id)))) ;; desig_id
 
 (defun catch-current-failure-with-active-node (id)
-  (alter-node (cram-designators:make-designator
-               'cram-designators:action
-               (list (list 'command 'catch-failure)
-                     (list 'context-id id)))))
+  (alter-node (list (list 'command 'catch-failure)
+                    (list 'context-id id))))
 
 (defun rethrow-current-failure-with-active-node (id)
-  (alter-node (cram-designators:make-designator
-               'cram-designators:action
-               (list (list 'command 'rethrow-failure)
-                     (list 'context-id id)))))
+  (alter-node (list (list 'command 'rethrow-failure)
+                    (list 'context-id id))))
 
 (defun set-experiment-meta-data (field value)
   (alter-node
-   (cram-designators:make-designator
-    'cram-designators:action
-    `((command set-experiment-meta-data)
-      (field ,field)
-      (value ,value)))))
+   `((command set-experiment-meta-data)
+     (field ,field)
+     (value ,value))))
 
 (defun add-topic-image-to-active-node (image-topic)
   (alter-node
-   (cram-designators:make-designator
-    'cram-designators:action
-    (list (list 'command 'add-image)
-          (list 'origin image-topic)))))
+   (list (list 'command 'add-image)
+         (list 'origin image-topic))))
 
 (defun add-failure-to-active-node (datum)
   (let ((datum-str (cond (datum (write-to-string datum))
                         (t "ANONYMOUS-FAILURE"))))
     (alter-node
-     (cram-designators:make-designator
-      'cram-designators:action
-      (list (list 'command 'add-failure)
-            (list 'condition datum-str))))))
+     (list (list 'command 'add-failure)
+           (list 'condition datum-str)))))
 
 (defun add-designator-to-active-node (designator &key (annotation ""))
   (let* ((type (ecase (type-of designator)
@@ -200,13 +203,11 @@
                           (sb-kernel:get-lisp-obj-address designator)))
          (description (description designator))
          (result (alter-node
-                  (cram-designators:make-designator
-                   'cram-designators:action
-                   (list (list 'command 'add-designator)
-                         (list 'type type)
-                         (list 'annotation annotation)
-                         (list 'memory-address memory-address)
-                         (list 'description description))))))
+                  (list (list 'command 'add-designator)
+                        (list 'type type)
+                        (list 'annotation annotation)
+                        (list 'memory-address memory-address)
+                        (list 'description description)))))
     (when result
       (let* ((desig-id (desig-prop-value (first result) 'desig-props::id)))
         desig-id))))
@@ -234,15 +235,13 @@
                         (cram-designators:location-designator "LOCATION")
                         (cram-designators:object-designator "OBJECT"))))
     (alter-node
-     (cram-designators:make-designator
-      'cram-designators:action
-      `((command equate-designators)
-        (memory-address-child ,mem-addr-child)
-        (type-child ,type-child)
-        (description-child ,desc-child)
-        (memory-address-parent ,mem-addr-parent)
-        (type-parent ,type-parent)
-        (description-parent ,desc-parent))))))
+     `((command equate-designators)
+       (memory-address-child ,mem-addr-child)
+       (type-child ,type-child)
+       (description-child ,desc-child)
+       (memory-address-parent ,mem-addr-parent)
+       (type-parent ,type-parent)
+       (description-parent ,desc-parent)))))
 
 (defun extract-files (&key (name "cram_log") detail-level)
   (extract-meta-file)

@@ -27,34 +27,86 @@
 
 (in-package :beliefstate)
 
-(defmethod sem-map-coll-env::on-publishing-collision-object
-    cram-beliefstate (object obj-name)
-  (with-slots ((pose sem-map-coll-env::pose)
-               (type sem-map-coll-env::type)
-               (index sem-map-coll-env::index)
-               (name sem-map-coll-env::name)
-               (dimensions sem-map-coll-env::dimensions)) object
-    (let* ((surfaces
-             `(,(cons "kitchen_island" "HTTP://IAS.CS.TUM.EDU/KB/KNOWROB.OWL#KITCHEN_ISLAND_COUNTER_TOP-0")
-               ,(cons "kitchen_sink_block" "HTTP://IAS.CS.TUM.EDU/KB/KNOWROB.OWL#KITCHEN_SINK_BLOCK_COUNTER_TOP-0")))
-           (entry (find obj-name surfaces :test (lambda (x y)
-                                                  (string= x (cdr y))))))
-      (when entry
-        (let ((offset-pose (tf:make-pose (tf:v+ (tf:origin pose)
-                                                (tf:make-3d-vector 0 0 0.01))
-                                         (tf:orientation pose))))
-          (beliefstate:register-interactive-object
-           (car entry) 'box offset-pose
-           (vector (sem-map-coll-env::x dimensions)
-                   (sem-map-coll-env::y dimensions)
-                   (sem-map-coll-env::z dimensions))
-           `((examine-tabletop ((label ,(concatenate 'string
-                                                     "Examine countertop '"
-                                                     (car entry)
-                                                     "'"))
-                                (parameter ,(car entry)))))))))))
+(defmethod cram-language::on-annotate-parameters cram-beliefstate (parameters)
+  (add-designator-to-active-node
+   (make-designator 'object `(,parameters))
+   :annotation "parameter-annotation"))
 
-(defmethod plan-lib::on-preparing-performing-action-designator
+(defmethod cram-language::on-predict cram-beliefstate (active-parameters
+                                                         requested-features)
+  (let ((result (alter-node `((active-features ,active-parameters)
+                              (requested-features ,requested-features))
+                            :mode :service
+                            :command "predict"))
+        (result-hash-table (make-hash-table)))
+    (when result
+      (loop for item in (description (first result))
+            do (destructuring-bind (label value) item
+                 (let ((interned-label (intern (symbol-name label)
+                                               'desig-props)))
+                   (setf
+                    (gethash interned-label result-hash-table)
+                    (cond ((eql interned-label 'desig-props::failures)
+                           (cond ((listp value)
+                                  (let ((fail-hash (make-hash-table)))
+                                    (loop for item in value
+                                          do (destructuring-bind (fail val) item
+                                               (setf (gethash
+                                                      (intern
+                                                       (symbol-name fail)
+                                                       'cram-plan-failures)
+                                                      fail-hash)
+                                                     val)))
+                                    fail-hash))
+                                 (t (make-hash-table))))
+                          (t value)))))))
+    result-hash-table))
+
+(defmethod cram-language::on-load-model cram-beliefstate (file)
+  "Load model for prediction."
+  (alter-node `((command "load-model")
+                (type "task-tree")
+                (file ,(string file)))
+              :mode :service
+              :command "load-model"))
+
+(defmethod cram-language::on-load-decision-tree cram-beliefstate (file)
+  "Load decision tree for prediction."
+  (alter-node `((command "load-model")
+                (type "decision-tree")
+                (file ,(string file)))
+              :mode :service
+              :command "load-model"))
+
+(defmethod cram-language::on-publishing-collision-object
+    cram-beliefstate (object obj-name)
+  ;; (with-slots ((pose sem-map-coll-env::pose)
+  ;;              (type sem-map-coll-env::type)
+  ;;              (index sem-map-coll-env::index)
+  ;;              (name sem-map-coll-env::name)
+  ;;              (dimensions sem-map-coll-env::dimensions)) object
+  ;;   (let* ((surfaces
+  ;;            `(,(cons "kitchen_island" "HTTP://IAS.CS.TUM.EDU/KB/KNOWROB.OWL#KITCHEN_ISLAND_COUNTER_TOP-0")
+  ;;              ,(cons "kitchen_sink_block" "HTTP://IAS.CS.TUM.EDU/KB/KNOWROB.OWL#KITCHEN_SINK_BLOCK_COUNTER_TOP-0")))
+  ;;          (entry (find obj-name surfaces :test (lambda (x y)
+  ;;                                                 (string= x (cdr y))))))
+  ;;     (when entry
+  ;;       (let ((offset-pose (tf:make-pose (tf:v+ (tf:origin pose)
+  ;;                                               (tf:make-3d-vector 0 0 0.01))
+  ;;                                        (tf:orientation pose))))
+  ;;         (beliefstate:register-interactive-object
+  ;;          (car entry) 'box offset-pose
+  ;;          (vector (sem-map-coll-env::x dimensions)
+  ;;                  (sem-map-coll-env::y dimensions)
+  ;;                  (sem-map-coll-env::z dimensions))
+  ;;          `((examine-tabletop ((label ,(concatenate 'string
+  ;;                                                    "Examine countertop '"
+  ;;                                                    (car entry)
+  ;;                                                    "'"))
+  ;;                               (parameter ,(car entry))))))))))
+  )
+
+(defmethod cram-language::on-preparing-performing-action-designator
     cram-beliefstate (designator matching-process-modules)
   (prog1
       (beliefstate:start-node
@@ -69,7 +121,7 @@
        2)
     (beliefstate:add-designator-to-active-node designator)))
 
-(defmethod plan-lib::on-finishing-performing-action-designator
+(defmethod cram-language::on-finishing-performing-action-designator
     cram-beliefstate (id success)
   (declare (ignore success))
   ;; NOTE(winkler): Success is not used at the moment. It would be
@@ -77,19 +129,19 @@
   ;; current task". The success would the go there.
   (beliefstate:stop-node id))
 
-(defmethod cram-language-designator-support::on-with-designator
+(defmethod cram-language::on-with-designator
     cram-beliefstate (designator)
   (beliefstate:add-designator-to-active-node
    designator))
 
-(defmethod cpl-impl::on-preparing-named-top-level cram-beliefstate (name)
+(defmethod cram-language::on-preparing-named-top-level cram-beliefstate (name)
   (let ((name (or name "ANONYMOUS-TOP-LEVEL")))
     (beliefstate:start-node name `() 1)))
 
-(defmethod cpl-impl::on-finishing-named-top-level cram-beliefstate (id)
+(defmethod cram-language::on-finishing-named-top-level cram-beliefstate (id)
   (beliefstate:stop-node id))
 
-(defmethod cpl-impl::on-preparing-task-execution cram-beliefstate (name log-parameters)
+(defmethod cram-language::on-preparing-task-execution cram-beliefstate (name log-parameters)
   (prog1
       (beliefstate:start-node name log-parameters 1)
     (let ((goal-location (second
@@ -111,17 +163,33 @@
          `((navigate-to-x ,(tf:x (tf:origin (reference goal-location))))
            (navigate-to-y ,(tf:y (tf:origin (reference goal-location))))))))))
 
-(defmethod cpl-impl::on-finishing-task-execution cram-beliefstate (id)
+(defmethod cram-language::on-finishing-task-execution cram-beliefstate (id)
   (beliefstate:stop-node id))
 
-(defmethod cpl-impl::on-fail cram-beliefstate (datum)
+(defmethod cram-language::on-fail cram-beliefstate (datum)
   (when (symbolp datum)
     (beliefstate:add-failure-to-active-node datum)))
 
-(defmethod desig::on-equate-designators (successor parent)
+(defmethod cram-utilities::on-equate-designators (successor parent)
   (beliefstate:equate-designators successor parent))
 
-(defmethod point-head-process-module::on-begin-move-head
+(defmethod cram-language::on-begin-execute-tag-task cram-beliefstate (task)
+  (let ((name (slot-value task 'cpl-impl:name)))
+    (prog1
+        (beliefstate:start-node
+         "TAG" `() 2)
+      (beliefstate::annotate-parameter
+       'tagName (write-to-string name))
+      (beliefstate:add-designator-to-active-node
+       (make-designator
+        'cram-designators:action
+        `((name ,name)))
+       :annotation "tag-details"))))
+
+(defmethod cram-language::on-finish-execute-tag-task cram-beliefstate (id)
+  (beliefstate:stop-node id))
+
+(defmethod cram-language::on-begin-move-head
     cram-beliefstate (pose-stamped)
   (prog1
       (beliefstate:start-node
@@ -133,10 +201,10 @@
       `((goal-pose ,pose-stamped)))
      :annotation "voluntary-movement-details")))
 
-(defmethod point-head-process-module::on-finish-move-head cram-beliefstate (id success)
+(defmethod cram-language::on-finish-move-head cram-beliefstate (id success)
   (beliefstate:stop-node id :success success))
 
-(defmethod pr2-manipulation-process-module::on-begin-grasp cram-beliefstate (obj-desig)
+(defmethod cram-language::on-begin-grasp cram-beliefstate (obj-desig)
   (prog1
       (beliefstate:start-node "GRASP" `() 2)
     (beliefstate:add-topic-image-to-active-node
@@ -144,24 +212,25 @@
     (beliefstate:add-designator-to-active-node
      obj-desig
      :annotation "object-acted-on")
-    (let* ((obj-pos (tf:origin
-                     (moveit:ensure-pose-stamped-transformed
-                      (reference (desig-prop-value obj-desig 'desig-props:at))
-                      "/map" :ros-time t)))
-           (base-pos (tf:origin
-                      (moveit:ensure-pose-stamped-transformed
-                       (tf:make-pose-stamped "/base_link" (roslisp:ros-time)
-                                             (tf:make-identity-vector)
-                                             (tf:make-identity-rotation))
-                       "/map" :ros-time t)))
-           (obj-dist (tf:v-dist obj-pos base-pos)))
-      (beliefstate:add-designator-to-active-node
-       (make-designator
-        'cram-designators:action
-        `((obj-dist ,obj-dist)))
-       :annotation "parameter-annotation"))))
+    ;; (let* ((obj-pos (tf:origin
+    ;;                  (moveit:ensure-pose-stamped-transformed
+    ;;                   (reference (desig-prop-value obj-desig 'desig-props:at))
+    ;;                   "/map" :ros-time t)))
+    ;;        (base-pos (tf:origin
+    ;;                   (moveit:ensure-pose-stamped-transformed
+    ;;                    (tf:make-pose-stamped "/base_link" (roslisp:ros-time)
+    ;;                                          (tf:make-identity-vector)
+    ;;                                          (tf:make-identity-rotation))
+    ;;                    "/map" :ros-time t)))
+    ;;        (obj-dist (tf:v-dist obj-pos base-pos)))
+    ;;   (beliefstate:add-designator-to-active-node
+    ;;    (make-designator
+    ;;     'cram-designators:action
+    ;;     `((obj-dist ,obj-dist)))
+    ;;    :annotation "parameter-annotation"))
+    ))
 
-(defmethod pr2-manipulation-process-module::on-grasp-decisions-complete
+(defmethod cram-language::on-grasp-decisions-complete
     cram-beliefstate (obj-name pregrasp-pose grasp-pose side object-pose)
   (beliefstate:add-designator-to-active-node
    (make-designator 'cram-designators:action
@@ -172,12 +241,12 @@
                       (object-pose ,object-pose)))
    :annotation "grasp-details"))
 
-(defmethod pr2-manipulation-process-module::on-finish-grasp cram-beliefstate (log-id success)
+(defmethod cram-language::on-finish-grasp cram-beliefstate (log-id success)
   (beliefstate:add-topic-image-to-active-node
    cram-beliefstate::*kinect-topic-rgb*)
   (beliefstate:stop-node log-id :success success))
 
-(defmethod pr2-manipulation-process-module::on-begin-putdown cram-beliefstate (obj-desig loc-desig)
+(defmethod cram-language::on-begin-putdown cram-beliefstate (obj-desig loc-desig)
   (prog1
       (beliefstate:start-node
        "PUTDOWN"
@@ -189,12 +258,12 @@
     (beliefstate:add-designator-to-active-node
      loc-desig :annotation "putdown-location")))
 
-(defmethod pr2-manipulation-process-module::on-finish-putdown cram-beliefstate (log-id success)
+(defmethod cram-language::on-finish-putdown cram-beliefstate (log-id success)
   (beliefstate:add-topic-image-to-active-node
    cram-beliefstate::*kinect-topic-rgb*)
   (beliefstate:stop-node log-id :success success))
 
-(defmethod pr2-manipulation-process-module::on-prepare-move-arm cram-beliefstate
+(defmethod cram-language::on-prepare-move-arm cram-beliefstate
     (side pose-stamped planning-group ignore-collisions)
   (prog1
       (beliefstate:start-node
@@ -210,10 +279,10 @@
                                   (t 0)))))
      :annotation "voluntary-movement-details")))
 
-(defmethod pr2-manipulation-process-module::on-finish-move-arm cram-beliefstate (id success)
+(defmethod cram-language::on-finish-move-arm cram-beliefstate (id success)
   (beliefstate:stop-node id :success success))
 
-(defmethod cram-moveit::on-begin-motion-planning cram-beliefstate (link-name)
+(defmethod cram-language::on-begin-motion-planning cram-beliefstate (link-name)
   (let ((id (beliefstate:start-node "MOTION-PLANNING" `() 2)))
     (beliefstate:add-designator-to-active-node
      (make-designator
@@ -222,23 +291,23 @@
      :annotation "motion-planning-details")
     id))
 
-(defmethod cram-moveit::on-finish-motion-planning cram-beliefstate (id)
+(defmethod cram-language::on-finish-motion-planning cram-beliefstate (id)
   (beliefstate:stop-node id))
 
-(defmethod cram-moveit::on-begin-motion-execution cram-beliefstate ()
+(defmethod cram-language::on-begin-motion-execution cram-beliefstate ()
   (let ((id (beliefstate:start-node "MOTION-EXECUTION" `() 2)))
     id))
 
-(defmethod cram-moveit::on-finish-motion-execution cram-beliefstate (id)
+(defmethod cram-language::on-finish-motion-execution cram-beliefstate (id)
   (beliefstate:stop-node id))
 
-(defmethod cram-plan-library::on-begin-find-objects cram-beliefstate ()
+(defmethod cram-language::on-begin-find-objects cram-beliefstate ()
   (beliefstate:start-node "FIND-OBJECTS" `() 2))
 
-(defmethod cram-plan-library::on-finish-find-objects (id)
+(defmethod cram-language::on-finish-find-objects (id)
   (beliefstate:stop-node id))
 
-(defmethod cram-uima::on-prepare-request cram-beliefstate (designator-request)
+(defmethod cram-language::on-prepare-request cram-beliefstate (designator-request)
   )
   ;; (let ((id (beliefstate:start-node
   ;;            "UIMA-PERCEIVE"
@@ -247,7 +316,7 @@
   ;;                                              :annotation "perception-request")
   ;;   id))
 
-(defmethod cram-uima::on-finish-request cram-beliefstate (id result)
+(defmethod cram-language::on-finish-request cram-beliefstate (id result)
   )
   ;; (dolist (desig result)
   ;;   (beliefstate:add-object-to-active-node
@@ -255,15 +324,15 @@
   ;; (beliefstate:add-topic-image-to-active-node cram-beliefstate::*kinect-topic-rgb*)
   ;; (beliefstate:stop-node id :success (not (eql result nil))))
 
-(defmethod robosherlock-process-module::on-begin-belief-state-update
+(defmethod cram-language::on-begin-belief-state-update
     cram-beliefstate ()
   (beliefstate:start-node "BELIEF-STATE-UPDATE" `() 2))
 
-(defmethod robosherlock-process-module::on-finish-belief-state-update
+(defmethod cram-language::on-finish-belief-state-update
     cram-beliefstate (id)
   (beliefstate:stop-node id))
 
-(defmethod robosherlock-process-module::on-begin-object-identity-resolution
+(defmethod cram-language::on-begin-object-identity-resolution
     cram-beliefstate (object-type)
   (let ((id (beliefstate:start-node "OBJECT-IDENTITY-RESOLUTION" `() 2)))
     (beliefstate:add-designator-to-active-node
@@ -273,7 +342,7 @@
      :annotation "object-identity-resolution-details")
     id))
 
-(defmethod robosherlock-process-module::on-finish-object-identity-resolution
+(defmethod cram-language::on-finish-object-identity-resolution
     cram-beliefstate (id resolved-name)
   (beliefstate:add-designator-to-active-node
    (make-designator
@@ -282,7 +351,7 @@
    :annotation "object-identity-resolution-results")
   (beliefstate:stop-node id))
 
-(defmethod robosherlock-process-module::on-prepare-request cram-beliefstate (designator-request)
+(defmethod cram-language::on-prepare-request cram-beliefstate (designator-request)
   (let ((id (beliefstate:start-node
              "UIMA-PERCEIVE"
              (cram-designators:description designator-request) 2)))
@@ -290,14 +359,14 @@
                                                :annotation "perception-request")
     id))
 
-(defmethod robosherlock-process-module::on-finish-request cram-beliefstate (id designators-result)
+(defmethod cram-language::on-finish-request cram-beliefstate (id designators-result)
   (dolist (desig designators-result)
     (beliefstate:add-object-to-active-node
      desig :annotation "perception-result"))
   (beliefstate:add-topic-image-to-active-node cram-beliefstate::*kinect-topic-rgb*)
   (beliefstate:stop-node id :success (not (eql designators-result nil))))
 
-(defmethod cpl-impl::on-with-failure-handling-begin cram-beliefstate (clauses)
+(defmethod cram-language::on-with-failure-handling-begin cram-beliefstate (clauses)
   (prog1
       (beliefstate:start-node "WITH-FAILURE-HANDLING" (mapcar (lambda (clause)
                                                                 `(clause ,clause))
@@ -310,16 +379,16 @@
               clauses))
      :annotation "with-failure-handling-clauses")))
 
-(defmethod cpl-impl::on-with-failure-handling-handled cram-beliefstate (id)
+(defmethod cram-language::on-with-failure-handling-handled cram-beliefstate (id)
   (catch-current-failure-with-active-node id))
 
-(defmethod cpl-impl::on-with-failure-handling-rethrown cram-beliefstate (id)
+(defmethod cram-language::on-with-failure-handling-rethrown cram-beliefstate (id)
   (rethrow-current-failure-with-active-node id))
 
-(defmethod cpl-impl::on-with-failure-handling-end cram-beliefstate (id)
+(defmethod cram-language::on-with-failure-handling-end cram-beliefstate (id)
   (beliefstate:stop-node id))
 
-(defmethod cpl::on-with-policy-begin (name parameters)
+(defmethod cram-language::on-with-policy-begin (name parameters)
   (prog1
       (beliefstate:start-node "WITH-POLICY" (append `(policy ,name) parameters) 2)
     (beliefstate:add-designator-to-active-node
@@ -329,7 +398,7 @@
         (parameters ,parameters)))
      :annotation "with-policy-details")))
 
-(defmethod cpl::on-with-policy-end (id success)
+(defmethod cram-language::on-with-policy-end (id success)
   (beliefstate:stop-node id :success success))
 
 ;; (defmethod cram-memoryaware::on-begin-theme (theme)
@@ -343,36 +412,20 @@
 ;; (defmethod cram-memoryaware::on-end-theme (id)
 ;;   (beliefstate:stop-node id))
 
-(defmethod cram-reasoning::on-prepare-prolog-prove cram-beliefstate (query binds)
-  ;; (prog1
-  ;;     (beliefstate:start-node "PROLOG" `() 3)
-  ;;   (beliefstate:add-designator-to-active-node
-  ;;    (make-designator
-  ;;     'cram-designators:action
-  ;;     `((query ,(write-to-string query))
-  ;;       (bindings ,(write-to-string binds))))
-  ;;       ;(type cram)))
-  ;;    :annotation "prolog-details"))
-  )
+;; (defmethod cram-utilities::on-prepare-prolog-prove cram-beliefstate (request)
+;;   ;; (prog1
+;;   ;;     (beliefstate:start-node "PROLOG" `() 3)
+;;   ;;   (beliefstate:add-designator-to-active-node
+;;   ;;    (make-designator
+;;   ;;     'cram-designators:action
+;;   ;;     `(,@(loop for i from 0 below (length request) by 2
+;;   ;;               as smbl = (nth i request)
+;;   ;;               as val = (nth (1+ i) request)
+;;   ;;               collect `(,(write-to-string smbl) ,(write-to-string val)))))
+;;   ;;       ;(type jsonprolog)))
+;;   ;;    :annotation "prolog-details"))
+;;   )
 
-(defmethod cram-reasoning::on-finish-prolog-prove cram-beliefstate (id success)
-  ;(beliefstate:stop-node id :success success)
-  )
-
-(defmethod json-prolog::on-prepare-prolog-prove cram-beliefstate (request)
-  ;; (prog1
-  ;;     (beliefstate:start-node "PROLOG" `() 3)
-  ;;   (beliefstate:add-designator-to-active-node
-  ;;    (make-designator
-  ;;     'cram-designators:action
-  ;;     `(,@(loop for i from 0 below (length request) by 2
-  ;;               as smbl = (nth i request)
-  ;;               as val = (nth (1+ i) request)
-  ;;               collect `(,(write-to-string smbl) ,(write-to-string val)))))
-  ;;       ;(type jsonprolog)))
-  ;;    :annotation "prolog-details"))
-  )
-
-(defmethod json-prolog::on-finish-prolog-prove cram-beliefstate (id)
-  ;(beliefstate:stop-node id)
-  )
+;; (defmethod cram-utilities::on-finish-prolog-prove cram-beliefstate (id)
+;;   ;(beliefstate:stop-node id)
+;;   )

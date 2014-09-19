@@ -37,15 +37,6 @@
 (defun annotate-parameter (symbol value)
   (annotate-parameters `((,symbol ,value))))
 
-(defun load-prediction-model (file)
-  "Load model for prediction."
-  (designator-integration-lisp:call-designator-service
-   "/beliefstate_ros/load"
-   (make-designator
-    'action
-    `((load "model")
-      (file ,(string file))))))
-
 (defun predict (parameters)
   "Predict the outcome of the current branch."
   (designator-integration-lisp:call-designator-service
@@ -69,7 +60,6 @@
 (defun predict-failures-hash-table (features-hash-table)
   (format t "Predicting all possible failures~%")
   (let ((hashes (make-hash-table)))
-    (setf (gethash 'desig-props::object-not-found hashes) (/ (random 10) 10.0))
     hashes))
 
 (defun predict-values-hash-table (keys features-hash-table)
@@ -107,7 +97,6 @@
          (loop with continue = t
                while (and continue (>= (decf attempts) 0))
                do (progn
-                    (format t "Attempts remaining: ~a~%" attempts)
                     (generate-parameters)
                     (let* ,(mapcar (lambda (parameter)
                                      `(,parameter (gethash
