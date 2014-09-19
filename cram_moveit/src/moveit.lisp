@@ -62,10 +62,10 @@ MoveIt! framework and registers known conditions."
 
 (roslisp-utilities:register-ros-init-function init-moveit-bridge)
 
-(cut:define-hook on-begin-motion-planning (link-name))
-(cut:define-hook on-finish-motion-planning (id))
-(cut:define-hook on-begin-motion-execution ())
-(cut:define-hook on-finish-motion-execution (id))
+(cut:define-hook cram-language::on-begin-motion-planning (link-name))
+(cut:define-hook cram-language::on-finish-motion-planning (id))
+(cut:define-hook cram-language::on-begin-motion-execution ())
+(cut:define-hook cram-language::on-finish-motion-execution (id))
 
 (defun move-joints (planning-group joint-names joint-positions
                     &key (wait-for-execution t))
@@ -98,7 +98,7 @@ MoveIt! framework and registers known conditions."
         (t (ros-info (moveit)
                      "Move link: ~a (~a, ignore collisions: ~a, plan only: ~a)"
                      link-name planning-group ignore-collisions plan-only)))
-  (let* ((log-id (first (on-begin-motion-planning link-name)))
+  (let* ((log-id (first (cram-language::on-begin-motion-planning link-name)))
          (planning-results
            (unwind-protect
                 (let* ((start-state (or start-state
@@ -186,15 +186,35 @@ MoveIt! framework and registers known conditions."
                         (roslisp:with-fields (val) error_code
                           (signal-moveit-error val))
                         (list trajectory_start planned_trajectory)))))
-             (on-finish-motion-planning log-id))))
+             (cram-language::on-finish-motion-planning log-id))))
     (cond ((not plan-only)
-           (let ((log-id (first (on-begin-motion-execution))))
+           (let ((log-id (first (cram-language::on-begin-motion-execution))))
              (unwind-protect
-                  (execute-trajectory (second planning-results)
-                                      :wait-for-execution wait-for-execution)
-               (on-finish-motion-execution log-id)))))
+                  (execute-trajectories
+                   `(,(second planning-results))
+                   :wait-for-execution wait-for-execution)
+               (cram-language::on-finish-motion-execution log-id)))))
     (ros-info (moveit) "Done moving")
     (values (first planning-results) (second planning-results))))
+
+(defmacro move-multiple-links-independently
+    (link-names planning-groups poses-stamped ignore-collisions)
+  (let ((trajectories
+          (mapcar (lambda (link-name
+                           planning-group
+                           pose-stamped
+                           ignore-collision)
+                    (multiple-value-bind (start-state
+                                          trajectory)
+                        (move-link-pose
+                         link-name planning-group pose-stamped
+                         :ignore-collisions ignore-collision
+                         :plan-only t)
+                      (declare (ignore start-state))
+                      trajectory))
+                  link-names planning-groups poses-stamped
+                  ignore-collisions)))
+    (execute-trajectories trajectories)))
 
 (defun plan-base-movement (x y theta)
   (move-link-joint-states
@@ -270,6 +290,145 @@ MoveIt! framework and registers known conditions."
                           :success))
           (signal-moveit-error val))))
     t))
+
+(defun execute-trajectories (trajectories &key (wait-for-execution t))
+  (ros-info (moveit) "Executing ~a trajector~a."
+            (length trajectories)
+            (if (= (length trajectories) 1) "y" "ies"))
+  (execute-trajectory
+   (merge-trajectories trajectories)
+   :wait-for-execution wait-for-execution))
+  ;; (loop for i from 0 below (length trajectories)
+  ;;       for wait = (or (not (< i (1- (length trajectories))))
+  ;;                      wait-for-execution)
+  ;;       do (execute-trajectory (nth i trajectories)
+  ;;                              :wait-for-execution wait)))
+
+(defun trajectory-length (trajectory)
+  (with-fields (joint_trajectory) trajectory
+    (with-fields (points) joint_trajectory
+      (length points))))
+
+(defun longest-trajectory (trajectories)
+  (loop for trajectory in trajectories
+        maximizing (trajectory-length trajectory)))
+
+(defun trajectory-names (trajectory)
+  (with-fields (joint_trajectory) trajectory
+    (with-fields (joint_names) joint_trajectory
+      joint_names)))
+
+(defun merge-trajectory-names (trajectories)
+  (loop for trajectory in trajectories
+        for names = (map 'list #'identity (trajectory-names trajectory))
+        append names into merged-names
+        finally (return merged-names)))
+
+(defun merged-trajectory-positions (trajectories index)
+  (map 'vector #'identity
+       (loop for trajectory in trajectories
+             for positions = (map 'list
+                                  #'identity
+                                  (with-fields (joint_trajectory) trajectory
+                                    (with-fields (points) joint_trajectory
+                                      (with-fields (positions) (elt points index)
+                                        positions))))
+             append positions into merged
+             finally (return merged))))
+
+(defun merged-trajectory-velocities (trajectories index)
+  (map 'vector #'identity
+       (loop for trajectory in trajectories
+             for velocities = (map 'list
+                                   #'identity
+                                   (with-fields (joint_trajectory) trajectory
+                                     (with-fields (points) joint_trajectory
+                                       (with-fields (velocities) (elt points index)
+                                         velocities))))
+             append velocities into merged
+             finally (return merged))))
+
+(defun merged-trajectory-accelerations (trajectories index)
+  (map 'vector #'identity
+       (loop for trajectory in trajectories
+             for accelerations = (map 'list
+                                      #'identity
+                                      (with-fields (joint_trajectory) trajectory
+                                        (with-fields (points) joint_trajectory
+                                          (with-fields (accelerations) (elt points index)
+                                            accelerations))))
+             append accelerations into merged
+             finally (return merged))))
+
+(defun latest-time-for-trajectory-point (trajectories index)
+  (loop for trajectory in trajectories
+        maximizing (with-fields (joint_trajectory) trajectory
+                     (with-fields (points) joint_trajectory
+                       (with-fields (time_from_start) (elt points index)
+                         time_from_start)))
+        into max-val
+        finally (return max-val)))
+
+(defun stretch-trajectories (trajectories stretch-to-length)
+  (mapcar (lambda (trajectory)
+            (let ((len (trajectory-length trajectory)))
+              (cond ((= len stretch-to-length)
+                     trajectory)
+                    (t (with-fields (joint_trajectory
+                                     multi_dof_joint_trajectory) trajectory
+                         (let ((points (with-fields (points) joint_trajectory
+                                         points)))
+                           (with-fields (header joint_names) joint_trajectory
+                             (make-message
+                              "moveit_msgs/RobotTrajectory"
+                              :joint_trajectory
+                              (make-message
+                               "trajectory_msgs/JointTrajectory"
+                               :header header
+                               :joint_names joint_names
+                               :points
+                               (map
+                                'vector #'identity
+                                (append
+                                 (map 'list #'identity points)
+                                 (mapcar (lambda (x)
+                                           (declare (ignore x))
+                                           (elt points (1- (length points))))
+                                         (loop for i from 0 below
+                                                            (- stretch-to-length
+                                                               len)
+                                               collect i)))))
+                              :multi_dof_joint_trajectory
+                              multi_dof_joint_trajectory))))))))
+          trajectories))
+
+(defun merge-trajectories (trajectories)
+  (let* ((longest (longest-trajectory trajectories))
+         (merged-trajectory-names
+           (merge-trajectory-names trajectories))
+         (stretched-trajectories
+           (stretch-trajectories
+            trajectories longest)))
+    (make-message
+     "moveit_msgs/RobotTrajectory"
+     :joint_trajectory
+     (make-message
+      "trajectory_msgs/JointTrajectory"
+      :joint_names (map 'vector #'identity merged-trajectory-names)
+      :points
+      (map 'vector #'identity
+           (loop for i from 0 below longest
+                 collect
+                 (make-message
+                  "trajectory_msgs/JointTrajectoryPoint"
+                  :positions (merged-trajectory-positions
+                              stretched-trajectories i)
+                  :velocities (merged-trajectory-velocities
+                               stretched-trajectories i)
+                  :accelerations (merged-trajectory-accelerations
+                                  stretched-trajectories i)
+                  :time_from_start (latest-time-for-trajectory-point
+                                    stretched-trajectories i))))))))
 
 (defun compute-ik (link-name planning-group pose-stamped &key robot-state)
   "Computes an inverse kinematics solution (if possible) of the given

@@ -115,11 +115,11 @@ for a reply on another topic."
    "_"
    (write-to-string (random 1000000))))
 
-(define-hook on-prepare-request (designator-request))
-(define-hook on-finish-request (log-id result))
+(define-hook cram-language::on-prepare-request (designator-request))
+(define-hook cram-language::on-finish-request (log-id result))
 
 (defun get-uima-result (designator-request &key (max-age 3.0))
-  (let* ((log-id (first (on-prepare-request designator-request)))
+  (let* ((log-id (first (cram-language::on-prepare-request designator-request)))
          (result-designators
            (roslisp:with-fields (designators)
                (cond ((and *stored-result*
@@ -153,7 +153,7 @@ for a reply on another topic."
                           (desig-int::msg->designator x))
                   designators))))
     ;(roslisp:ros-info (uima) "Post processing perception results")
-    (on-finish-request log-id result-designators)
+    (cram-language::on-finish-request log-id result-designators)
     (progn
       ;(format t "Returning~%")
       result-designators)))
