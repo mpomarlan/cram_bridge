@@ -33,64 +33,100 @@
 (defun make-wsg50-interface (namespace)
   "Creates and returns an instance of type 'wsg50-interface':"
   (declare (type string namespace))
-  (let* ((open-service-name (concatenate 'string namespace "/release"))
-         (close-service-name (concatenate 'string namespace "/grasp"))
+  (let* ((move-service-name (concatenate 'string namespace "/move"))
+         (grasp-service-name (concatenate 'string namespace "/grasp"))
          (homing-service-name (concatenate 'string namespace "/homing"))
          (status-topic-name (concatenate 'string namespace "/status"))
          (acc-service-name (concatenate 'string namespace "/set_acceleration"))
+         (stop-service-name (concatenate 'string namespace "/stop"))
+         (ack-service-name (concatenate 'string namespace "/ack"))
          (force-service-name (concatenate 'string namespace "/set_force"))
-         (open-client (make-service-client open-service-name "wsg_50_common/Move"))
-         (close-client (make-service-client close-service-name "wsg_50_common/Move"))
+         (move-client (make-service-client move-service-name "wsg_50_common/Move"))
+         (grasp-client (make-service-client grasp-service-name "wsg_50_common/Move"))
          (homing-client (make-service-client homing-service-name "std_srvs/Empty"))
          (acc-client (make-service-client acc-service-name "wsg_50_common/Conf"))
+         (stop-client (make-service-client stop-service-name "std_srvs/Empty"))
+         (ack-client (make-service-client ack-service-name "std_srvs/Empty"))
          (force-client (make-service-client force-service-name "wsg_50_common/Conf")))
     (let ((interface (make-instance 'wsg50-interface 
-                                    :open-client open-client 
-                                    :close-client close-client
+                                    :move-client move-client 
+                                    :grasp-client grasp-client
                                     :homing-client homing-client
                                     :acceleration-client acc-client
+                                    :stop-client stop-client
+                                    :ack-client ack-client
                                     :force-client force-client)))
       (add-status-subscriber interface status-topic-name)
       interface)))
 
-(defun open-gripper (interface &key (width *completely-open-width*) (speed *default-speed*)
+(defun move-gripper (interface &key (width *completely-open-width*) (speed *default-speed*)
                                  (acceleration *default-acceleration*)
-                                 (force *default-force*))
-  "Opens the Schunk WSG50 gripper behind `interface' width a set-point of `width' (in mm),
- and a speed of `speed' (mm/s). Might throw a condition of type 'wsg50-command-error'."
+                                 (force *default-force*)
+                                 (suppress-error t))
+  "Moves the Schunk WSG50 gripper behind `interface' width a set-point of `width' (in mm),
+ and a speed of `speed' (mm/s). Expects to not hit any external object. Might throw a
+ condition of type 'wsg50-command-error'."
   (declare (type wsg50-interface interface))
   (with-recursive-lock ((command-lock interface))
     (ensure-acceleration interface acceleration)
     (ensure-force interface force)
     (with-fields (error)
-        (call-service (open-client interface) :width width :speed speed)
+        (call-service (move-client interface) :width width :speed speed)
       (unless (error-code-fine-p error)
-        (error 'wsg50-command-error 
-               :test "An error occured during opening of gripper."
-               :error-code error)))))
+        (if suppress-error
+            (progn
+              (warn "An error occured during moving the gripper.")
+              (stop-acknowledge-error interface))
+            (error 'wsg50-command-error 
+                   :test "An error occured during moving the gripper."
+                   :error-code error))))))
 
-(defun close-gripper (interface &key (width *completely-closed-width*)
+(defun grasp-gripper (interface &key (width *completely-closed-width*)
                                   (speed *default-speed*) 
                                   (acceleration *default-acceleration*)
-                                  (force *default-force*))
+                                  (force *default-force*)
+                                  (suppress-error t))
   "Closes the Schunk WSG50 gripper behind `interface' width a set-point of `width' (in mm),
- and a speed of `speed' (mm/s). Might throw a condition of type 'wsg50-command-error'."
+ and a speed of `speed' (mm/s). Expects to grasp an object. Might throw a condition of type
+ 'wsg50-command-error'."
   (declare (type wsg50-interface interface))
   (with-recursive-lock ((command-lock interface))
     (ensure-acceleration interface acceleration)
     (ensure-force interface force)
     (with-fields (error)
-        (call-service (close-client interface) :width width :speed speed)
+        (call-service (grasp-client interface) :width width :speed speed)
       (unless (error-code-fine-p error)
-        (error 'wsg50-command-error 
-               :text "An error occured during closing of gripper."
-               :error-code error)))))
-
+        (if suppress-error
+            (progn
+              (warn "An error occured during grasping with the gripper.")
+              (stop-acknowledge-error interface))
+            (error 'wsg50-command-error 
+                   :text "An error occured during grasping with the gripper."
+                   :error-code error))))))
+  
 (defun home-gripper (interface)
   "Commands Schunk WSG50 gripper behind `interface' to home."
   (declare (type wsg50-interface interface))
   (with-recursive-lock ((command-lock interface))
     (call-service (homing-client interface))))
+
+(defun acknowledge-error (interface)
+  "Commands Schunk WSG50 gripper behind `interface' to acknowledge an error."
+  (declare (type wsg50-interface interface))
+  (with-recursive-lock ((command-lock interface))
+    (call-service (ack-client interface))))
+
+(defun fast-stop (interface)
+  "Commands Schunk WSG50 gripper behind `interface' to make a fast stop."
+  (declare (type wsg50-interface interface))
+  (with-recursive-lock ((command-lock interface))
+    (call-service (stop-client interface))))
+
+(defun stop-acknowledge-error (interface)
+  "Stops Schunk WSG50 behind `interface' and acknowledges an error. As required
+ by the protocol to return to state IDLE."
+  (fast-stop interface)
+  (acknowledge-error interface))
 
 (define-condition wsg50-command-error (error)
   ((text :initarg :text :reader text)
