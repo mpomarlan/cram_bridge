@@ -28,30 +28,45 @@
 
 (in-package :cram-beasty)
 
+;;;
+;;; ROS ACTION UTILS
+;;;
+
+(defun action-succeeded-p (client)
+  (eql (state client) :SUCCEEDED))
+
+(defmacro make-beasty-goal (goal-description)
+  `(apply #'roslisp::make-message-fn 
+          *beasty-goal-type* ,goal-description))
+
+(defun extract-cmd-id (action-result command-code)
+  (with-fields ((cmd-id (cmd_id com state))) action-result 
+    (elt cmd-id command-code)))
+
 (defun get-beasty-command-code (command-symbol)
   "Returns the Beasty command-code defined in dlr_msgs/RCUGoal which corresponds to
    `command-symbol'."
   (declare (type symbol command-symbol))
   (roslisp-msg-protocol:symbol-code 'dlr_msgs-msg:rcugoal command-symbol))
 
-(defun get-strongest-collision (state)
-  "Iterates over the vector of joint-collisions in beasty-state `state' and returns the
- symbol of the strongest type of collision detected. If nothing detected, :NO-CONTACT will
- be returned."
-  (declare (type beasty-state state))
-  (let ((collisions 
-          (if (slot-boundp state 'joint-collisions) (joint-collisions state) nil)))
-    (labels ((collision-symbol->number (collision)
-               (case collision
-                 (:NO-CONTACT 0)
-                 (:CONTACT 1)
-                 (:LIGHT-COLLISION 2)
-                 (:STRONG-COLLISION 3)
-                 (:SEVERE-COLLISION 4)))
-             (pick-stronger-collision (collision1 collision2)
-               (if (> (collision-symbol->number collision1)
-                      (collision-symbol->number collision2))
-                   collision1
-                   collision2)))
-      (reduce #'pick-stronger-collision collisions
-              :key #'collision-type :initial-value :NO-CONTACT))))
+;; (defun get-strongest-collision (state)
+;;   "Iterates over the vector of joint-collisions in beasty-state `state' and returns the
+;;  symbol of the strongest type of collision detected. If nothing detected, :NO-CONTACT will
+;;  be returned."
+;;   (declare (type beasty-state state))
+;;   (let ((collisions 
+;;           (if (slot-boundp state 'joint-collisions) (joint-collisions state) nil)))
+;;     (labels ((collision-symbol->number (collision)
+;;                (case collision
+;;                  (:NO-CONTACT 0)
+;;                  (:CONTACT 1)
+;;                  (:LIGHT-COLLISION 2)
+;;                  (:STRONG-COLLISION 3)
+;;                  (:SEVERE-COLLISION 4)))
+;;              (pick-stronger-collision (collision1 collision2)
+;;                (if (> (collision-symbol->number collision1)
+;;                       (collision-symbol->number collision2))
+;;                    collision1
+;;                    collision2)))
+;;       (reduce #'pick-stronger-collision collisions
+;;               :key #'collision-type :initial-value :NO-CONTACT))))

@@ -31,33 +31,36 @@
 (defpackage :cram-beasty
   (:use #:roslisp
         #:common-lisp
-        #:sb-thread)
-  (:export 
-   ;; top-level interaction with beasty interface
-   :make-beasty-interface :cleanup-beasty-interface :beasty-interface :command-beasty
-   :cancel-command :robot :state :stop-beasty
-   ;; modelling of LWR robot for beasty
-   :beasty-robot :simulation-flag :tool-configuration :base-configuration
-   :beasty-base :base-transform :base-acceleration :base-frame-id :beasty-tool
-   :ee-transform :mass :com :collision :joint-name :collision-type :link-name
-   ;; commanding gravity compensation parameters
-   :gravity-control-parameters :max-joint-vel :max-joint-acc
-   ;; commanding joint impedance parameters
-   :make-joint-impedance-goal :joint-impedance-control-parameters :joint-goal
-   :joint-stiffness :joint-damping
-   ;; commanding cartesian impedance parameters
-   :cartesian-impedance-control-parameters :cart-stiffness :cart-damping
-   :nullspace-stiffness :nullspace-damping :nullspace-dir :filter-gains
-   :goal-pose :max-cart-vel :max-cart-acc
-   ;; commanding a complete stop with brakes kicking in
-   :hard-stop-parameters
-   ;; state feedback coming from controller
-   :beasty-state :motor-power-on :emergency-released :joint-values :tcp-pose
-   :get-strongest-collision
-   ;; safety settings
-   :make-safety-settings :store-reflex :remove-reflex :safety-settings-valid-p
-   :make-beasty-reflex :human
-   ;; collision types
-   :NO-COLLISION :CONTACT :LIGHT-COLLISION :STRONG-COLLISION :SEVERE-COLLISION
-   ;; reaction types
-   :IGNORE :ZERO-G :JOINT-IMP :SOFT-STOP :HARD-STOP))
+        #:sb-thread
+        #:actionlib-lisp
+        )
+  ;; (:export 
+  ;;  ;; top-level interaction with beasty interface
+  ;;  :make-beasty-interface :cleanup-beasty-interface :beasty-interface :command-beasty
+  ;;  :cancel-command :robot :state :stop-beasty
+  ;;  ;; modelling of LWR robot for beasty
+  ;;  :beasty-robot :simulation-flag :tool-configuration :base-configuration
+  ;;  :beasty-base :base-transform :base-acceleration :base-frame-id :beasty-tool
+  ;;  :ee-transform :mass :com :collision :joint-name :collision-type :link-name
+  ;;  ;; commanding gravity compensation parameters
+  ;;  :gravity-control-parameters :max-joint-vel :max-joint-acc
+  ;;  ;; commanding joint impedance parameters
+  ;;  :make-joint-impedance-goal :joint-impedance-control-parameters :joint-goal
+  ;;  :joint-stiffness :joint-damping
+  ;;  ;; commanding cartesian impedance parameters
+  ;;  :cartesian-impedance-control-parameters :cart-stiffness :cart-damping
+  ;;  :nullspace-stiffness :nullspace-damping :nullspace-dir :filter-gains
+  ;;  :goal-pose :max-cart-vel :max-cart-acc
+  ;;  ;; commanding a complete stop with brakes kicking in
+  ;;  :hard-stop-parameters
+  ;;  ;; state feedback coming from controller
+  ;;  :beasty-state :motor-power-on :emergency-released :joint-values :tcp-pose
+  ;;  :get-strongest-collision
+  ;;  ;; safety settings
+  ;;  :make-safety-settings :store-reflex :remove-reflex :safety-settings-valid-p
+  ;;  :make-beasty-reflex :human
+  ;;  ;; collision types
+  ;;  :NO-COLLISION :CONTACT :LIGHT-COLLISION :STRONG-COLLISION :SEVERE-COLLISION
+  ;;  ;; reaction types
+  ;;  :IGNORE :ZERO-G :JOINT-IMP :SOFT-STOP :HARD-STOP)
+  )
