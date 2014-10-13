@@ -52,5 +52,8 @@
   ((:module "src"
     :components
     ((:file "package")
-     (:file "action-designator" :depends-on ("package"))
-     (:file "process-module" :depends-on ("package"))))))
+     (:file "facts" :depends-on ("package"))
+     (:file "action-designator" :depends-on ("package" "facts"))
+     (:file "interface" :depends-on ("package" "facts" "action-designator"))
+     (:file "process-module"
+      :depends-on ("package" "facts" "action-designator" "interface"))))))

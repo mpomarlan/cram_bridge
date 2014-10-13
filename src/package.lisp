@@ -40,10 +40,17 @@
   (:import-from #:cram-reasoning #:<- #:def-fact-group)
   (:import-from #:cram-manipulation-knowledge
                 trajectory-point end-effector-link)
-  (:export robosherlock-process-module)
+  (:export robosherlock-process-module
+           infer-object-property)
   (:desig-properties #:to #:perceive #:obj #:examine #:property #:properties
                      #:color #:size #:shape #:pose-on-plane #:z-offset
                      #:grasp-pose #:grasp-poses #:object-identifier #:dimensions
                      #:pose #:identifier #:grasp-type #:unknown #:spatula
                      #:pancakemaker #:milkbox #:pancakemix #:scene
-                     #:cylinder #:box #:yellow #:pancake #:pose-center))
+                     #:cylinder #:box #:yellow #:pancake #:pose-center
+                     #:colors #:height #:width #:depth #:bb-pose
+                     #:black #:white #:grey #:red #:blue #:magenta #:green
+                     #:cyan #:flat #:round #:plane-distance #:at
+                     #:resolution #:dimensions-3d #:dimensions-2d
+                     #:boundingbox #:objectid #:lastseen #:name
+                     #:segment))
