@@ -34,14 +34,10 @@
  (:use
   #:common-lisp
   #:cram-roslisp-common
-  #:cram-reasoning
-  #:cram-process-modules
-  #:crs
   #:cut
   #:desig
   #:designators-ros
-  #:roslisp
-  #:cram-plan-failures)
+  #:roslisp)
   (:export
    ;; Functions
    beliefstate-init

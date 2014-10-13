@@ -27,6 +27,14 @@
 
 (in-package :beliefstate)
 
+(defmethod cram-language::on-invert-decision-tree cram-beliefstate
+    (target-result features)
+  (let ((result (alter-node `((features ,features)
+                              (target-result ,target-result))
+                            :mode :service
+                            :command "invert-decision-tree")))
+    result))
+
 (defmethod cram-language::on-annotate-parameters cram-beliefstate (parameters)
   (add-designator-to-active-node
    (make-designator 'object `(,parameters))
@@ -144,10 +152,11 @@
 (defmethod cram-language::on-preparing-task-execution cram-beliefstate (name log-parameters)
   (prog1
       (beliefstate:start-node name log-parameters 1)
-    (let ((goal-location (second
-                          (find 'cram-plan-library::goal-location log-parameters
-                                :test (lambda (x y)
-                                        (eql x (first y)))))))
+    (let ((goal-location nil))
+      ;; (second
+      ;;                     (find 'cram-plan-library::goal-location log-parameters
+      ;;                           :test (lambda (x y)
+      ;;                                   (eql x (first y)))))))
       (when goal-location
         (beliefstate:add-designator-to-active-node
          goal-location

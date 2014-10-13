@@ -15,6 +15,7 @@
   
   <depend package="roslisp" />
   <depend package="actionlib" />
+  <depend package="cram_language" />
   <depend package="designator_integration_lisp" />
   
 </package>

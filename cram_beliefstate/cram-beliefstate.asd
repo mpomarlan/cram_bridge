@@ -36,20 +36,20 @@
                cram-utilities
                designators
                designators-ros
+               cram-language
                
                ;; Old
-               ;; cram-language
-               ;; cram-plan-knowledge
-               ;; process-modules
-               ;; cram-moveit
-               ;; cram-reasoning
-               ;; cram-uima
-               ;; robosherlock-process-module
-               ;; pr2-manipulation-process-module
-               ;; point-head-process-module
-               ;; cram-plan-failures
-               ;; cram-plan-library
-               ;; cram-prediction
+               cram-plan-knowledge
+               process-modules
+               cram-moveit
+               cram-reasoning
+               cram-uima
+               robosherlock-process-module
+               pr2-manipulation-process-module
+               point-head-process-module
+               cram-plan-failures
+               cram-plan-library
+               cram-prediction
                
                ;; Communication
                actionlib

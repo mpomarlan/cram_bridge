@@ -77,64 +77,64 @@
         do (annotate-parameter h v)
            (format t "Annotated feature: ~a = ~a~%" h v)))
 
-(defmacro choose (parameters
-                  &key generators features
-                    constraints predicting (attempts 1)
-                    body)
-  `(block choose-block
-     (let ((generated-param-hash-table (make-hash-table))
-           (attempts ,attempts))
-       (labels ((generate-parameters ()
-                  ,@(loop for (variables generator) in generators
-                          collect
-                          `(let ((generated-values ,generator))
-                             ,(loop for i from 0 below (length variables)
-                                    as variable = (nth i variables)
-                                    append `(setf (gethash
-                                                   ',variable
-                                                   generated-param-hash-table)
-                                                  (nth ,i generated-values)))))))
-         (loop with continue = t
-               while (and continue (>= (decf attempts) 0))
-               do (progn
-                    (generate-parameters)
-                    (let* ,(mapcar (lambda (parameter)
-                                     `(,parameter (gethash
-                                                   ',parameter
-                                                   generated-param-hash-table)))
-                            parameters)
-                      (let* ,(append
-                              `((feature-hashes (make-hash-table)))
-                              (mapcar (lambda (feature)
-                                        (destructuring-bind (var gen)
-                                            feature
-                                          `(,var (setf (gethash
-                                                        ',var feature-hashes)
-                                                       ,gen))))
-                                      features))
-                        (let ((predicted-failures
-                                (when *enable-prediction*
-                                  (predict-failures-hash-table
-                                   feature-hashes))))
-                          (when (or (not *enable-prediction*)
-                                    (and ,@(mapcar
-                                            (lambda (constraint)
-                                              (destructuring-bind (failure
-                                                                   comparator)
-                                                  constraint
-                                                `(let ((predicted-failure
-                                                         (gethash
-                                                          ',failure
-                                                          predicted-failures)))
-                                                   ,comparator)))
-                                            constraints)))
-                            (setf continue nil)
-                            (annotate-features feature-hashes)
-                            (let ((predicted-values (predict-values-hash-table
-                                                     ',predicting
-                                                     feature-hashes)))
-                              (labels ((predicted (key)
-                                         (gethash key predicted-values)))
-                                (return-from choose-block
-                                  (values (progn ,body) t)))))))))))
-       (return-from choose-block (values nil nil)))))
+;; (defmacro choose (tag
+;;                   &key generators features
+;;                     constraints predicting (attempts 1)
+;;                     body)
+;;   `(block choose-block
+;;      (let ((generated-param-hash-table (make-hash-table))
+;;            (attempts ,attempts))
+;;        (labels ((generate-parameters ()
+;;                   ,@(loop for (variables generator) in generators
+;;                           collect
+;;                           `(let ((generated-values ,generator))
+;;                              ,(loop for i from 0 below (length variables)
+;;                                     as variable = (nth i variables)
+;;                                     append `(setf (gethash
+;;                                                    ',variable
+;;                                                    generated-param-hash-table)
+;;                                                   (nth ,i generated-values)))))))
+;;          (loop with continue = t
+;;                while (and continue (>= (decf attempts) 0))
+;;                do (progn
+;;                     (generate-parameters)
+;;                     (let* ,(mapcar (lambda (parameter)
+;;                                      `(,parameter (gethash
+;;                                                    ',parameter
+;;                                                    generated-param-hash-table)))
+;;                             parameters)
+;;                       (let* ,(append
+;;                               `((feature-hashes (make-hash-table)))
+;;                               (mapcar (lambda (feature)
+;;                                         (destructuring-bind (var gen)
+;;                                             feature
+;;                                           `(,var (setf (gethash
+;;                                                         ',var feature-hashes)
+;;                                                        ,gen))))
+;;                                       features))
+;;                         (let ((predicted-failures
+;;                                 (when *enable-prediction*
+;;                                   (predict-failures-hash-table
+;;                                    feature-hashes))))
+;;                           (when (or (not *enable-prediction*)
+;;                                     (and ,@(mapcar
+;;                                             (lambda (constraint)
+;;                                               (destructuring-bind (failure
+;;                                                                    comparator)
+;;                                                   constraint
+;;                                                 `(let ((predicted-failure
+;;                                                          (gethash
+;;                                                           ',failure
+;;                                                           predicted-failures)))
+;;                                                    ,comparator)))
+;;                                             constraints)))
+;;                             (setf continue nil)
+;;                             (annotate-features feature-hashes)
+;;                             (let ((predicted-values (predict-values-hash-table
+;;                                                      ',predicting
+;;                                                      feature-hashes)))
+;;                               (labels ((predicted (key)
+;;                                          (gethash key predicted-values)))
+;;                                 (return-from choose-block
+;;                                   (values (progn ,body) t)))))))))))
+;;        (return-from choose-block (values nil nil)))))
