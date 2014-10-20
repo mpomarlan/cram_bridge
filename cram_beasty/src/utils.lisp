@@ -35,15 +35,9 @@
 (defun action-succeeded-p (client)
   (eql (state client) :SUCCEEDED))
 
-(defun extract-cmd-id (action-result command-code)
-  (with-fields ((cmd-id (cmd_id com state))) action-result 
-    (elt cmd-id command-code)))
-
-(defun get-beasty-command-code (command-symbol)
-  "Returns the Beasty command-code defined in dlr_msgs/RCUGoal which corresponds to
-   `command-symbol'."
-  (declare (type symbol command-symbol))
-  (roslisp-msg-protocol:symbol-code 'dlr_msgs-msg:rcugoal command-symbol))
+(defmacro make-beasty-goal-msg (goal-description)
+  `(apply #'roslisp::make-message-fn 
+          *beasty-goal-type* ,goal-description))
 
 ;;;
 ;;; HASH-TABLE UTILS
@@ -99,6 +93,28 @@
 (defun joint-goal-description-p (goal-description)
   (eql (gethash :command-type goal-description) :joint-impedance))
 
+(defun get-beasty-command-code (command-symbol)
+  "Returns the Beasty command-code defined in dlr_msgs/RCUGoal which corresponds to
+   `command-symbol'."
+  (declare (type symbol command-symbol))
+  (roslisp-msg-protocol:symbol-code 'dlr_msgs-msg:rcugoal command-symbol))
+
+(defun update-cmd-id (handle goal-description)
+  (assert (actionlib-lisp:terminal-state (client handle)))
+  (with-recursive-lock ((lock handle))
+    (setf (cmd-id handle)
+          (extract-cmd-id 
+           (result handle) (infer-command-code goal-description)))))
+
+(defun infer-command-code (goal-description)
+  "Returns the ROS action command code corresponding to the Beasty `goal-description'."
+  (cond
+    ((joint-goal-description-p goal-description) 1)
+    (t (error "Could not infer command code for ~a~%" goal-description))))
+
+(defun extract-cmd-id (action-result command-code)
+  (with-fields ((cmd-id (cmd_id com state))) action-result 
+    (elt cmd-id command-code)))
 
 ;; (defun get-strongest-collision (state)
 ;;   "Iterates over the vector of joint-collisions in beasty-state `state' and returns the

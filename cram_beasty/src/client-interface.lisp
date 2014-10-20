@@ -29,30 +29,6 @@
 (in-package :cram-beasty)
 
 ;;;
-;;; TODO(Georg): Move this to data-structures?
-;;;
-
-(defclass beasty-handle ()
-  ((client :initarg :client :reader client :type actionlib-lisp::action-client
-           :documentation "For internal use. ROS action client to talk to Beasty.")
-   (lock :initform (make-mutex :name (string (gensym "BEASTY-LOCK-")))
-         :accessor lock :type mutex
-         :documentation "For internal use. Mutex to guard Beasty-handle.")
-   (session-id :initarg :session-id :accessor session-id :type number
-               :documentation "For internal use. ID of current communication session.")
-   (cmd-id :initarg :cmd-id :accessor cmd-id :type number
-           :documentation "For internal use. cmd-id to be used in the next goal."))
-  (:documentation "Handle to talk with a Beasty controller for the LWR."))
-
-;;;
-;;; PARAMETERS
-;;;
-
-;;;
-;;; UTILS
-;;;
-
-;;;
 ;;; CL-TRANSFORMS
 ;;;
 
@@ -99,90 +75,15 @@
 (defun move-beasty-and-wait (handle goal-description
                              &key (exec-timeout *exec-timeout*) 
                                (preempt-timeout *preemt-timeout*))
+  (flet ((add-com-description (goal-description handle)
+           (with-slots (session-id cmd-id) handle
+             (setf (getf goal-description :cmd-id) cmd-id)
+             (setf (getf goal-description :session-id) session-id))
+           goal-description))
   (with-recursive-lock ((lock handle))
     (send-goal-and-wait
      (client handle) 
      (goal-description-to-msg (add-com-description goal-description handle))
      exec-timeout 
      preempt-timeout)
-    (update-cmd-id handle goal-description)))
-
-;;;
-;;; INTERNALS OF INTERFACE
-;;;
-
-(defun add-com-description (goal-description handle)
-  (with-slots (session-id cmd-id) handle
-    (setf (getf goal-description :cmd-id) cmd-id)
-    (setf (getf goal-description :session-id) session-id))
-  goal-description)
- 
-(defun update-cmd-id (handle goal-description)
-  (assert (actionlib-lisp:terminal-state (client handle)))
-  (with-recursive-lock ((lock handle))
-    (setf (cmd-id handle)
-          (extract-cmd-id 
-           (result handle) (infer-command-code goal-description)))))
-
-(defun infer-command-code (goal-description)
-  (cond
-    ((joint-goal-description-p goal-description) 1)
-    (t (error "Could not infer command code for ~a~%" goal-description))))
-
-;;;
-;;; CONVERSIONS
-;;;
-
-;;;
-;;; TEST CASES/EXAMPLES
-;;;
-
-(defparameter *sample-joint-goal-description*
-  `(:command-type :joint-impedance
-     :simulated-robot t
-     :joint0 (:stiffness 100
-              :damping 0.7
-              :max-vel 0.10
-              :max-acc 0.40
-              :goal-pos 0.0)
-     :joint1 (:stiffness 101
-              :damping 0.7
-              :max-vel 0.11
-              :max-acc 0.41
-              :goal-pos 0.1)
-     :joint2 (:stiffness 102
-              :damping 0.7
-              :max-vel 0.12
-              :max-acc 0.42
-              :goal-pos 0.2)
-     :joint3 (:stiffness 103
-              :damping 0.7
-              :max-vel 0.13
-              :max-acc 0.43
-              :goal-pos 0.3)
-     :joint4 (:stiffness 104
-              :damping 0.7
-              :max-vel 0.14
-              :max-acc 0.44 :goal-pos 0.4)
-     :joint5 (:stiffness 105
-              :damping 0.7
-              :max-vel 0.15
-              :max-acc 0.45
-              :goal-pos 0.5)
-     :joint6 (:stiffness 106
-              :damping 0.7
-              :max-vel 0.16
-              :max-acc 0.6
-              :goal-pos 0.6)
-     :ee-transform ,(cl-transforms:make-identity-transform)
-     :base-transform ,(cl-transforms:make-identity-transform)
-     :base-acceleration ,(cl-transforms:make-identity-wrench)
-     :tool-mass 0.0
-     :tool-com ,(cl-transforms:make-identity-vector)))
-
-(defparameter *sample-handle*
-  (make-instance 
-   'beasty-handle :session-id 123 :cmd-id 456))
-
-(defparameter *extended-sample-joint-goal-description*
-  (add-com-description *sample-joint-goal-description* *sample-handle*))
+    (update-cmd-id handle goal-description))))

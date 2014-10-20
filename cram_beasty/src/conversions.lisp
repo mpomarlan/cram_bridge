@@ -38,10 +38,6 @@
      (vectorify-goal-description 
       (plist-hash-table-recursively goal-description))))))
 
-(defmacro make-beasty-goal-msg (goal-description)
-  `(apply #'roslisp::make-message-fn 
-          *beasty-goal-type* ,goal-description))
-
 (defun vectorify-goal-description (goal-description)
   (cond
     ((joint-goal-description-p goal-description)
