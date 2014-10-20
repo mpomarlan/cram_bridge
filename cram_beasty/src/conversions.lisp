@@ -101,7 +101,7 @@
                                     ((:mode :controller :parameters) 4)
                                     ((:mode :interpolator :parameters) 5)))
                 (otherwise (warn "Asked to convert command-type '~a' of goal description." value))))
-             (:simulated-robot `(((:mode :robot :parameters) ,value)))
+             (:simulated-robot `(((:mode :robot :parameters) ,(if value 1 0))))
              (:motor-power `(((:power :robot :parameters) ,value)))
              (:session-id `(((:session_id :com :parameters) ,value)))
              (:cmd-id `(((:cmd_id :com :parameters) ,value)))
