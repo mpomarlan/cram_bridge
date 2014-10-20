@@ -49,6 +49,48 @@
   (declare (type symbol command-symbol))
   (roslisp-msg-protocol:symbol-code 'dlr_msgs-msg:rcugoal command-symbol))
 
+;;;
+;;; HASH-TABLE UTILS
+;;;
+
+(defun plist-hash-table-recursively (plist)
+  "Returns a hash table containing the keys and values of the property list
+ `plist'. Recursively calls itself on  any of the values of `plist' that are
+ also property lists. Note: Leaves `plist' untouched."
+  (flet ((plist-p (obj)
+           (and (listp obj) (evenp (length obj)) (<= 2 (length obj)))))
+  (let ((tmp-list nil))
+    (alexandria:doplist (key value plist)
+      (setf (getf tmp-list key)
+            (if (plist-p value)
+                (plist-hash-table-recursively value)
+                value)))
+    (alexandria:plist-hash-table tmp-list))))
+
+(defun hash-table-has-key-p (hash-table key)
+  (multiple-value-bind (value present) (gethash key hash-table)
+    (declare (ignore value))
+    present))
+
+(defun hash-table-has-keys-p (hash-table keys)
+  "Predicate to check whether `hash-table' has non-nil values for all `keys'. 
+ Leaves both `hash-table' and `keys' untouched."
+  (every (lambda (key) (hash-table-has-key-p hash-table key)) keys))
+
+(defun remove-keys! (hash-table &rest keys)
+  "Removes key-value pairs with `keys' from `hash-table'. NOTE: `hash-table'
+ will be altered."
+  (if (= (length keys) 0)
+      hash-table
+      (destructuring-bind (key &rest remainder) keys
+        (remhash key hash-table)
+        (apply #'remove-keys! hash-table remainder))))
+
+(defun remove-keys (hash-table &rest keys)
+  "Returns `hash-table' with all associations with `keys' removed.
+ NOTE: `hash-table' will not be touched."
+  (apply #'remove-keys! (alexandria:copy-hash-table hash-table) keys))
+
 ;; (defun get-strongest-collision (state)
 ;;   "Iterates over the vector of joint-collisions in beasty-state `state' and returns the
 ;;  symbol of the strongest type of collision detected. If nothing detected, :NO-CONTACT will
