@@ -1,4 +1,4 @@
-;;; Copyright (c) 2013, Georg Bartels <georg.bartels@cs.uni-bremen.de>
+;;; Copyright (c) 2014, Georg Bartels <georg.bartels@cs.uni-bremen.de>
 ;;; All rights reserved.
 ;;;
 ;;; Redistribution and use in source and binary forms, with or without
@@ -26,37 +26,13 @@
 ;;; ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ;;; POSSIBILITY OF SUCH DAMAGE.
 
-(defsystem cram-beasty
-  :author "Georg Bartels <georg.bartels@cs.uni-bremen.de>"
-  :license "BSD"
-  :description "Interface package of CRAM to command Beasty LWR controllers."
+(in-package :cram-beasty)
 
-  :depends-on (roslisp
-               actionlib-lisp
-               alexandria
-               ;; cram-language
-               cl-transforms
-               ;; actionlib
-               dlr_msgs-msg
-               ;; visualization_msgs-msg
-               ;; cl-human-shapes
-               ;; cl-3d-shapes
-               ;; cl-transforms
-               )
-  :components
-  ((:module "src"
-    :components
-    ((:file "package")
-     (:file "defaults" :depends-on ("package"))
-     (:file "utils" :depends-on ("package"))
-     (:file "params" :depends-on ("package"))
-     (:file "client-interface" :depends-on ("package" "utils" "defaults" "params"))
-     ;; (:file "data-structures" :depends-on ("package"))
-     ;; (:file "safety-settings" :depends-on ("package" "data-structures"))
-     ;; (:file "conversions" :depends-on ("package" "data-structures" "safety-settings"))
-     ;; (:file "visualization" :depends-on ("package" "data-structures"))
-     
-     ;; (:file "user-management" :depends-on ("package" "utils"))
-     ;; (:file "action-interface" 
-     ;;  :depends-on ("package" "user-management" "data-structures" "conversions" "visualization"))
-     ))))
+(defparameter *joint-symbols* 
+  (list :joint0 :joint1 :joint2 :joint3 :joint4 :joint5 :joint6))
+
+(defparameter *joint-indices*
+  (list 0 1 2 3 4 5 6))
+
+(defparameter *joint-index-map*
+  (pairlis *joint-symbols* *joint-indices*))

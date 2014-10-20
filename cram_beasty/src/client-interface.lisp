@@ -48,14 +48,7 @@
 ;;; PARAMETERS
 ;;;
 
-(defparameter *joint-symbols* 
-  (list :joint0 :joint1 :joint2 :joint3 :joint4 :joint5 :joint6))
 
-(defparameter *joint-indices*
-  (list 0 1 2 3 4 5 6))
-
-(defparameter *joint-index-map*
-  (pairlis *joint-symbols* *joint-indices*))
 
 ;;;
 ;;; UTILS
