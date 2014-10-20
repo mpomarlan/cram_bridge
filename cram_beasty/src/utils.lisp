@@ -35,7 +35,7 @@
 (defun action-succeeded-p (client)
   (eql (state client) :SUCCEEDED))
 
-(defmacro make-beasty-goal (goal-description)
+(defmacro make-beasty-goal-msg (goal-description)
   `(apply #'roslisp::make-message-fn 
           *beasty-goal-type* ,goal-description))
 

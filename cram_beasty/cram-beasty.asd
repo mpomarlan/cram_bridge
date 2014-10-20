@@ -33,8 +33,9 @@
 
   :depends-on (roslisp
                actionlib-lisp
+               alexandria
                ;; cram-language
-               ;; cl-transforms
+               cl-transforms
                ;; actionlib
                dlr_msgs-msg
                ;; visualization_msgs-msg

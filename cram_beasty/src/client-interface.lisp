@@ -44,6 +44,86 @@
            :documentation "For internal use. cmd-id to be used in the next goal."))
   (:documentation "Handle to talk with a Beasty controller for the LWR."))
 
+;;;
+;;; PARAMETERS
+;;;
+
+(defparameter *joint-symbols* 
+  (list :joint0 :joint1 :joint2 :joint3 :joint4 :joint5 :joint6))
+
+(defparameter *joint-indices*
+  (list 0 1 2 3 4 5 6))
+
+(defparameter *joint-index-map*
+  (pairlis *joint-symbols* *joint-indices*))
+
+;;;
+;;; UTILS
+;;;
+
+(defun plist-hash-table-recursively (plist)
+  "Returns a hash table containing the keys and values of the property list
+ `plist'. Recursively calls itself on  any of the values of `plist' that are
+ also property lists. Note: Leaves `plist' untouched."
+  (flet ((plist-p (obj)
+           (and (listp obj) (evenp (length obj)) (<= 2 (length obj)))))
+  (let ((tmp-list nil))
+    (alexandria:doplist (key value plist)
+      (setf (getf tmp-list key)
+            (if (plist-p value)
+                (plist-hash-table-recursively value)
+                value)))
+    (alexandria:plist-hash-table tmp-list))))
+
+(defun hash-table-has-key-p (hash-table key)
+  (multiple-value-bind (value present) (gethash key hash-table)
+    (declare (ignore value))
+    present))
+
+(defun hash-table-has-keys-p (hash-table keys)
+  "Predicate to check whether `hash-table' has non-nil values for all `keys'. 
+ Leaves both `hash-table' and `keys' untouched."
+  (every (lambda (key) (hash-table-has-key-p hash-table key)) keys))
+
+(defun remove-keys! (hash-table &rest keys)
+  "Removes key-value pairs with `keys' from `hash-table'. NOTE: `hash-table'
+ will be altered."
+  (if (= (length keys) 0)
+      hash-table
+      (destructuring-bind (key &rest remainder) keys
+        (remhash key hash-table)
+        (apply #'remove-keys! hash-table remainder))))
+
+(defun remove-keys (hash-table &rest keys)
+  "Returns `hash-table' with all associations with `keys' removed.
+ NOTE: `hash-table' will not be touched."
+  (apply #'remove-keys! (alexandria:copy-hash-table hash-table) keys))
+
+;;;
+;;; CL-TRANSFORMS
+;;;
+
+(defun transpose-2d-matrix (matrix)
+  (declare (type array matrix))
+  (assert (= (array-rank matrix) 2))
+  (destructuring-bind (rows columns) (array-dimensions matrix)
+    (make-array 
+     `(,columns ,rows)
+     :initial-contents
+     (loop for column from 0 below columns collecting
+       (loop for row from 0 below rows collecting
+         (aref matrix row column))))))
+
+
+
+
+    
+
+
+;;;
+;;; ACTUAL INTERFACE
+;;;
+
 (defun make-beasty-handle (action-name user-id user-pwd
                            &key (exec-timeout *exec-timeout*) 
                              (preempt-timeout *preemt-timeout*)
@@ -53,12 +133,12 @@
          (command-code (get-beasty-command-code :LOGIN))
          (goal-description 
            `(:command ,command-code
-                      (:command :com :parameters) ,command-code
-                      (:user_id :com :parameters) ,user-id
-                      (:user_pwd :com :parameters) ,user-pwd)))
+            (:command :com :parameters) ,command-code
+            (:user_id :com :parameters) ,user-id
+            (:user_pwd :com :parameters) ,user-pwd)))
     (wait-for-server client server-timeout)
     (send-goal-and-wait 
-     client (make-beasty-goal goal-description) 
+     client (make-beasty-goal-msg goal-description) 
      exec-timeout preempt-timeout)
     (if (action-succeeded-p client)
         (make-instance
@@ -68,3 +148,233 @@
          :cmd-id (extract-cmd-id (result client) command-code))
         (error "Login to Beasty '~S' with ID '~S' and PWD '~S' failed."
                action-name user-id user-pwd))))
+
+(defun move-beasty-and-wait (handle goal-description
+                             &key (exec-timeout *exec-timeout*) 
+                               (preempt-timeout *preemt-timeout*))
+  (with-recursive-lock ((lock handle))
+    (send-goal-and-wait
+     (client handle) 
+     (goal-description-to-msg (add-com-description goal-description handle))
+     exec-timeout 
+     preempt-timeout)
+    (update-cmd-id handle goal-description)))
+
+;;;
+;;; INTERNALS OF INTERFACE
+;;;
+
+(defun add-com-description (goal-description handle)
+  (with-slots (session-id cmd-id) handle
+    (setf (getf goal-description :cmd-id) cmd-id)
+    (setf (getf goal-description :session-id) session-id))
+  goal-description)
+ 
+(defun update-cmd-id (handle goal-description)
+  (assert (actionlib-lisp:terminal-state (client handle)))
+  (with-recursive-lock ((lock handle))
+    (setf (cmd-id handle)
+          (extract-cmd-id 
+           (result handle) (infer-command-code goal-description)))))
+
+(defun infer-command-code (goal-description)
+  (cond
+    ((joint-goal-description-p goal-description) 1)
+    (t (error "Could not infer command code for ~a~%" goal-description))))
+
+;;;
+;;; CONVERSIONS
+;;;
+
+(defun goal-description-to-msg (goal-description)
+  (unless (goal-description-valid-p goal-description)
+    (error "Asked to translate invalid Beasty goal description ~a.~%"
+           goal-description))
+  (make-beasty-goal-msg
+   (rosify-goal-description
+    (append-sane-defaults
+     (vectorify-goal-description 
+      (plist-hash-table-recursively goal-description))))))
+
+(defun goal-description-valid-p (goal-description)
+  (declare (ignore goal-description))
+  ;;TODO(Georg): implement me
+  t)
+
+(defun vectorify-goal-description (goal-description)
+  (cond
+    ((joint-goal-description-p goal-description)
+     (vectorify-joint-goal goal-description))
+    ;;TODO: add cartesian case
+    (t (error "Translation of beasty goal not yet supported."))))
+
+(defun joint-goal-description-p (goal-description)
+  (eql (gethash :command-type goal-description) :joint-impedance))
+
+(defun vectorify-joint-goal (goal-description)
+  ;;TODO(Georg): refactor using `add-assocs' and `merge-hash-tables'
+  (let ((goal (make-array 7))
+        (max-vel (make-array 7))
+        (max-acc (make-array 7))
+        (stiff (make-array 7))
+        (damping (make-array 7))
+        (result (alexandria:copy-hash-table goal-description)))
+    (mapcar (lambda (key)
+              (let ((joint-descr (gethash key goal-description))
+                    (joint-index (alexandria:assoc-value *joint-index-map* key)))
+                (setf (elt goal joint-index) 
+                      (gethash :goal-pos joint-descr))
+                (setf (elt max-vel joint-index) 
+                      (gethash :max-vel joint-descr))
+                (setf (elt max-acc joint-index) 
+                      (gethash :max-acc joint-descr))
+                (setf (elt stiff joint-index) 
+                      (gethash :stiffness joint-descr))
+                (setf (elt damping joint-index) 
+                      (gethash :damping joint-descr))))
+            *joint-symbols*)
+    (setf (gethash :joint-goal result) goal)
+    (setf (gethash :joint-max-vel result) max-vel)
+    (setf (gethash :joint-max-acc result) max-acc)
+    (setf (gethash :joint-stiffness result) stiff)
+    (setf (gethash :joint-damping result) damping)
+    (apply #'remove-keys! result *joint-symbols*)))
+
+(defun append-sane-defaults (goal-description)
+  (setf (gethash :motor-power goal-description) 
+        (make-array 7 :initial-element 1))
+  (setf (gethash :o_t_f goal-description)
+        (cl-transforms:make-identity-transform))
+  (setf (gethash :o_t_via goal-description)
+        (cl-transforms:make-identity-transform))
+  (setf (gethash :w_t_op goal-description)
+        (cl-transforms:make-identity-transform))
+  (setf (gethash :ee_t_k goal-description)
+        (cl-transforms:make-identity-transform))
+  (setf (gethash :ref_t_k goal-description)
+        (cl-transforms:make-identity-transform))
+  goal-description)
+
+(defun rosify-goal-description (goal-description)
+  (flet ((rosify-entry (key value)
+           (case key
+             (:command-type
+              (case value
+                ;; TODO(Georg): replace those numbers with a lookup to symbol-codes
+                (:joint-impedance '((:command 1)
+                                    ((:command :com :parameters) 1)
+                                    ((:mode :controller :parameters) 4)
+                                    ((:mode :interpolator :parameters) 5)))
+                (otherwise (warn "Asked to convert command-type '~a' of goal description." value))))
+             (:simulated-robot `(((:mode :robot :parameters) ,value)))
+             (:motor-power `(((:power :robot :parameters) ,value)))
+             (:session-id `(((:session_id :com :parameters) ,value)))
+             (:cmd-id `(((:cmd_id :com :parameters) ,value)))
+             (:joint-goal `(((:q_f :interpolator :parameters) ,value)))
+             (:joint-max-vel `(((:dq_max :interpolator :parameters) ,value)))
+             (:joint-max-acc `(((:ddq_max :interpolator :parameters) ,value)))
+             (:o_t_f `(((:O_T_f :interpolator :parameters)
+                        ,(transform-to-beasty-msg value))))
+             (:o_t_via `(((:O_T_via :interpolator :parameters)
+                          ,(transform-to-beasty-msg value))))
+             (:joint-stiffness `(((:K_theta :controller :parameters) ,value)))
+             (:joint-damping `(((:D_theta :controller :parameters) ,value)))
+             (:ee-transform `(((:TCP_T_EE :settings :parameters) 
+                               ,(transform-to-beasty-msg value))))
+             (:base-transform `(((:W_T_O :settings :parameters) 
+                                 ,(transform-to-beasty-msg value))))
+             (:base-acceleration `(((:ddX_O :settings :parameters)
+                                    ,(wrench-to-msg value))))
+             (:tool-com `(((:ml_com :settings :parameters) ,(3d-point-to-msg value))))
+             (:tool-mass `(((:ml :settings :parameters) ,value)))
+             (:w_t_op `(((:W_T_OP :settings :parameters)
+                         ,(transform-to-beasty-msg value))))
+             (:ee_t_k `(((:EE_T_K :settings :parameters)
+                         ,(transform-to-beasty-msg value))))
+             (:ref_t_k `(((:Ref_T_K :settings :parameters)
+                         ,(transform-to-beasty-msg value))))
+             (otherwise (warn "Asked to convert unknown entry '~a' of goal description." 
+                              (list key value))))))
+    (reduce #'append 
+            (reduce #'append
+                    (loop for k being the hash-key in goal-description using (hash-value v)
+                          collect (rosify-entry k v))))))
+
+(defun transform-to-beasty-msg (transform)
+  (let* ((array4x4 (transpose-2d-matrix (cl-transforms:transform->matrix transform))))
+    (make-array (array-total-size array4x4)
+                :element-type (array-element-type array4x4)
+                :displaced-to array4x4)))
+
+(defun pose-to-beasty-msg (pose)
+  (transform-to-beasty-msg
+   (cl-transforms:pose->transform pose)))
+
+(defun twist-to-msg (twist)
+  (concatenate' 
+   vector 
+   (3d-point-to-msg (cl-transforms:translation twist))
+   (3d-point-to-msg (cl-transforms:rotation twist)))) 
+
+(defun wrench-to-msg (wrench)
+  (concatenate' 
+   vector 
+   (3d-point-to-msg (cl-transforms:translation wrench))
+   (3d-point-to-msg (cl-transforms:rotation wrench))))
+
+(defun 3d-point-to-msg (point)
+  (vector (cl-transforms:x point) (cl-transforms:y point) (cl-transforms:z point)))
+
+;;;
+;;; TEST CASES/EXAMPLES
+;;;
+
+(defparameter *sample-joint-goal-description*
+  `(:command-type :joint-impedance
+     :simulated-robot t
+     :joint0 (:stiffness 100
+              :damping 0.7
+              :max-vel 0.10
+              :max-acc 0.40
+              :goal-pos 0.0)
+     :joint1 (:stiffness 101
+              :damping 0.7
+              :max-vel 0.11
+              :max-acc 0.41
+              :goal-pos 0.1)
+     :joint2 (:stiffness 102
+              :damping 0.7
+              :max-vel 0.12
+              :max-acc 0.42
+              :goal-pos 0.2)
+     :joint3 (:stiffness 103
+              :damping 0.7
+              :max-vel 0.13
+              :max-acc 0.43
+              :goal-pos 0.3)
+     :joint4 (:stiffness 104
+              :damping 0.7
+              :max-vel 0.14
+              :max-acc 0.44 :goal-pos 0.4)
+     :joint5 (:stiffness 105
+              :damping 0.7
+              :max-vel 0.15
+              :max-acc 0.45
+              :goal-pos 0.5)
+     :joint6 (:stiffness 106
+              :damping 0.7
+              :max-vel 0.16
+              :max-acc 0.6
+              :goal-pos 0.6)
+     :ee-transform ,(cl-transforms:make-identity-transform)
+     :base-transform ,(cl-transforms:make-identity-transform)
+     :base-acceleration ,(cl-transforms:make-identity-wrench)
+     :tool-mass 0.0
+     :tool-com ,(cl-transforms:make-identity-vector)))
+
+(defparameter *sample-handle*
+  (make-instance 
+   'beasty-handle :session-id 123 :cmd-id 456))
+
+(defparameter *extended-sample-joint-goal-description*
+  (add-com-description *sample-joint-goal-description* *sample-handle*))
