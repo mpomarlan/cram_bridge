@@ -50,10 +50,11 @@
      (:file "defaults" :depends-on ("package"))
      (:file "utils" :depends-on ("package"))
      (:file "params" :depends-on ("package"))
-     (:file "client-interface" :depends-on ("package" "utils" "defaults" "params"))
+     (:file "conversions" :depends-on ("package" "utils" "params" "defaults"))
+     (:file "client-interface" :depends-on ("package" "utils" "defaults" "params" "conversions"))
      ;; (:file "data-structures" :depends-on ("package"))
      ;; (:file "safety-settings" :depends-on ("package" "data-structures"))
-     ;; (:file "conversions" :depends-on ("package" "data-structures" "safety-settings"))
+     
      ;; (:file "visualization" :depends-on ("package" "data-structures"))
      
      ;; (:file "user-management" :depends-on ("package" "utils"))

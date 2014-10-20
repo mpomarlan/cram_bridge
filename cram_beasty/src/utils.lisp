@@ -35,10 +35,6 @@
 (defun action-succeeded-p (client)
   (eql (state client) :SUCCEEDED))
 
-(defmacro make-beasty-goal-msg (goal-description)
-  `(apply #'roslisp::make-message-fn 
-          *beasty-goal-type* ,goal-description))
-
 (defun extract-cmd-id (action-result command-code)
   (with-fields ((cmd-id (cmd_id com state))) action-result 
     (elt cmd-id command-code)))
@@ -90,6 +86,19 @@
   "Returns `hash-table' with all associations with `keys' removed.
  NOTE: `hash-table' will not be touched."
   (apply #'remove-keys! (alexandria:copy-hash-table hash-table) keys))
+
+;;;
+;;; BEASTY UTILS
+;;;
+
+(defun goal-description-valid-p (goal-description)
+  (declare (ignore goal-description))
+  ;;TODO(Georg): implement me
+  t)
+
+(defun joint-goal-description-p (goal-description)
+  (eql (gethash :command-type goal-description) :joint-impedance))
+
 
 ;; (defun get-strongest-collision (state)
 ;;   "Iterates over the vector of joint-collisions in beasty-state `state' and returns the

@@ -28,6 +28,142 @@
 
 (in-package :cram-beasty)
 
+(defun goal-description-to-msg (goal-description)
+  (unless (goal-description-valid-p goal-description)
+    (error "Asked to translate invalid Beasty goal description ~a.~%"
+           goal-description))
+  (make-beasty-goal-msg
+   (rosify-goal-description
+    (append-sane-defaults
+     (vectorify-goal-description 
+      (plist-hash-table-recursively goal-description))))))
+
+(defmacro make-beasty-goal-msg (goal-description)
+  `(apply #'roslisp::make-message-fn 
+          *beasty-goal-type* ,goal-description))
+
+(defun vectorify-goal-description (goal-description)
+  (cond
+    ((joint-goal-description-p goal-description)
+     (vectorify-joint-goal goal-description))
+    ;;TODO: add cartesian case
+    (t (error "Translation of beasty goal not yet supported."))))
+
+(defun vectorify-joint-goal (goal-description)
+  ;;TODO(Georg): refactor using `add-assocs' and `merge-hash-tables'
+  (let ((goal (make-array 7))
+        (max-vel (make-array 7))
+        (max-acc (make-array 7))
+        (stiff (make-array 7))
+        (damping (make-array 7))
+        (result (alexandria:copy-hash-table goal-description)))
+    (mapcar (lambda (key)
+              (let ((joint-descr (gethash key goal-description))
+                    (joint-index (alexandria:assoc-value *joint-index-map* key)))
+                (setf (elt goal joint-index) 
+                      (gethash :goal-pos joint-descr))
+                (setf (elt max-vel joint-index) 
+                      (gethash :max-vel joint-descr))
+                (setf (elt max-acc joint-index) 
+                      (gethash :max-acc joint-descr))
+                (setf (elt stiff joint-index) 
+                      (gethash :stiffness joint-descr))
+                (setf (elt damping joint-index) 
+                      (gethash :damping joint-descr))))
+            *joint-symbols*)
+    (setf (gethash :joint-goal result) goal)
+    (setf (gethash :joint-max-vel result) max-vel)
+    (setf (gethash :joint-max-acc result) max-acc)
+    (setf (gethash :joint-stiffness result) stiff)
+    (setf (gethash :joint-damping result) damping)
+    (apply #'remove-keys! result *joint-symbols*)))
+
+(defun append-sane-defaults (goal-description)
+  ;; TODO(Georg): refactor using `add-assocs'
+  (setf (gethash :motor-power goal-description) 
+        (make-array 7 :initial-element 1))
+  (setf (gethash :o_t_f goal-description)
+        (cl-transforms:make-identity-transform))
+  (setf (gethash :o_t_via goal-description)
+        (cl-transforms:make-identity-transform))
+  (setf (gethash :w_t_op goal-description)
+        (cl-transforms:make-identity-transform))
+  (setf (gethash :ee_t_k goal-description)
+        (cl-transforms:make-identity-transform))
+  (setf (gethash :ref_t_k goal-description)
+        (cl-transforms:make-identity-transform))
+  goal-description)
+
+(defun rosify-goal-description (goal-description)
+  (flet ((rosify-entry (key value)
+           (case key
+             (:command-type
+              (case value
+                ;; TODO(Georg): replace those numbers with a lookup to symbol-codes
+                (:joint-impedance '((:command 1)
+                                    ((:command :com :parameters) 1)
+                                    ((:mode :controller :parameters) 4)
+                                    ((:mode :interpolator :parameters) 5)))
+                (otherwise (warn "Asked to convert command-type '~a' of goal description." value))))
+             (:simulated-robot `(((:mode :robot :parameters) ,value)))
+             (:motor-power `(((:power :robot :parameters) ,value)))
+             (:session-id `(((:session_id :com :parameters) ,value)))
+             (:cmd-id `(((:cmd_id :com :parameters) ,value)))
+             (:joint-goal `(((:q_f :interpolator :parameters) ,value)))
+             (:joint-max-vel `(((:dq_max :interpolator :parameters) ,value)))
+             (:joint-max-acc `(((:ddq_max :interpolator :parameters) ,value)))
+             (:o_t_f `(((:O_T_f :interpolator :parameters)
+                        ,(transform-to-beasty-msg value))))
+             (:o_t_via `(((:O_T_via :interpolator :parameters)
+                          ,(transform-to-beasty-msg value))))
+             (:joint-stiffness `(((:K_theta :controller :parameters) ,value)))
+             (:joint-damping `(((:D_theta :controller :parameters) ,value)))
+             (:ee-transform `(((:TCP_T_EE :settings :parameters) 
+                               ,(transform-to-beasty-msg value))))
+             (:base-transform `(((:W_T_O :settings :parameters) 
+                                 ,(transform-to-beasty-msg value))))
+             (:base-acceleration `(((:ddX_O :settings :parameters)
+                                    ,(wrench-to-msg value))))
+             (:tool-com `(((:ml_com :settings :parameters) ,(3d-point-to-msg value))))
+             (:tool-mass `(((:ml :settings :parameters) ,value)))
+             (:w_t_op `(((:W_T_OP :settings :parameters)
+                         ,(transform-to-beasty-msg value))))
+             (:ee_t_k `(((:EE_T_K :settings :parameters)
+                         ,(transform-to-beasty-msg value))))
+             (:ref_t_k `(((:Ref_T_K :settings :parameters)
+                         ,(transform-to-beasty-msg value))))
+             (otherwise (warn "Asked to convert unknown entry '~a' of goal description." 
+                              (list key value))))))
+    (reduce #'append 
+            (reduce #'append
+                    (loop for k being the hash-key in goal-description using (hash-value v)
+                          collect (rosify-entry k v))))))
+
+(defun transform-to-beasty-msg (transform)
+  (let* ((array4x4 (transpose-2d-matrix (cl-transforms:transform->matrix transform))))
+    (make-array (array-total-size array4x4)
+                :element-type (array-element-type array4x4)
+                :displaced-to array4x4)))
+
+(defun pose-to-beasty-msg (pose)
+  (transform-to-beasty-msg
+   (cl-transforms:pose->transform pose)))
+
+(defun twist-to-msg (twist)
+  (concatenate' 
+   vector 
+   (3d-point-to-msg (cl-transforms:translation twist))
+   (3d-point-to-msg (cl-transforms:rotation twist)))) 
+
+(defun wrench-to-msg (wrench)
+  (concatenate' 
+   vector 
+   (3d-point-to-msg (cl-transforms:translation wrench))
+   (3d-point-to-msg (cl-transforms:rotation wrench))))
+
+(defun 3d-point-to-msg (point)
+  (vector (cl-transforms:x point) (cl-transforms:y point) (cl-transforms:z point)))
+
 ;; (define-condition beasty-conversion-error (error)
 ;;   ((text :initarg :text :reader text))
 ;;   (:documentation "Condition signalling an error in ROS message creation for Beasty controller."))
