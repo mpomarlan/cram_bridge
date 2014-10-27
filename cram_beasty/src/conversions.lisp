@@ -28,6 +28,10 @@
 
 (in-package :cram-beasty)
 
+;;;
+;;; TO BE USED BY OTHER SUB-COMPONENTS OF CRAM_BEASTY
+;;;
+
 (defun goal-description-to-msg (goal-description)
   (unless (goal-description-valid-p goal-description)
     (error "Asked to translate invalid Beasty goal description ~a.~%"
@@ -37,6 +41,17 @@
     (append-sane-defaults
      (vectorify-goal-description 
       (plist-hash-table-recursively goal-description))))))
+
+(defun goal-description-to-safety-reset-msg (goal-description)
+  ;; TODO(Georg): get rid of these numbers
+  (modify-message-copy 
+   (goal-description-to-msg goal-description)
+   :command 3
+   (:command :com :parameters) 3))
+
+;;;
+;;; INTERNAL
+;;;
 
 (defun vectorify-goal-description (goal-description)
   (cond

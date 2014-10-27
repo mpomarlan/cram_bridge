@@ -28,43 +28,90 @@
 
 (in-package :cram-beasty)
 
-(defparameter *sample-joint-goal-description*
+(defparameter *sample-joint-goal-description-zero*
   `(:command-type :joint-impedance
      :simulated-robot t
-     :joint0 (:stiffness 100
+     :joint0 (:stiffness 80
               :damping 0.7
-              :max-vel 0.10
-              :max-acc 0.40
+              :max-vel 0.35
+              :max-acc 0.7
               :goal-pos 0.0)
-     :joint1 (:stiffness 101
+     :joint1 (:stiffness 80
               :damping 0.7
-              :max-vel 0.11
-              :max-acc 0.41
-              :goal-pos 0.1)
-     :joint2 (:stiffness 102
+              :max-vel 0.35
+              :max-acc 0.7
+              :goal-pos 0.0)
+     :joint2 (:stiffness 80
               :damping 0.7
-              :max-vel 0.12
-              :max-acc 0.42
-              :goal-pos 0.2)
-     :joint3 (:stiffness 103
+              :max-vel 0.35
+              :max-acc 0.7
+              :goal-pos 0.0)
+     :joint3 (:stiffness 80
               :damping 0.7
-              :max-vel 0.13
-              :max-acc 0.43
-              :goal-pos 0.3)
-     :joint4 (:stiffness 104
+              :max-vel 0.35
+              :max-acc 0.7
+              :goal-pos 0.0)
+     :joint4 (:stiffness 80
               :damping 0.7
-              :max-vel 0.14
-              :max-acc 0.44 :goal-pos 0.4)
-     :joint5 (:stiffness 105
+              :max-vel 0.35
+              :max-acc 0.7
+              :goal-pos 0.0)
+     :joint5 (:stiffness 80
               :damping 0.7
-              :max-vel 0.15
-              :max-acc 0.45
-              :goal-pos 0.5)
-     :joint6 (:stiffness 106
+              :max-vel 0.35
+              :max-acc 0.7
+              :goal-pos 0.0)
+     :joint6 (:stiffness 80
               :damping 0.7
-              :max-vel 0.16
-              :max-acc 0.6
-              :goal-pos 0.6)
+              :max-vel 0.35
+              :max-acc 0.7
+              :goal-pos 0.0)
+     :ee-transform ,(cl-transforms:make-identity-transform)
+     :base-transform ,(cl-transforms:make-identity-transform)
+     :base-acceleration ,(cl-transforms:make-identity-wrench)
+     :tool-mass 0.0
+     :tool-com ,(cl-transforms:make-identity-vector)
+     :session-id 123
+     :cmd-id 456))
+
+(defparameter *sample-joint-goal-description-non-zero*
+  `(:command-type :joint-impedance
+     :simulated-robot t
+     :joint0 (:stiffness 80
+              :damping 0.7
+              :max-vel 0.35
+              :max-acc 0.7
+              :goal-pos 0.0)
+     :joint1 (:stiffness 80
+              :damping 0.7
+              :max-vel 0.35
+              :max-acc 0.7
+              :goal-pos 0.52)
+     :joint2 (:stiffness 80
+              :damping 0.7
+              :max-vel 0.35
+              :max-acc 0.7
+              :goal-pos 0.0)
+     :joint3 (:stiffness 80
+              :damping 0.7
+              :max-vel 0.35
+              :max-acc 0.7
+              :goal-pos -0.52)
+     :joint4 (:stiffness 80
+              :damping 0.7
+              :max-vel 0.35
+              :max-acc 0.7
+              :goal-pos 0.0)
+     :joint5 (:stiffness 80
+              :damping 0.7
+              :max-vel 0.35
+              :max-acc 0.7
+              :goal-pos 0.52)
+     :joint6 (:stiffness 80
+              :damping 0.7
+              :max-vel 0.35
+              :max-acc 0.7
+              :goal-pos 0.0)
      :ee-transform ,(cl-transforms:make-identity-transform)
      :base-transform ,(cl-transforms:make-identity-transform)
      :base-acceleration ,(cl-transforms:make-identity-wrench)

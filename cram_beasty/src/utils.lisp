@@ -91,7 +91,10 @@
   t)
 
 (defun joint-goal-description-p (goal-description)
-  (eql (gethash :command-type goal-description) :joint-impedance))
+  (or (and (hash-table-p goal-description)
+           (eql (gethash :command-type goal-description) :joint-impedance))
+      (and (listp goal-description)
+           (eql (getf goal-description :command-type) :joint-impedance))))
 
 (defun get-beasty-command-code (command-symbol)
   "Returns the Beasty command-code defined in dlr_msgs/RCUGoal which corresponds to
@@ -99,22 +102,23 @@
   (declare (type symbol command-symbol))
   (roslisp-msg-protocol:symbol-code 'dlr_msgs-msg:rcugoal command-symbol))
 
-(defun update-cmd-id (handle goal-description)
-  (assert (actionlib-lisp:terminal-state (client handle)))
+(defun update-cmd-id (handle goal-msg)
+  ;; TODO(Georg): fix me into (terminal-state-p ...)
+;  (assert (actionlib-lisp:terminal-state (client handle)))
   (with-recursive-lock ((lock handle))
     (setf (cmd-id handle)
-          (extract-cmd-id 
-           (result handle) (infer-command-code goal-description)))))
+          (extract-cmd-id (result (client handle)) goal-msg))))
 
-(defun infer-command-code (goal-description)
+(defun infer-command-code-from-description (goal-description)
   "Returns the ROS action command code corresponding to the Beasty `goal-description'."
+  ;; TODO(Georg): refactor/delete me! I was once used.. ;)
   (cond
     ((joint-goal-description-p goal-description) 1)
     (t (error "Could not infer command code for ~a~%" goal-description))))
 
-(defun extract-cmd-id (action-result command-code)
+(defun extract-cmd-id (action-result action-goal)
   (with-fields ((cmd-id (cmd_id com state))) action-result 
-    (elt cmd-id command-code)))
+    (elt cmd-id (msg-slot-value action-goal :command))))
 
 ;; (defun get-strongest-collision (state)
 ;;   "Iterates over the vector of joint-collisions in beasty-state `state' and returns the

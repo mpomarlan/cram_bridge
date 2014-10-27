@@ -28,8 +28,9 @@
 
 (in-package :cram-beasty)
 
-(defparameter *exec-timeout* 3.0)
-(defparameter *preemt-timeout* 3.0)
+(defparameter *login-exec-timeout* 1.0)
+(defparameter *move-exec-timeout* 0)
+(defparameter *preemt-timeout* 1.0)
 (defparameter *server-timeout* 2.0)
 
 (defparameter *beasty-action-prefix* "dlr_msgs/RCU")

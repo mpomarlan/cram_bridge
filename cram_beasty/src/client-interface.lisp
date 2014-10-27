@@ -48,7 +48,7 @@
 ;;;
 
 (defun make-beasty-handle (action-name user-id user-pwd
-                           &key (exec-timeout *exec-timeout*) 
+                           &key (exec-timeout *login-exec-timeout*) 
                              (preempt-timeout *preemt-timeout*)
                              (server-timeout *server-timeout*))
   (let* ((client (make-simple-action-client
@@ -58,32 +58,47 @@
            `(:command ,command-code
             (:command :com :parameters) ,command-code
             (:user_id :com :parameters) ,user-id
-            (:user_pwd :com :parameters) ,user-pwd)))
+            (:user_pwd :com :parameters) ,user-pwd))
+         (goal-msg (make-beasty-goal-msg goal-description)))
     (wait-for-server client server-timeout)
-    (send-goal-and-wait 
-     client (make-beasty-goal-msg goal-description) 
-     exec-timeout preempt-timeout)
+    (send-goal-and-wait client goal-msg exec-timeout preempt-timeout)
     (if (action-succeeded-p client)
         (make-instance
          'beasty-handle
          :client client
          :session-id (msg-slot-value (result client) :session_id)
-         :cmd-id (extract-cmd-id (result client) command-code))
+         :cmd-id (extract-cmd-id (result client) goal-msg))
         (error "Login to Beasty '~S' with ID '~S' and PWD '~S' failed."
                action-name user-id user-pwd))))
 
+(defun beasty-safety-reset (handle goal-description
+                            &key (exec-timeout *login-exec-timeout*)
+                              (preempt-timeout *preemt-timeout*))
+  (execute-beasty-command 
+   handle goal-description #'goal-description-to-safety-reset-msg
+   exec-timeout preempt-timeout))
+  
 (defun move-beasty-and-wait (handle goal-description
-                             &key (exec-timeout *exec-timeout*) 
+                             &key (exec-timeout *move-exec-timeout*)
                                (preempt-timeout *preemt-timeout*))
+  (with-recursive-lock ((lock handle))
+    (beasty-safety-reset handle goal-description)
+    (execute-beasty-command handle goal-description #'goal-description-to-msg
+                            exec-timeout preempt-timeout)))
+
+;;;
+;;; UTILS
+;;;
+
+(defun execute-beasty-command (handle goal-description goal-msg-generator
+                               exec-timeout preempt-timeout)
   (flet ((add-com-description (goal-description handle)
            (with-slots (session-id cmd-id) handle
              (setf (getf goal-description :cmd-id) cmd-id)
              (setf (getf goal-description :session-id) session-id))
            goal-description))
   (with-recursive-lock ((lock handle))
-    (send-goal-and-wait
-     (client handle) 
-     (goal-description-to-msg (add-com-description goal-description handle))
-     exec-timeout 
-     preempt-timeout)
-    (update-cmd-id handle goal-description))))
+    (let ((goal-msg 
+            (funcall goal-msg-generator (add-com-description goal-description handle))))
+      (send-goal-and-wait (client handle) goal-msg exec-timeout preempt-timeout)
+      (update-cmd-id handle goal-msg)))))
