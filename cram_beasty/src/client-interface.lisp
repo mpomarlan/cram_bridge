@@ -29,21 +29,6 @@
 (in-package :cram-beasty)
 
 ;;;
-;;; CL-TRANSFORMS
-;;;
-
-(defun transpose-2d-matrix (matrix)
-  (declare (type array matrix))
-  (assert (= (array-rank matrix) 2))
-  (destructuring-bind (rows columns) (array-dimensions matrix)
-    (make-array 
-     `(,columns ,rows)
-     :initial-contents
-     (loop for column from 0 below columns collecting
-       (loop for row from 0 below rows collecting
-         (aref matrix row column))))))
-
-;;;
 ;;; ACTUAL INTERFACE
 ;;;
 

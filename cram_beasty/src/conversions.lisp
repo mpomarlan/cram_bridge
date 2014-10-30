@@ -168,7 +168,8 @@
                           collect (rosify-entry k v))))))
 
 (defun transform-to-beasty-msg (transform)
-  (let* ((array4x4 (transpose-2d-matrix (cl-transforms:transform->matrix transform))))
+  (let* ((array4x4 (cl-transforms:transpose-2d-matrix 
+                    (cl-transforms:transform->matrix transform))))
     (make-array (array-total-size array4x4)
                 :element-type (array-element-type array4x4)
                 :displaced-to array4x4)))
