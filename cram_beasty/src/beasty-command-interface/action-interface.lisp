@@ -26,7 +26,7 @@
 ;;; ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ;;; POSSIBILITY OF SUCH DAMAGE.
 
-(in-package :cram-beasty)
+(in-package :beasty-command-interface)
 
 (define-condition beasty-command-error (error)
   ((text :initarg :text :reader text))

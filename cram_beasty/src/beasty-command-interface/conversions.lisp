@@ -26,7 +26,7 @@
 ;;; ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ;;; POSSIBILITY OF SUCH DAMAGE.
 
-(in-package :cram-beasty)
+(in-package :beasty-command-interface)
 
 ;;;
 ;;; TO BE USED BY OTHER SUB-COMPONENTS OF CRAM_BEASTY
@@ -375,7 +375,7 @@
 ;;     result))
 
 ;; (defmethod from-msg ((msg dlr_msgs-msg:rcu2tcu))
-;;   "Creates and returns an instance of cram-beasty:beasty-state filled with
+;;   "Creates and returns an instance of beasty-command-interface:beasty-state filled with
 ;;    relevant content from `msg'."
 ;;   (with-fields (robot safety) msg
 ;;     (with-fields (q power emergency o_t_x) robot

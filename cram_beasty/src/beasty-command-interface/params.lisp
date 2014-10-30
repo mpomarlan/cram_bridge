@@ -26,15 +26,34 @@
 ;;; ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ;;; POSSIBILITY OF SUCH DAMAGE.
 
-(in-package :cram-beasty)
+(in-package :beasty-command-interface)
 
-(defparameter *login-exec-timeout* 1.0)
-(defparameter *move-exec-timeout* 0)
-(defparameter *preemt-timeout* 1.0)
-(defparameter *server-timeout* 2.0)
+(defparameter *joint-symbols* 
+  (list :joint0 :joint1 :joint2 :joint3 :joint4 :joint5 :joint6))
 
-(defparameter *beasty-action-prefix* "dlr_msgs/RCU")
-(defparameter *beasty-action-type* 
-  (concatenate 'string *beasty-action-prefix* "Action"))
-(defparameter *beasty-goal-type* 
-  (concatenate 'string *beasty-action-prefix* "Goal"))
+(defparameter *joint-indices*
+  (list 0 1 2 3 4 5 6))
+
+(defparameter *joint-index-map*
+  (pairlis *joint-symbols* *joint-indices*))
+
+(defparameter *cartesian-symbols*
+  (list :trans-x :trans-y :trans-z :rot-x :rot-y :rot-z))
+
+(defparameter *cartesian-indices*
+  (list 0 1 2 3 4 5))
+
+(defparameter *cartesian-index-map*
+  (pairlis *cartesian-symbols* *cartesian-indices*))
+
+(defparameter *joint-goal-attribute-symbols*
+  '(:goal-pos :max-vel :max-acc :stiffness :damping))
+
+(defparameter *cartesian-goal-attribute-symbols*
+  '(:max-vel :max-acc :stiffness :damping))
+
+(defparameter *cartesian-vector-attribute-symbols*
+  (mapcar (alexandria:curry #'prefix-keyword "cartesian-") *cartesian-goal-attribute-symbols*))
+
+(defparameter *joint-vector-attribute-symbols*
+  (mapcar (alexandria:curry #'prefix-keyword "joint-") *joint-goal-attribute-symbols*))

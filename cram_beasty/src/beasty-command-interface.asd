@@ -26,10 +26,10 @@
 ;;; ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ;;; POSSIBILITY OF SUCH DAMAGE.
 
-(defsystem cram-beasty
+(defsystem beasty-command-interface
   :author "Georg Bartels <georg.bartels@cs.uni-bremen.de>"
   :license "BSD"
-  :description "Interface package of CRAM to command Beasty LWR controllers."
+  :description "Common LISP interface package to command Beasty LWR controllers via ROS."
 
   :depends-on (roslisp
                actionlib-lisp
@@ -37,7 +37,7 @@
                cl-transforms
                dlr_msgs-msg)
   :components
-  ((:module "src"
+  ((:module "beasty-command-interface"
     :components
     ((:file "package")
      (:file "defaults" :depends-on ("package"))
@@ -50,11 +50,4 @@
                                             "defaults" 
                                             "params" 
                                             "conversions"
-                                            "data-structures"))
-     (:file "test-data" :depends-on ("package" "client-interface" "data-structures"))
-     
-     ;; (:file "safety-settings" :depends-on ("package" "data-structures"))
-     
-     ;; (:file "action-interface" 
-     ;;  :depends-on ("package" "user-management" "data-structures" "conversions" "visualization"))
-     ))))
+                                            "data-structures"))))))

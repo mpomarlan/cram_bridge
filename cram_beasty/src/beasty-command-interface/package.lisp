@@ -28,7 +28,7 @@
 
 (in-package :cl-user)
 
-(defpackage :cram-beasty
+(defpackage :beasty-command-interface
   (:use #:roslisp
         #:common-lisp
         #:sb-thread

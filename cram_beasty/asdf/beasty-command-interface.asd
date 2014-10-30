@@ -1,0 +1,1 @@
+../src/beasty-command-interface.asd
