@@ -36,3 +36,24 @@
 
 (defparameter *joint-index-map*
   (pairlis *joint-symbols* *joint-indices*))
+
+(defparameter *cartesian-symbols*
+  (list :trans-x :trans-y :trans-z :rot-x :rot-y :rot-z))
+
+(defparameter *cartesian-indices*
+  (list 0 1 2 3 4 5))
+
+(defparameter *cartesian-index-map*
+  (pairlis *cartesian-symbols* *cartesian-indices*))
+
+(defparameter *joint-goal-attribute-symbols*
+  '(:goal-pos :max-vel :max-acc :stiffness :damping))
+
+(defparameter *cartesian-goal-attribute-symbols*
+  '(:max-vel :max-acc :stiffness :damping))
+
+(defparameter *cartesian-vector-attribute-symbols*
+  (mapcar (alexandria:curry #'prefix-keyword "cartesian-") *cartesian-goal-attribute-symbols*))
+
+(defparameter *joint-vector-attribute-symbols*
+  (mapcar (alexandria:curry #'prefix-keyword "joint-") *joint-goal-attribute-symbols*))

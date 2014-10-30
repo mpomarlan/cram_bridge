@@ -49,7 +49,7 @@
     ((:file "package")
      (:file "defaults" :depends-on ("package"))
      (:file "utils" :depends-on ("package"))
-     (:file "params" :depends-on ("package"))
+     (:file "params" :depends-on ("package" "utils"))
      (:file "data-structures" :depends-on ("package"))
      (:file "conversions" :depends-on ("package" "utils" "params" "defaults"))
      (:file "client-interface" :depends-on ("package" 
