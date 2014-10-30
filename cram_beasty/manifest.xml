@@ -7,13 +7,9 @@
 
   <rosdep name="sbcl"/>
   <depend package="roslisp"/>
-  <depend package="cram_language"/>
   <depend package="cl_transforms"/>
   <depend package="actionlib_lisp"/>
   <depend package="dlr_msgs"/>
-  <depend package="visualization_msgs"/>
-  <depend package="cl_human_shapes"/>
-  <depend package="cl_3d_shapes"/>
   <depend package="cl_transforms"/>
 
 </package>

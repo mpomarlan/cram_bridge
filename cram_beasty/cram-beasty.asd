@@ -34,15 +34,8 @@
   :depends-on (roslisp
                actionlib-lisp
                alexandria
-               ;; cram-language
                cl-transforms
-               ;; actionlib
-               dlr_msgs-msg
-               ;; visualization_msgs-msg
-               ;; cl-human-shapes
-               ;; cl-3d-shapes
-               ;; cl-transforms
-               )
+               dlr_msgs-msg)
   :components
   ((:module "src"
     :components
