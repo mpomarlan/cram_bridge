@@ -120,6 +120,50 @@
      :session-id 123
      :cmd-id 456))
 
+(defparameter *sample-cartesian-goal-description*
+  `(:command-type :cartesian-impedance
+     :simulated-robot t
+     :trans-x (:stiffness 500
+               :damping 0.7
+               :max-vel 0.6
+               :max-acc 0.3)
+     :trans-y (:stiffness 500
+               :damping 0.7
+               :max-vel 0.6
+               :max-acc 0.3)
+     :trans-z (:stiffness 500
+               :damping 0.7
+               :max-vel 0.6
+               :max-acc 0.3)
+     :rot-x (:stiffness 50
+             :damping 0.7
+             :max-vel 0.7
+             :max-acc 1.4)
+     :rot-y (:stiffness 50
+             :damping 0.7
+             :max-vel 0.7
+             :max-acc 1.4)
+     :rot-z (:stiffness 50
+             :damping 0.7
+             :max-vel 0.7
+             :max-acc 1.4)
+     :cartesian-goal-pose 
+     ,(cl-transforms:make-transform
+       (cl-transforms:make-3d-vector -0.6 0.068 0.8)
+       (cl-transforms:axis-angle->quaternion (cl-transforms:make-3d-vector 0 1 0) (/ PI -2)))
+     :ee-transform ,(cl-transforms:make-transform
+                     (cl-transforms:make-3d-vector 0 0 0.078)
+                     (cl-transforms:make-identity-rotation))
+     :base-transform ,(cl-transforms:make-identity-transform)
+     :base-acceleration ,(cl-transforms:make-identity-wrench)
+     :tool-mass 0.0
+     :tool-com ,(cl-transforms:make-identity-vector)
+     :nullspace-stiffness 0.0
+     :nullspace-damping 0.7
+     :nullspace-dir ,(cl-transforms:make-identity-vector)
+     :session-id 123
+     :cmd-id 456))
+
 (defparameter *sample-handle*
   (make-instance 
    'beasty-handle :session-id 123 :cmd-id 456))
