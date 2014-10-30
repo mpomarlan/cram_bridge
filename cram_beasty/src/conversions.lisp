@@ -54,56 +54,63 @@
 ;;;
 
 (defun vectorify-goal-description (goal-description)
-  (cond
-    ((joint-goal-description-p goal-description)
-     (vectorify-joint-goal goal-description))
-    ;;TODO: add cartesian case
-    (t (error "Translation of beasty goal not yet supported."))))
+  (apply #'remove-keys!
+         (apply #'add-assocs goal-description
+                (goal-description-to-vector-description goal-description))
+         (get-dimension-keys goal-description)))
 
-(defun vectorify-joint-goal (goal-description)
-  ;;TODO(Georg): refactor using `add-assocs' and `merge-hash-tables'
-  (let ((goal (make-array 7))
-        (max-vel (make-array 7))
-        (max-acc (make-array 7))
-        (stiff (make-array 7))
-        (damping (make-array 7))
-        (result (alexandria:copy-hash-table goal-description)))
-    (mapcar (lambda (key)
-              (let ((joint-descr (gethash key goal-description))
-                    (joint-index (alexandria:assoc-value *joint-index-map* key)))
-                (setf (elt goal joint-index) 
-                      (gethash :goal-pos joint-descr))
-                (setf (elt max-vel joint-index) 
-                      (gethash :max-vel joint-descr))
-                (setf (elt max-acc joint-index) 
-                      (gethash :max-acc joint-descr))
-                (setf (elt stiff joint-index) 
-                      (gethash :stiffness joint-descr))
-                (setf (elt damping joint-index) 
-                      (gethash :damping joint-descr))))
-            *joint-symbols*)
-    (setf (gethash :joint-goal result) goal)
-    (setf (gethash :joint-max-vel result) max-vel)
-    (setf (gethash :joint-max-acc result) max-acc)
-    (setf (gethash :joint-stiffness result) stiff)
-    (setf (gethash :joint-damping result) damping)
-    (apply #'remove-keys! result *joint-symbols*)))
+(defun get-dimension-keys (goal-description)
+  (cond
+    ((joint-goal-description-p goal-description) *joint-symbols*)
+    ((cartesian-goal-description-p goal-description) *cartesian-symbols*)
+    (t (error "Translation of beasty goal not yet supported: ~a" goal-description))))
+
+(defun get-vectorized-attribute-keys (goal-description)
+  (cond
+    ((joint-goal-description-p goal-description) *joint-vector-attribute-symbols*)
+    ((cartesian-goal-description-p goal-description) *cartesian-vector-attribute-symbols*)
+    (t (error "Translation of beasty goal not yet supported: ~a" goal-description))))
+
+(defun get-input-attribute-keys (goal-description)
+  (cond
+    ((joint-goal-description-p goal-description) *joint-goal-attribute-symbols*)
+    ((cartesian-goal-description-p goal-description) *cartesian-goal-attribute-symbols*)
+    (t (error "Translation of beasty goal not yet supported: ~a" goal-description))))
+
+(defun goal-description-to-vector-description (goal-description)
+  (flet ((get-attribute-for-all-dims (goal-descr dims attr)
+           (mapcar (lambda (dim) (gethash-recursively goal-descr (list dim attr))) dims)))
+    (interleave-lists
+     (get-vectorized-attribute-keys goal-description)
+     ; TODO(Georg): refactor this
+     (mapcar 
+      (alexandria:compose
+       (alexandria:rcurry #'coerce 'vector)
+       (alexandria:curry 
+        #'get-attribute-for-all-dims 
+        goal-description (get-dimension-keys goal-description)))
+       (get-input-attribute-keys goal-description)))))
 
 (defun append-sane-defaults (goal-description)
-  ;; TODO(Georg): refactor using `add-assocs'
-  (setf (gethash :motor-power goal-description) 
-        (make-array 7 :initial-element 1))
-  (setf (gethash :o_t_f goal-description)
-        (cl-transforms:make-identity-transform))
-  (setf (gethash :o_t_via goal-description)
-        (cl-transforms:make-identity-transform))
-  (setf (gethash :w_t_op goal-description)
-        (cl-transforms:make-identity-transform))
-  (setf (gethash :ee_t_k goal-description)
-        (cl-transforms:make-identity-transform))
-  (setf (gethash :ref_t_k goal-description)
-        (cl-transforms:make-identity-transform))
-  goal-description)
+  (cond
+    ((joint-goal-description-p goal-description) 
+     (add-assocs 
+      goal-description
+      :motor-power (make-array 7 :initial-element 1)
+      :cartesian-goal-pose (cl-transforms:make-identity-transform)
+      :o_t_via (cl-transforms:make-identity-transform)
+      :w_t_op (cl-transforms:make-identity-transform)
+      :ee_t_k (cl-transforms:make-identity-transform)
+      :ref_t_k (cl-transforms:make-identity-transform)))
+     ((cartesian-goal-description-p goal-description) 
+      (add-assocs 
+      goal-description
+      :motor-power (make-array 7 :initial-element 1)
+      :o_t_via (cl-transforms:make-identity-transform)
+      :w_t_op (cl-transforms:make-identity-transform)
+      :ee_t_k (cl-transforms:make-identity-transform)
+      :ref_t_k (cl-transforms:make-identity-transform)))
+    (t (error "Translation of beasty goal not yet supported: ~a" goal-description))))
 
 (defun rosify-goal-description (goal-description)
   (flet ((rosify-entry (key value)
@@ -115,20 +122,30 @@
                                     ((:command :com :parameters) 1)
                                     ((:mode :controller :parameters) 4)
                                     ((:mode :interpolator :parameters) 5)))
+                (:cartesian-impedance '((:command 1)
+                                        ((:command :com :parameters) 1)
+                                        ((:mode :controller :parameters) 2)
+                                        ((:mode :interpolator :parameters) 4)))
                 (otherwise (warn "Asked to convert command-type '~a' of goal description." value))))
              (:simulated-robot `(((:mode :robot :parameters) ,(if value 1 0))))
              (:motor-power `(((:power :robot :parameters) ,value)))
              (:session-id `(((:session_id :com :parameters) ,value)))
              (:cmd-id `(((:cmd_id :com :parameters) ,value)))
-             (:joint-goal `(((:q_f :interpolator :parameters) ,value)))
+             (:joint-goal-pos `(((:q_f :interpolator :parameters) ,value)))
              (:joint-max-vel `(((:dq_max :interpolator :parameters) ,value)))
              (:joint-max-acc `(((:ddq_max :interpolator :parameters) ,value)))
-             (:o_t_f `(((:O_T_f :interpolator :parameters)
-                        ,(transform-to-beasty-msg value))))
+             (:cartesian-goal-pose `(((:O_T_f :interpolator :parameters) ,(transform-to-beasty-msg value))))
+             (:cartesian-max-vel `(((:dX_max :interpolator :parameters) ,value)))
+             (:cartesian-max-acc `(((:ddX_max :interpolator :parameters) ,value)))
              (:o_t_via `(((:O_T_via :interpolator :parameters)
                           ,(transform-to-beasty-msg value))))
              (:joint-stiffness `(((:K_theta :controller :parameters) ,value)))
              (:joint-damping `(((:D_theta :controller :parameters) ,value)))
+             (:cartesian-stiffness `(((:K_x :controller :parameters) ,value)))
+             (:cartesian-damping `(((:D_x :controller :parameters) ,value)))
+             (:nullspace-stiffness `(((:K_NS :controller :parameters) ,value)))
+             (:nullspace-damping `(((:Xi_NS :controller :parameters) ,value)))
+             (:nullspace-dir `(((:W_NS_dir :controller :parameters) ,(3d-point-to-msg value))))
              (:ee-transform `(((:TCP_T_EE :settings :parameters) 
                                ,(transform-to-beasty-msg value))))
              (:base-transform `(((:W_T_O :settings :parameters) 
