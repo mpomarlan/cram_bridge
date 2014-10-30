@@ -40,6 +40,18 @@
           *beasty-goal-type* ,goal-description))
 
 ;;;
+;;; LIST UTILS
+;;;
+
+(defun interleave-lists! (l1 l2)
+  ;; TODO(Georg): move to utils
+  (reduce #'append (mapcar #'list l1 l2)))
+
+(defun interleave-lists (l1 l2)
+  ;; TOOD(Georg): move to utils
+  (interleave-lists! (copy-list l1) (copy-list l2)))
+
+;;;
 ;;; HASH-TABLE UTILS
 ;;;
 
@@ -67,6 +79,23 @@
  Leaves both `hash-table' and `keys' untouched."
   (every (lambda (key) (hash-table-has-key-p hash-table key)) keys))
 
+(defun gethash-recursively (hash-table keys)
+"Returns the key inside a nested `hash-table' data-structure, by using the sequence
+ of `keys' to make the actual lookup."
+  (reduce (lambda (table key) (gethash key table)) keys :initial-value hash-table))
+
+(defun add-assocs! (table &rest kvs)
+  (when (/= (rem (length kvs) 2) 0)
+    (error "Called add-assocs with an odd number of rest-arguments."))
+  (if (= (length kvs) 0)
+      table
+      (destructuring-bind (key value &rest remainder) kvs
+        (setf (gethash key table) value)
+        (apply #'add-assocs! table remainder))))
+
+(defun add-assocs (table &rest kvs)
+  (apply #'add-assocs! (alexandria:copy-hash-table table) kvs))
+
 (defun remove-keys! (hash-table &rest keys)
   "Removes key-value pairs with `keys' from `hash-table'. NOTE: `hash-table'
  will be altered."
@@ -82,6 +111,16 @@
   (apply #'remove-keys! (alexandria:copy-hash-table hash-table) keys))
 
 ;;;
+;;; KEYWORD UTILS
+;;;
+
+(defun prefix-keyword (prefix key)
+  (declare (type keyword key) (type string prefix))
+  (values 
+   (alexandria:make-keyword 
+    (concatenate 'string (string-upcase prefix) (symbol-name key)))))
+
+;;;
 ;;; BEASTY UTILS
 ;;;
 
@@ -91,10 +130,10 @@
   t)
 
 (defun joint-goal-description-p (goal-description)
-  (or (and (hash-table-p goal-description)
-           (eql (gethash :command-type goal-description) :joint-impedance))
-      (and (listp goal-description)
-           (eql (getf goal-description :command-type) :joint-impedance))))
+  (eql (gethash :command-type goal-description) :joint-impedance))
+
+(defun cartesian-goal-description-p (goal-description)
+  (eql (gethash :command-type goal-description) :cartesian-impedance))
 
 (defun get-beasty-command-code (command-symbol)
   "Returns the Beasty command-code defined in dlr_msgs/RCUGoal which corresponds to
