@@ -29,12 +29,12 @@
 (in-package :cram-wsg50)
 
 (defclass wsg50-interface ()
-  ((open-client :initarg :open-client :accessor open-client :type service-client
+  ((move-client :initarg :move-client :accessor move-client :type service-client
                  :documentation "For internal use. ROS service client to command the
-                 gripper to open its fingers.")
-   (close-client :initarg :close-client :accessor close-client :type service-client
+                 gripper to move its fingers --not expecting impact.")
+   (grasp-client :initarg :grasp-client :accessor grasp-client :type service-client
                  :documentation "For internal use. ROS service client to command the
-                 gripper to close its fingers.")
+                 gripper to close its fingers for grasping --expecting impact.")
    (homing-client :initarg :homing-client :accessor homing-client :type service-client
                   :documentation "For internal use. ROS service client to home the gripper.")
    (status-subscriber :accessor status-subscriber :type subscriber
@@ -47,6 +47,10 @@
    (force-client :initarg :force-client :accessor force-client :type service-client
                  :documentation "For internal use. ROS service client to set the max force
                  employed by the gripper.")
+   (stop-client :initarg :stop-client :accessor stop-client :type service-client
+                :documentation "For internal use. ROS service client to stop motions.")
+   (ack-client :initarg :ack-client :accessor ack-client :type service-client
+               :documentation "For internal use. ROS service client to acknowledge error.")
    (status :accessor status :type wsg50-status
            :documentation "For internal use. Last reported status of gripper.")
    (command-lock :initform (make-mutex :name (string (gensym "WSG50-COMMAND-LOCK-")))
