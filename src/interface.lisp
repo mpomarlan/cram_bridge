@@ -43,7 +43,7 @@
 (defgeneric filter-perceived-objects (template-designator perceived-objects))
 (defgeneric get-volume-of-interest (object-designator))
 (defgeneric make-uima-request-designator (&key object-designator))
-(defgeneric perceive (designator))
+(defgeneric perceive-object-designator (designator))
 
 (defmacro mapcar-clean (function list &rest more-lists)
   "Automatically removes all `NIL' entries from a generated list after
@@ -94,13 +94,7 @@ performing a `mapcar'."
            (mapcar (lambda (property)
                      (destructuring-bind (key value) property
                        (cond ((eql key 'color)
-                              (let ((ratio (sub-value 'ratio value)))
-                                (when (> ratio minimum-color-ratio)
-                                  `(,key (,(intern
-                                            (string-upcase
-                                             (sub-value 'color value))
-                                            'desig-props)
-                                          ,ratio)))))
+                              `(,key ,value))
                              ((eql key 'shape)
                               `(,key ,(intern (string-upcase value))))
                              ((eql key 'boundingbox)
@@ -142,7 +136,8 @@ performing a `mapcar'."
                       perception-result)
                      (t (ros-warn
                          (robosherlock-pm)
-                         "Object without resolution information. Dropping."))))
+                         "Object without resolution information. Dropping.")
+                        nil)))
              (call-perception-routine object-designator))))
          (remove-properties `(pose pose-on-plane bb-pose resolution
                                    boundingbox)))
@@ -328,7 +323,7 @@ defined in `template-designator'."
        perceived-object))
    perceived-objects))
 
-(defmethod perceive ((object-designator object-designator))
+(defmethod perceive-object-designator ((object-designator object-designator))
   "Triggers operation of the external perception system to find out
 which objects are currently seen, and compares the result to the
 internal beliefstate. Poses of known and visible objects are updated
