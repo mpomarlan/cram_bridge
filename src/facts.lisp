@@ -45,7 +45,7 @@
   
   (<- (loc-volume-of-interest ?loc ?p ?w ?h ?d)
     (desig-prop ?loc (on ?on))
-    (semantic-map-desig-objects ?loc ?objects)
+    (semantic-map-costmap::semantic-map-desig-objects ?loc ?objects)
     (member ?obj ?objects)
     (semantic-map-object->volume-of-interest ?obj ?p ?w ?h ?d))
 
@@ -53,15 +53,15 @@
     (crs:true))
   
   (<- (semantic-map-object->volume-of-interest ?obj ?p ?w ?h ?d)
-    (lisp-fun semantic-map-object->volume-of-interest
-              ?obj :on ?result)
+    (crs:lisp-fun semantic-map-object->volume-of-interest
+                  ?obj :on ?result)
     (not (equal ?result nil))
     (equal ?result (?p ?w ?h ?d))))
 
 (defun semantic-map-object->volume-of-interest (semantic-map-object
                                                 &optional (relation :on))
-  (let ((pose (pose semantic-map-object))
-        (dimensions (dimensions semantic-map-object)))
+  (let ((pose (sem-map-utils::pose semantic-map-object))
+        (dimensions (sem-map-utils::dimensions semantic-map-object)))
     (case relation
       (:on (let ((above-surface-threshold 0.3)
                  (origin (tf:origin pose)))
@@ -71,9 +71,9 @@
                                     (+ (tf:z origin)
                                        (/ above-surface-threshold 2)))
                  (tf:orientation pose))
-               (/ (first dimensions) 2)
-               (/ (second dimensions) 2)
-               (/ above-surface-threshold 2)))))))
+               ,(/ (tf:x dimensions) 2)
+               ,(/ (tf:y dimensions) 2)
+               ,(/ above-surface-threshold 2)))))))
 
 (defun refine-description (description)
   (let* ((object-designator (make-designator 'object description))
