@@ -149,28 +149,37 @@
 (defmethod cram-language::on-finishing-named-top-level cram-beliefstate (id)
   (beliefstate:stop-node id))
 
-(defmethod cram-language::on-preparing-task-execution cram-beliefstate (name log-parameters)
+(defmethod cram-language::on-preparing-task-execution cram-beliefstate (name log-parameters log-pattern)
   (prog1
       (beliefstate:start-node name log-parameters 1)
-    (let ((goal-location nil))
-      ;; (second
-      ;;                     (find 'cram-plan-library::goal-location log-parameters
-      ;;                           :test (lambda (x y)
-      ;;                                   (eql x (first y)))))))
-      (when goal-location
-        (beliefstate:add-designator-to-active-node
-         goal-location
-         :annotation "goal-location")
+    (let* ((param-bindings
+             (rest (assoc 'cram-language-implementation::parameters
+                          log-pattern)))
+           (bound-parameters
+             (mapcar (lambda (bdg)
+                       `(,(car bdg) ,(rest bdg)))
+                     param-bindings))
+           (body-code
+             (rest (assoc 'cram-language-implementation::body
+                          log-pattern)))
+           (pattern
+             (rest (assoc 'cram-language-implementation::pattern
+                          log-pattern)))
+           (name
+             (rest (assoc 'cram-language-implementation::name
+                          log-pattern)))
+           (description
+             (append
+              (when name `((name ,name)))
+              (when pattern `((pattern ,pattern)))
+              (when bound-parameters `((parameters ,bound-parameters)))
+              (when body-code `((body-code ,body-code))))))
+      (when description
         (beliefstate:add-designator-to-active-node
          (make-designator
-          'cram-designators:location
-          `((pose ,(reference goal-location))))
-         :annotation "goal-pose")
-        (beliefstate::annotate-parameter
-         'navigate-to (reference goal-location))
-        (beliefstate::annotate-parameters
-         `((navigate-to-x ,(tf:x (tf:origin (reference goal-location))))
-           (navigate-to-y ,(tf:y (tf:origin (reference goal-location))))))))))
+          'action
+          description)
+         :annotation "task-details")))))
 
 (defmethod cram-language::on-finishing-task-execution cram-beliefstate (id)
   (beliefstate:stop-node id))
