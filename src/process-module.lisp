@@ -539,63 +539,13 @@ replaced with `replacement'."
               original-dimensions)
              (t original-dimensions))))))
 
-(defun perceive-with-designator (object-designator &key (objects-mandatory t))
-  (let* ((perceived-designators
-           (find-with-designator (or (newest-effective-designator
-                                      object-designator)
-                                     object-designator))))
-    (when objects-mandatory
-      (unless perceived-designators
-        (cpl:fail 'cram-plan-failures:object-not-found
-                  :object-desig object-designator)))
-    (dolist (designator perceived-designators)
-      (let* ((object-name (desig-prop-value designator 'desig-props:name))
-             (object-dimensions (desig-prop-value designator 'desig-props:dimensions))
-             (object-type (desig-prop-value designator 'desig-props:type))
-             (object-at (desig-prop-value designator 'desig-props:at))
-             (object-pose (desig-prop-value object-at 'desig-props:pose))
-             (z-offset (desig-prop-value designator 'desig-props:z-offset)))
-        (let ((log-id (first (cram-language::on-begin-belief-state-update))))
-          (multiple-value-bind (pose-on-surface corrected-dimensions)
-              (pose-on-surface
-               (ubiquitous-utilities:transform-pose
-                object-pose
-                "/odom_combined")
-               z-offset
-               :allowed-types (list "Cupboard")
-               :original-dimensions (desig-prop-value
-                                     designator
-                                     'desig-props:dimensions)
-               :type object-type)
-            (let ((resized-designator
-                    (cond (corrected-dimensions
-                           (copy-designator
-                            designator
-                            :new-description
-                            `((desig-props:dimensions ,corrected-dimensions))))
-                          (t designator))))
-              (moveit:register-collision-object
-               resized-designator
-               :add t
-               :pose-stamped pose-on-surface)))
-          (register-object
-           object-name object-type object-pose object-dimensions
-           :z-offset z-offset)
-          (moveit:set-object-color object-name *object-marker-color*)
-          (cram-language::on-finish-belief-state-update log-id)))
-      (cram-plan-knowledge:on-event
-       (make-instance
-        'cram-plan-knowledge:object-perceived-event
-        :perception-source :robosherlock :object-designator designator)))
-    perceived-designators))
-
 (def-action-handler perceive (object-designator)
   (ros-info (perception) "Perceiving object.")
-  (perceive-with-designator object-designator))
-
-(def-action-handler perceive-scene ()
-  (ros-info (perception) "Perceiving scene.")
-  (perceive-with-designator (make-designator 'object nil) :objects-mandatory nil))
+  (let ((results (perceive-object-designator object-designator)))
+    (unless results
+      (cpl:fail 'cram-plan-failures:object-not-found
+                :object-desig object-designator))
+    results))
 
 (def-action-handler examine (object-designator)
   (declare (ignorable object-designator))
