@@ -429,7 +429,7 @@ replaced with `replacement'."
   (declare (ignorable dimensions))
   (let ((log-id (first (cram-language::on-begin-belief-state-update))))
     (unwind-protect
-         (let ((pose (ubiquitous-utilities:transform-pose pose "/map")))
+         (let ((pose (moveit:ensure-pose-stamped-transformed pose "/map")))
            (cond ((or (eql type 'desig-props:pancake)
                       (eql type 'desig-props:pancakemaker))
                   (crs:prolog
@@ -497,7 +497,7 @@ replaced with `replacement'."
            (loop for sem-obj in sem-objs
                  for dimensions = (slot-value
                                    sem-obj 'semantic-map-utils:dimensions)
-                 for pose-sem = (ubiquitous-utilities:transform-pose
+                 for pose-sem = (moveit:ensure-pose-stamped-transformed
                                  (tf:pose->pose-stamped
                                   "/map" 0.0
                                   (slot-value sem-obj 'semantic-map-utils:pose))
