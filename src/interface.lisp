@@ -140,7 +140,7 @@ performing a `mapcar'."
                         nil)))
              (call-perception-routine object-designator))))
          (remove-properties `(pose pose-on-plane bb-pose resolution
-                                   boundingbox)))
+                                   boundingbox at)))
     (labels ((sub-value (name sequence)
                (cadr (find name sequence :test (lambda (x y)
                                                  (eql x (car y)))))))
@@ -268,7 +268,7 @@ property in their designator."
      object :add t
      :pose-stamped (moveit:ensure-pose-stamped-transformed
                     (desig-prop-value (desig-prop-value object 'at) 'pose)
-                    "/odom_combined"))))
+                    "/map"))))
 
 (defun update-objects (objects)
   "Updates objects' poses in the current bullet world based on the
@@ -293,23 +293,23 @@ property in their designator."
      object :add t
      :pose-stamped (moveit:ensure-pose-stamped-transformed
                     (desig-prop-value (desig-prop-value object 'at) 'pose)
-                    "/odom_combined"))))
+                    "/map"))))
 
 (defmethod designators-match ((template object-designator)
                               (subject object-designator))
   "Checks every property of the `template' object designator to be
 present in the `subject' object designator. Returns `t' if all
 properties in `template' are satisfied, `NIL' otherwise. Only checks
-for: string, number, symbol. This way, reference and unknown object
-type comparisons are avoided. All other value types are ignored."
+for: string, number, symbol. All other value types are ignored. This
+way, reference and unknown object type comparisons are avoided."
   (loop for (key value) in (description template)
         for type-check-fnc = (cond ((stringp value) #'string=)
                                    ((numberp value) #'=)
                                    ((symbolp value) #'eql))
-        when (and type-check-fnc
-                  (not (find value (desig-prop-values subject key)
-                             :test type-check-fnc)))
-          do (return nil)
+        for subject-values = (desig-prop-values subject key)
+        when (and type-check-fnc subject-values)
+          do (unless (find value subject-values :test type-check-fnc)
+               (return nil))
         finally (return t)))
 
 (defmethod filter-perceived-objects ((template-designator object-designator)
