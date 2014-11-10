@@ -52,7 +52,8 @@
    add-failure-to-active-node
    add-designator-to-active-node
    equate-designators
-   set-metadata
+   set-metadata 
+   change-planlogging-namespace
    ;; Interactive objects
    register-interactive-object
    unregister-interactive-object
