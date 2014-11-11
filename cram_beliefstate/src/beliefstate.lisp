@@ -38,6 +38,12 @@
 
 (roslisp-utilities:register-ros-init-function init-beliefstate)
 
+(defun change-planlogging-namespace(&key (namespace "beliefstate_ros") (use-roslisp-ns nil))
+  (if use-roslisp-ns
+      (setq *planlogging-namespace* (concatenate 'string roslisp::*namespace* (string-left-trim "/" namespace)))
+      (setq *planlogging-namespace* (concatenate 'string "/" (string-left-trim "/" namespace)))))
+      
+
 (defun fully-qualified-service-name (service-name)
   (concatenate 'string *planlogging-namespace* "/" service-name))
 
