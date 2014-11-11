@@ -40,6 +40,8 @@
   #:roslisp)
   (:export
    ;; Functions
+   annotate-parameter
+   annotate-parameters
    beliefstate-init
    start-node
    stop-node
