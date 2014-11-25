@@ -1,0 +1,43 @@
+<package>
+  <name>cram_beliefstate</name>
+  <version>1.0.0</version>
+  <description>
+    
+    To be able to use this package, you will need the following dependencies:
+
+      * designator_integration_lisp: https://github.com/code-iai/designator_integration_lisp
+      * iai_common_msgs: https://github.com/code-iai/iai_common_msgs
+      * beliefstate: https://github.com/fairlight/beliefstate
+
+  </description>
+  <author>Jan Winkler</author>
+  <maintainer email="mustermann@fictional.de">Add Maintainer here</maintainer>
+  <license>BSD</license>
+  <url>http://ros.org/wiki/cram_beliefstate</url>
+  
+  <!-- Dependencies which this package needs to build itself. -->
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <!-- Dependencies needed to compile this package. -->
+  <build_depend>roslisp</build_depend>
+  <build_depend>actionlib</build_depend>
+  <build_depend>cram_language</build_depend>
+  <build_depend>cram_plan_library</build_depend>
+  <build_depend>designator_integration_lisp</build_depend>
+  <build_depend>cram_reasoning</build_depend>
+  <build_depend>cram_uima</build_depend>
+  <build_depend>pr2_manipulation_process_module</build_depend>
+  <build_depend>point_head_process_module</build_depend>
+
+  <!-- Dependencies needed after this package is compiled. -->
+  <run_depend>roslisp</run_depend>
+  <run_depend>actionlib</run_depend>
+  <run_depend>cram_language</run_depend>
+  <run_depend>cram_plan_library</run_depend>
+  <run_depend>designator_integration_lisp</run_depend>
+  <run_depend>cram_reasoning</run_depend>
+  <run_depend>cram_uima</run_depend>
+  <run_depend>pr2_manipulation_process_module</run_depend>
+  <run_depend>point_head_process_module</run_depend>
+
+</package>

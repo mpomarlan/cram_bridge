@@ -1,4 +1,20 @@
-cmake_minimum_required(VERSION 2.4.6)
-include($ENV{ROS_ROOT}/core/rosbuild/rosbuild.cmake)
+cmake_minimum_required(VERSION 2.8.3)
+project(cram_fccl)
 
-rosbuild_init()
+find_package(catkin REQUIRED COMPONENTS
+  cram_language
+  roslisp
+  actionlib_lisp
+  cl_transforms
+  cl_feature_constraints
+  fccl_msgs
+  geometry_msgs
+  std_msgs
+  lisp_unit
+)
+
+catkin_package()
+include_directories(
+  ${catkin_INCLUDE_DIRS}
+)
+

@@ -1,0 +1,40 @@
+<package>
+  <name>cram_bridge</name>
+  <version>1.0.0</version>
+  <description>cram_bridge</description>
+
+
+  <license>BSD</license>
+
+  <url type="website">http://github.com/cram-code/cram_bridge</url>
+  <maintainer email="mustermann@fictional.de">Add Maintainer here</maintainer>
+  <!-- <url type="bugtracker"></url> -->
+
+
+
+  <!-- Dependencies which this package needs to build itself. -->
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <!-- Dependencies needed to compile this package. -->
+
+
+  <!-- Dependencies needed after this package is compiled. -->
+  <run_depend>cram_json_prolog</run_depend>
+  <run_depend>cram_beliefstate</run_depend>
+  <run_depend>cram_uima</run_depend>
+  <run_depend>cram_ik_proxy</run_depend>
+  <run_depend>cram_moveit</run_depend>
+  <run_depend>cram_ptu</run_depend>
+  <run_depend>cram_fccl</run_depend>
+  <run_depend>cram_pr2_controllers</run_depend>
+  <run_depend>cram_wsg50</run_depend>
+
+  <!-- Dependencies needed only for running tests. -->
+
+
+
+
+
+
+
+</package>

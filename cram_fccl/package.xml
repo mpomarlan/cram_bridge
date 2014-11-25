@@ -1,0 +1,38 @@
+<package>
+  <name>cram_fccl</name>
+  <version>1.0.0</version>
+  <description>
+     Low-level cram interface package to connect to
+     the feature constraints controller library (FCCL).
+  </description>
+  <author>Georg Bartels</author>
+  <maintainer email="mustermann@fictional.de">Add Maintainer here</maintainer>
+  <license>BSD</license>
+  <url>http://ai.uni-bremen.de/wiki/software/fccl</url>
+
+  <!-- Dependencies which this package needs to build itself. -->
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <!-- Dependencies needed to compile this package. -->
+  <build_depend>roslisp</build_depend>
+  <build_depend>actionlib_lisp</build_depend>
+  <build_depend>cl_transforms</build_depend>
+  <build_depend>cl_feature_constraints</build_depend>
+  <build_depend>cram_language</build_depend>
+  <build_depend>fccl_msgs</build_depend>
+  <build_depend>geometry_msgs</build_depend>
+  <build_depend>std_msgs</build_depend>
+  <build_depend>lisp_unit</build_depend>
+
+  <!-- Dependencies needed after this package is compiled. -->
+  <run_depend>roslisp</run_depend>
+  <run_depend>actionlib_lisp</run_depend>
+  <run_depend>cl_transforms</run_depend>
+  <run_depend>cl_feature_constraints</run_depend>
+  <run_depend>cram_language</run_depend>
+  <run_depend>fccl_msgs</run_depend>
+  <run_depend>geometry_msgs</run_depend>
+  <run_depend>std_msgs</run_depend>
+  <run_depend>lisp_unit</run_depend>
+
+</package>
