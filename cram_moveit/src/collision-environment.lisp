@@ -89,7 +89,11 @@ bridge.")
        :primitive-shapes (list (roslisp:make-msg
                                 "shape_msgs/SolidPrimitive"
                                 type shape
-                                dimensions dimensions))
+                                dimensions
+                                (cond ((eql shape-prop 'desig-props:round)
+                                       (vector (elt dimensions 2)
+                                               (/ (elt dimensions 1) 2)))
+                                      (t dimensions))))
        :pose-stamped pose-stamped
        :color (desig-prop-value object 'desig-props:color))
       (when add

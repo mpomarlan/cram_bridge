@@ -111,5 +111,9 @@
     (let ((condition (cdr (assoc error-code *known-failures*))))
       (ros-error (moveit) "Signalling: ~a" condition)
       (cond (condition
-             (error condition arguments))
-            (t (error 'moveit-failure arguments))))))
+             (if arguments
+                 (error condition arguments)
+                 (error condition)))
+            (t (if arguments
+                   (error 'moveit-failure arguments)
+                   (error 'moveit-failure)))))))
