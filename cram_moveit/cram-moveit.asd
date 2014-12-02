@@ -44,7 +44,6 @@
                moveit_msgs-msg
                moveit_msgs-srv
                roslisp-utilities
-               ubiquitous-utilities
                cl-tf2)
   :components
   ((:module "src"

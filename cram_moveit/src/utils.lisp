@@ -92,8 +92,8 @@
   (sb-thread:with-mutex (*tf-mutex*)
     (let ((target-frame (unslash-frame target-frame))
           (source-frame (unslash-frame (tf:frame-id pose-stamped))))
-      ;;(ros-info (moveit) "TF2 transform (~a -> ~a)"
-      ;;          source-frame target-frame)
+      ;; (ros-info (moveit) "TF2 transform (~a -> ~a)"
+      ;;           source-frame target-frame)
       (cpl:with-failure-handling
           ((cl-tf:tf-cache-error (f)
              (declare (ignore f))

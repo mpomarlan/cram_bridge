@@ -49,12 +49,6 @@ MoveIt! framework and registers known conditions."
                            #'joint-states-callback))
   (setf *tf2* (make-instance 'cl-tf2:buffer-client))
   (connect-action-client)
-  (ubiquitous-utilities:register-collision-object-registration-function
-   #'register-collision-object)
-  (ubiquitous-utilities:register-collision-object-adding-function
-   #'add-collision-object)
-  (ubiquitous-utilities:register-pose-transform-function
-   #'ensure-pose-stamped-transformed)
   (setf *moveit-action-access-lock*
         (make-lock :name "moveit-action-access"))
   (setf *moveit-pose-validity-check-lock*
@@ -135,8 +129,8 @@ MoveIt! framework and registers known conditions."
                   (let* ((mpreq (make-message
                                  "moveit_msgs/MotionPlanRequest"
                                  :group_name planning-group
-                                 :num_planning_attempts 3
-                                 :allowed_planning_time 7.5
+                                 :num_planning_attempts 5
+                                 :allowed_planning_time 10.0
                                  :trajectory_constraints
                                  (make-trajectory-constraints
                                   :link-names link-names
