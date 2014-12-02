@@ -48,9 +48,11 @@
    extract-files
    set-color-usage
    add-object-to-active-node
+   add-object-to-node
    add-topic-image-to-active-node
    add-failure-to-active-node
    add-designator-to-active-node
+   add-designator-to-node
    equate-designators
    set-metadata
    ;; Interactive objects

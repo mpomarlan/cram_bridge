@@ -27,9 +27,6 @@
 
 (in-package :cram-beliefstate)
 
-(defparameter *interactive-callback-subscriber* nil)
-(defparameter *registered-interactive-callbacks* nil)
-
 (defun init-interactive-control ()
   (setf *interactive-callback-subscriber*
         (roslisp:subscribe "/interactive_callback"

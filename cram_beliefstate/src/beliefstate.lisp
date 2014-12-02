@@ -31,7 +31,11 @@
 (defvar *kinect-topic-rgb* "/kinect_head/rgb/image_color")
 (defvar *interactive-callback-fluent* (cpl:make-fluent))
 (defvar *service-access* (make-lock :name "logging-service-access-lock"))
+
 (defparameter *logging-enabled* t)
+(defparameter *interactive-callback-subscriber* nil)
+(defparameter *registered-interactive-callbacks* nil)
+
 
 (defun init-beliefstate ()
   (setf *registered-interactive-callbacks* nil))
@@ -127,23 +131,25 @@
                                  (t 0)))
          (list 'max-detail-level max-detail-level))))
 
-(defun alter-node (description &key (mode :alter) (command "")
-                                 (assurance-token ""))
+(defmethod alter-node ((description list) &key node-id (mode :alter) (command "")
+                                            (assurance-token ""))
   (with-lock-held (*service-access*)
     (when (wait-for-logging "operate")
-      (designator-integration-lisp:call-designator-service
-       (fully-qualified-service-name "operate")
-       (make-designator 'action
-                        (append
-                         description
-                         (cond ((eql mode :service)
-                                `((command ,command))))
-                         (cond ((not (string= assurance-token ""))
-                                `((_assurance_token ,assurance-token))))
-                         `((_cb_type alter))
-                         `((_type ,(case mode
-                                     (:alter "alter")
-                                     (:service "service"))))))))))
+      (let ((description (cond (node-id (append description `((_relative_context_id ,node-id))))
+                               (t description))))
+        (designator-integration-lisp:call-designator-service
+         (fully-qualified-service-name "operate")
+         (make-designator 'action
+                          (append
+                           description
+                           (cond ((eql mode :service)
+                                  `((command ,command))))
+                           (cond ((not (string= assurance-token ""))
+                                  `((_assurance_token ,assurance-token))))
+                           `((_cb_type alter))
+                           `((_type ,(case mode
+                                       (:alter "alter")
+                                       (:service "service")))))))))))
 
 (defun start-new-experiment ()
   (let ((service (fully-qualified-service-name "alter_context")))
@@ -165,6 +171,20 @@
                         (list 'memory-address memory-address)
                         (list 'description description)))))
     (add-designator-to-active-node designator :annotation annotation)
+    (when result
+      (desig-prop-value (first result) 'desig-props::id)))) ;; desig_id
+
+(defun add-object-to-node (designator id &key (annotation ""))
+  (let* ((memory-address (write-to-string
+                          (sb-kernel:get-lisp-obj-address designator)))
+         (description (description designator))
+         (result (alter-node
+                  (list (list 'command 'add-object)
+                        (list 'type "OBJECT")
+                        (list 'annotation annotation)
+                        (list 'memory-address memory-address)
+                        (list 'description description)))))
+    (add-designator-to-node designator id :annotation annotation)
     (when result
       (desig-prop-value (first result) 'desig-props::id)))) ;; desig_id
 
@@ -193,6 +213,25 @@
     (alter-node
      (list (list 'command 'add-failure)
            (list 'condition datum-str)))))
+
+(defun add-designator-to-node (designator node-id &key (annotation ""))
+  (let* ((type (ecase (type-of designator)
+                 (cram-designators:action-designator "ACTION")
+                 (cram-designators:location-designator "LOCATION")
+                 (cram-designators:object-designator "OBJECT")))
+         (memory-address (write-to-string
+                          (sb-kernel:get-lisp-obj-address designator)))
+         (description (description designator))
+         (result (alter-node
+                  (list (list 'command 'add-designator)
+                        (list 'type type)
+                        (list 'annotation annotation)
+                        (list 'memory-address memory-address)
+                        (list 'description description))
+                  :node-id node-id)))
+    (when result
+      (let* ((desig-id (desig-prop-value (first result) 'desig-props::id)))
+        desig-id))))
 
 (defun add-designator-to-active-node (designator &key (annotation ""))
   (let* ((type (ecase (type-of designator)
