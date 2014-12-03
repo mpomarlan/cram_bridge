@@ -27,9 +27,17 @@
 
 (in-package :robosherlock-process-module)
 
-(def-fact-group inference-facts (infer-object-property)
+(def-fact-group inference-facts (infer-object-property object-handle)
+  
+  (<- (object-handle ?type ?handle)
+    (crs:fail))
   
   (<- (infer-object-property ?object ?key ?value)
+    (crs:fail)))
+
+(def-fact-group object-validity-facts (perceived-object-invalid)
+  
+  (<- (perceived-object-invalid ?object)
     (crs:fail)))
 
 (def-fact-group perception-request-enrichment (volume-of-interest)

@@ -123,10 +123,11 @@ performing a `mapcar'."
                                                    (t segment-property))))
                                          value)))
                              (t `(,key ,value)))))
-                   (description uima-result-designator)))))
+                   (description uima-result-designator))) uima-result-designator))
        uima-result-designators))))
 
-(defmethod perceive-with-object-designator ((object-designator object-designator) &key (target-frame "map"))
+(defmethod perceive-with-object-designator ((object-designator object-designator)
+                                            &key (target-frame "map"))
   (let* ((perception-results
            (remove-if
             #'not
@@ -140,7 +141,7 @@ performing a `mapcar'."
                         nil)))
              (call-perception-routine object-designator))))
          (remove-properties `(pose pose-on-plane bb-pose resolution
-                                   boundingbox at)))
+                                   boundingbox at name)))
     (labels ((sub-value (name sequence)
                (cadr (find name sequence :test (lambda (x y)
                                                  (eql x (car y)))))))
@@ -162,6 +163,7 @@ performing a `mapcar'."
                 (additional-properties
                   (append
                    `((plane-distance ,(/ (elt dimensions-3d 2) 2)))
+                   ;;`((desig-props::type desig-props::pancakemix)) ;; Hack
                    `((at ,(make-designator
                            'location
                            `((pose
@@ -179,7 +181,8 @@ performing a `mapcar'."
                    `((dimensions ,dimensions-3d)))))
            (when (< lastseen 2.0d0)
              (make-designator 'object (append new-description
-                                              additional-properties)))))
+                                              additional-properties)
+                              perception-result))))
        perception-results))))
 
 (defmethod examine-perceived-object-designator
@@ -194,7 +197,8 @@ infered and appended to the designator's description."
                    (cut:with-vars-bound (?type)
                        (first
                         (crs:prolog `(infer-object-property
-                                      ,object-designator type ?type)))
+                                      ,object-designator desig-props:type ?type)))
+                     (format t "Type: ~a~%" ?type)
                      ?type)))
          (typed-object-designator
            (or (and (not type) object-designator)
@@ -203,21 +207,31 @@ infered and appended to the designator's description."
                 (append
                  (remove-if (lambda (x) (eql (car x) 'type))
                             object-description)
-                 `((type ,type))))))
+                 `((type ,type)))
+                object-designator)))
+         (handles
+           (cut:force-ll (cut:lazy-mapcar
+                          (lambda (bdgs)
+                            (cut:with-vars-bound (?handles) bdgs
+                              (loop for handle in ?handles
+                                    collect `(desig-props::handle ,handle))))
+                          (crs:prolog `(object-handle ,type ?handles)))))
          (new-properties
-          (cut:force-ll (cut:lazy-mapcar
-                         (lambda (bdgs)
-                           (cut:with-vars-bound (?key ?value) bdgs
-                             `(,?key ,?value)))
-                         (crs:prolog `(infer-object-property
-                                       ,typed-object-designator
-                                       ?key ?value)))))
+          (append
+           (cut:force-ll (cut:lazy-mapcar
+                          (lambda (bdgs)
+                            (cut:with-vars-bound (?key ?value) bdgs
+                              `(,?key ,?value)))
+                          (crs:prolog `(infer-object-property
+                                        ,typed-object-designator
+                                        ?key ?value))))
+           (first handles)))
          (refined-old
            (remove-if (lambda (x)
                         (find x new-properties
                               :test (lambda (x y)
                                       (eql (car x) (car y)))))
-                      object-description)))
+                      (description typed-object-designator))))
     (let* ((infered-description (append refined-old new-properties))
            (complete-description
              (let ((original-description (description original-designator)))
@@ -229,12 +243,15 @@ infered and appended to the designator's description."
                                         :test (lambda (x y)
                                                 (eql (car x) (car y))))))
                         original-description)))))
-      (make-designator 'object complete-description))))
+      (make-designator 'object complete-description object-designator))))
 
 (defun remove-disappeared-objects (object-names)
   "Removes objects from the current bullet world. They are refered to
 by the `name' property specified in their designator."
+  (roslisp:ros-info (robosherlock-pm) "Removing objects: ~a~%"
+                    (length object-names))
   (dolist (object-name object-names)
+    (format t "Remove object: ~a~%" object-name)
     (crs:prolog `(and (btr:bullet-world ?w)
                       (btr:retract
                        (btr:object
@@ -245,12 +262,15 @@ by the `name' property specified in their designator."
   "Adds objects to the current bullet world. In the world, they then
 consist of boxes of dimensions as specified in the `dimensions'
 property in their designator."
+  (roslisp:ros-info (robosherlock-pm) "Adding objects: ~a~%"
+                    (length objects))
   (dolist (object objects)
     (let ((pose (desig-prop-value
                  (desig-prop-value object 'at)
                  'pose))
           (dimensions (desig-prop-value object 'dimensions))
           (name (desig-prop-value object 'name)))
+      (format t "Add object: ~a~%" name)
       (crs:prolog `(and (btr:bullet-world ?w)
                         (btr:assert
                          (btr:object
@@ -273,11 +293,14 @@ property in their designator."
 (defun update-objects (objects)
   "Updates objects' poses in the current bullet world based on the
 `name', and the `pose' properties in their respective designator."
+  (roslisp:ros-info (robosherlock-pm) "Updating objects: ~a~%"
+                    (length objects))
   (dolist (object objects)
     (let ((pose (desig-prop-value
                  (desig-prop-value object 'at)
                  'pose))
           (name (desig-prop-value object 'name)))
+      (format t "Update object: ~a~%" name)
       (crs:prolog `(and (btr:bullet-world ?w)
                         (btr:assert
                          (btr:object-pose
@@ -320,6 +343,8 @@ defined in `template-designator'."
   (mapcar-clean
    (lambda (perceived-object)
      (when (designators-match template-designator perceived-object)
+       ;; The designator matches based on its description (if
+       ;; any). Now see if it gets accepted based on external factors.
        perceived-object))
    perceived-objects))
 
@@ -333,8 +358,13 @@ retracted from the internal representation. The parameter
   ;; Make sure that the current pose and everything is in the
   ;; beliefstate.
   (plan-knowledge:on-event (make-instance 'plan-knowledge:robot-state-changed))
-  (let* ((perceived-object-designators (perceive-with-object-designator
-                                        object-designator))
+  (let* ((perceived-object-designators
+           (mapcar-clean
+            (lambda (perceived-object)
+              (unless (crs:prolog `(perceived-object-invalid
+                                    ,perceived-object))
+                perceived-object))
+            (perceive-with-object-designator object-designator)))
          (perceived-object-names
            (mapcar (lambda (perceived-object-designator)
                      (desig-prop-value perceived-object-designator 'name))
@@ -343,7 +373,7 @@ retracted from the internal representation. The parameter
          ;; world, except for the ones explicitly being ignored.
          (all-bullet-objects
            (cut:force-ll
-            (cut:lazy-mapcar 
+            (cut:lazy-mapcar
              (lambda (bdgs)
                (cut:with-vars-bound (?o) bdgs
                  ?o))
@@ -418,10 +448,12 @@ retracted from the internal representation. The parameter
                                   'perceived-object-data
                                   :identifier (desig-prop-value
                                                examined-object-designator 'name)
+                                  :object-identifier (desig-prop-value
+                                                      examined-object-designator 'name)
                                   :pose (desig-prop-value
                                          (desig-prop-value
-                                          examined-object-designator 'at)
-                                         'pose))))
+                                          examined-object-designator 'desig-props::at)
+                                         'desig-props::pose))))
                        (make-effective-designator
                         object-designator
                         :new-properties (description examined-object-designator)

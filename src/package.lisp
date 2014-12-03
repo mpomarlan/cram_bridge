@@ -41,7 +41,9 @@
   (:import-from #:cram-manipulation-knowledge
                 trajectory-point end-effector-link)
   (:export robosherlock-process-module
-           infer-object-property)
+           infer-object-property
+           perceived-object-invalid
+           object-handle)
   (:desig-properties #:to #:perceive #:obj #:examine #:property #:properties
                      #:color #:size #:shape #:pose-on-plane #:z-offset
                      #:grasp-pose #:grasp-poses #:object-identifier #:dimensions
