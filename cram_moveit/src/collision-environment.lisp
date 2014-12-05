@@ -277,7 +277,7 @@ bridge.")
                           (tf:frame-id current-pose-stamped)
                           target-link)
         (let* ((pose-in-link
-                 (ensure-pose-stamped-transformed
+                 (cl-tf2:ensure-pose-stamped-transformed
                   current-pose-stamped target-link
                   :ros-time t))
                (obj-msg-plain (create-collision-object-message

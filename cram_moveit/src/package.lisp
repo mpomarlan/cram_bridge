@@ -91,10 +91,6 @@
    no-ik-solution
    no-collision-shapes-defined
    pose-not-transformable-into-link
-   ;; Transformations
-   ensure-pose-stamped-transformable
-   ensure-pose-stamped-transformed
-   ensure-transform-available
    ;; Display
    display-robot-state
    set-object-color)
