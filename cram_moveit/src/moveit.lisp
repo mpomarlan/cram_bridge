@@ -612,7 +612,7 @@ as only the final configuration IK is generated."
 (defun check-base-pose-validity (pose-stamped)
   (with-lock-held (*moveit-pose-validity-check-lock*)
     (let* ((pose-stamped-oc (cl-tf2:ensure-pose-stamped-transformed
-                             pose-stamped "odom_combined" :ros-time t))
+                             pose-stamped "odom_combined" :use-current-ros-time t))
            (origin (tf:origin pose-stamped-oc))
            (orientation (tf:orientation pose-stamped-oc)))
       (let ((adv (roslisp:advertise "/dhdhdh" "geometry_msgs/PoseStamped")))

@@ -279,7 +279,7 @@ bridge.")
         (let* ((pose-in-link
                  (cl-tf2:ensure-pose-stamped-transformed
                   current-pose-stamped target-link
-                  :ros-time t))
+                  :use-current-ros-time t))
                (obj-msg-plain (create-collision-object-message
                                name pose-in-link
                                :primitive-shapes primitive-shapes
