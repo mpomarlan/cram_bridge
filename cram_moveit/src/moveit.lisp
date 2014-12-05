@@ -47,6 +47,7 @@ MoveIt! framework and registers known conditions."
         (roslisp:subscribe "/joint_states"
                            "sensor_msgs/JointState"
                            #'joint-states-callback))
+  (setf *tf2* (make-instance 'cl-tf2:buffer-client))
   (connect-action-client)
   (setf *moveit-action-access-lock*
         (make-lock :name "moveit-action-access"))
@@ -110,8 +111,8 @@ MoveIt! framework and registers known conditions."
                        (poses-stamped (mapcar
                                        (lambda (pose-stamped)
                                          (tf:pose->pose-stamped
-                                          (unslash-frame (tf:frame-id
-                                                          pose-stamped))
+                                          (cl-tf2:unslash-frame (tf:frame-id
+                                                                 pose-stamped))
                                           (tf:stamp pose-stamped)
                                           pose-stamped))
                                        (cond ((listp pose-stamped) pose-stamped)
@@ -612,7 +613,7 @@ as only the final configuration IK is generated."
 (defun check-base-pose-validity (pose-stamped)
   (with-lock-held (*moveit-pose-validity-check-lock*)
     (let* ((pose-stamped-oc (cl-tf2:ensure-pose-stamped-transformed
-                             pose-stamped "odom_combined" :use-current-ros-time t))
+                             *tf2* pose-stamped "odom_combined" :use-current-ros-time t))
            (origin (tf:origin pose-stamped-oc))
            (orientation (tf:orientation pose-stamped-oc)))
       (let ((adv (roslisp:advertise "/dhdhdh" "geometry_msgs/PoseStamped")))
