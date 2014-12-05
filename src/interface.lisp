@@ -33,6 +33,7 @@
   ((pose :reader pose :initarg :pose)
    (identifier :reader identifier :initarg :identifier)))
 
+(defvar *tf2* nil)
 (defvar *ignored-bullet-objects* nil)
 
 (defgeneric call-perception-routine (designator &key minimum-color-ratio))
@@ -168,6 +169,7 @@ performing a `mapcar'."
                            'location
                            `((pose
                               ,(cl-tf2:ensure-pose-stamped-transformed
+                                *tf2*
                                 (cond ((find 'flat (desig-prop-values
                                                     perception-result
                                                     'shape))
@@ -287,6 +289,7 @@ property in their designator."
     (moveit:register-collision-object
      object :add t
      :pose-stamped (cl-tf2:ensure-pose-stamped-transformed
+                    *tf2*
                     (desig-prop-value (desig-prop-value object 'at) 'pose)
                     "/map"))))
 
@@ -315,6 +318,7 @@ property in their designator."
     (moveit:register-collision-object
      object :add t
      :pose-stamped (cl-tf2:ensure-pose-stamped-transformed
+                    *tf2*
                     (desig-prop-value (desig-prop-value object 'at) 'pose)
                     "/map"))))
 
