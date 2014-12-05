@@ -41,7 +41,6 @@
                ;; Old
                cram-plan-knowledge
                process-modules
-               cram-moveit
                cram-reasoning
                cram-uima
                ;robosherlock-process-module
