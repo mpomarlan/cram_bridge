@@ -140,7 +140,7 @@
   (let ((ref-frame "/base_link")
         (fin-frame *object-reference-frame*))
     (let* ((base-transform-map
-             (moveit:ensure-transform-available
+             (cl-tf2:ensure-transform-available
               ref-frame fin-frame))
            (base-pose-map (tf:make-pose-stamped
                            (tf:frame-id base-transform-map)
@@ -148,7 +148,7 @@
                            (tf:translation base-transform-map)
                            (tf:rotation base-transform-map)))
            (object-pose-map
-             (moveit:ensure-pose-stamped-transformed
+             (cl-tf2:ensure-pose-stamped-transformed
               object-pose fin-frame))
            (origin1 (tf:origin base-pose-map))
            (origin2 (tf:origin object-pose-map))
@@ -171,7 +171,7 @@
   (let* ((type 'desig-props:object)
          (log-id (first (cram-language::on-begin-object-identity-resolution type)))
          (pose-in-map
-           (when pose (moveit:ensure-pose-stamped-transformed pose "/map")))
+           (when pose (cl-tf2:ensure-pose-stamped-transformed pose "/map")))
          (resolved-name
            (block name-resolution
              (let ((near-objects
@@ -267,8 +267,8 @@ replaced with `replacement'."
                            desig field)))
            (maybe-transformed-pose
              (cond (to-fixed-frame
-                    (moveit:ensure-pose-stamped-transformed pose-stamped *object-reference-frame*
-                                                            :ros-time t))
+                    (cl-tf2:ensure-pose-stamped-transformed pose-stamped *object-reference-frame*
+                                                            :use-current-ros-time t))
                    (t pose-stamped))))
       (cond (reorient (pose-pointing-away-from-base maybe-transformed-pose))
             (t maybe-transformed-pose)))))
@@ -369,12 +369,12 @@ replaced with `replacement'."
     (let* ((at (desig-prop-value (desig:current-desig designator) 'desig-props:at))
            (pose-stamped (when at (desig-prop-value at 'desig-props:pose)))
            (pose-stamped-expected
-             (when pose-stamped (moveit:ensure-pose-stamped-transformed
-                                 pose-stamped *object-reference-frame* :ros-time t)))
+             (when pose-stamped (cl-tf2:ensure-pose-stamped-transformed
+                                 pose-stamped *object-reference-frame* :use-current-ros-time t)))
            (valid-objects
              (loop for object in perceived-objs
                    for name = (slot-value object 'identifier)
-                   for pose = (moveit:ensure-pose-stamped-transformed
+                   for pose = (cl-tf2:ensure-pose-stamped-transformed
                                (slot-value object 'pose) *object-reference-frame*)
                    for type = (slot-value object 'type)
                    for dimensions = (slot-value object 'desig-props:dimensions)
@@ -429,7 +429,7 @@ replaced with `replacement'."
   (declare (ignorable dimensions))
   (let ((log-id (first (cram-language::on-begin-belief-state-update))))
     (unwind-protect
-         (let ((pose (moveit:ensure-pose-stamped-transformed pose "/map")))
+         (let ((pose (cl-tf2:ensure-pose-stamped-transformed pose "/map")))
            (cond ((or (eql type 'desig-props:pancake)
                       (eql type 'desig-props:pancakemaker))
                   (crs:prolog
@@ -497,7 +497,7 @@ replaced with `replacement'."
            (loop for sem-obj in sem-objs
                  for dimensions = (slot-value
                                    sem-obj 'semantic-map-utils:dimensions)
-                 for pose-sem = (moveit:ensure-pose-stamped-transformed
+                 for pose-sem = (cl-tf2:ensure-pose-stamped-transformed
                                  (tf:pose->pose-stamped
                                   "/map" 0.0
                                   (slot-value sem-obj 'semantic-map-utils:pose))

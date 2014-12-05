@@ -167,13 +167,13 @@ performing a `mapcar'."
                    `((at ,(make-designator
                            'location
                            `((pose
-                              ,(moveit:ensure-pose-stamped-transformed
+                              ,(cl-tf2:ensure-pose-stamped-transformed
                                 (cond ((find 'flat (desig-prop-values
                                                     perception-result
                                                     'shape))
                                        pose)
                                       (t pose-bb))
-                                target-frame :ros-time t))))))
+                                target-frame :use-current-ros-time t))))))
                    `((name ,(intern (concatenate 'string "OBJECT"
                                                  (write-to-string
                                                   (truncate id)))
@@ -286,7 +286,7 @@ property in their designator."
                           :size ,(map 'list #'identity dimensions))))))
     (moveit:register-collision-object
      object :add t
-     :pose-stamped (moveit:ensure-pose-stamped-transformed
+     :pose-stamped (cl-tf2:ensure-pose-stamped-transformed
                     (desig-prop-value (desig-prop-value object 'at) 'pose)
                     "/map"))))
 
@@ -314,7 +314,7 @@ property in their designator."
                              ,(tf:w (tf:orientation pose)))))))))
     (moveit:register-collision-object
      object :add t
-     :pose-stamped (moveit:ensure-pose-stamped-transformed
+     :pose-stamped (cl-tf2:ensure-pose-stamped-transformed
                     (desig-prop-value (desig-prop-value object 'at) 'pose)
                     "/map"))))
 
