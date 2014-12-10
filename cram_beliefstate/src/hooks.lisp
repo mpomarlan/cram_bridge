@@ -408,7 +408,7 @@
 (defmethod cram-language::on-with-policy-end (id success)
   (beliefstate:stop-node id :success success))
 
-(defmethod cram-language::on-prepare-prolog-prove cram-beliefstate (query binds)
+(defmethod cram-utilities::on-prepare-prolog-prove cram-beliefstate (query binds)
   (when *enable-prolog-logging*
     (let ((id (beliefstate:start-node "PROLOG" `() 3)))
       (beliefstate:add-designator-to-node
@@ -419,6 +419,6 @@
         `())
        id :annotation "prolog-details"))))
 
-(defmethod cram-language::on-finish-prolog-prove cram-beliefstate (id success)
+(defmethod cram-utilities::on-finish-prolog-prove cram-beliefstate (id success)
   (when *enable-prolog-logging*
     (beliefstate:stop-node id :success success)))
