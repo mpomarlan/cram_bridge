@@ -27,6 +27,8 @@
 
 (in-package :beliefstate)
 
+(defvar *enable-prolog-logging* nil)
+
 (defmethod cram-language::on-open-gripper cram-beliefstate (side max-effort position)
   (let ((id (beliefstate:start-node "OPEN-GRIPPER" `() 2)))
     (beliefstate:add-designator-to-node
@@ -331,23 +333,6 @@
 (defmethod cram-language::on-finish-find-objects (id)
   (beliefstate:stop-node id))
 
-(defmethod cram-language::on-prepare-request cram-beliefstate (designator-request)
-  )
-  ;; (let ((id (beliefstate:start-node
-  ;;            "UIMA-PERCEIVE"
-  ;;            (cram-designators:description designator-request) 2)))
-  ;;   (beliefstate:add-designator-to-active-node designator-request
-  ;;                                              :annotation "perception-request")
-  ;;   id))
-
-(defmethod cram-language::on-finish-request cram-beliefstate (id result)
-  )
-  ;; (dolist (desig result)
-  ;;   (beliefstate:add-object-to-active-node
-  ;;    desig :annotation "perception-result"))
-  ;; (beliefstate:add-topic-image-to-active-node cram-beliefstate::*kinect-topic-rgb*)
-  ;; (beliefstate:stop-node id :success (not (eql result nil))))
-
 (defmethod cram-language::on-begin-belief-state-update
     cram-beliefstate ()
   (beliefstate:start-node "BELIEF-STATE-UPDATE" `() 2))
@@ -423,20 +408,17 @@
 (defmethod cram-language::on-with-policy-end (id success)
   (beliefstate:stop-node id :success success))
 
-;; (defmethod cram-utilities::on-prepare-prolog-prove cram-beliefstate (request)
-;;   ;; (prog1
-;;   ;;     (beliefstate:start-node "PROLOG" `() 3)
-;;   ;;   (beliefstate:add-designator-to-active-node
-;;   ;;    (make-designator
-;;   ;;     'cram-designators:action
-;;   ;;     `(,@(loop for i from 0 below (length request) by 2
-;;   ;;               as smbl = (nth i request)
-;;   ;;               as val = (nth (1+ i) request)
-;;   ;;               collect `(,(write-to-string smbl) ,(write-to-string val)))))
-;;   ;;       ;(type jsonprolog)))
-;;   ;;    :annotation "prolog-details"))
-;;   )
+(defmethod cram-language::on-prepare-prolog-prove cram-beliefstate (query binds)
+  (when *enable-prolog-logging*
+    (let ((id (beliefstate:start-node "PROLOG" `() 3)))
+      (beliefstate:add-designator-to-node
+       ;; TODO(winkler): Properly log the query and bindings information
+       ;; of the prolog operation.
+       (make-designator
+        'cram-designators:action
+        `())
+       id :annotation "prolog-details"))))
 
-;; (defmethod cram-utilities::on-finish-prolog-prove cram-beliefstate (id)
-;;   ;(beliefstate:stop-node id)
-;;   )
+(defmethod cram-language::on-finish-prolog-prove cram-beliefstate (id success)
+  (when *enable-prolog-logging*
+    (beliefstate:stop-node id :success success)))
