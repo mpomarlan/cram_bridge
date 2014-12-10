@@ -423,17 +423,6 @@
 (defmethod cram-language::on-with-policy-end (id success)
   (beliefstate:stop-node id :success success))
 
-;; (defmethod cram-memoryaware::on-begin-theme (theme)
-;;   (prog1 (beliefstate:start-node "WITH-THEME" `() 2)
-;;     (beliefstate:add-designator-to-active-node
-;;      (make-designator
-;;       'cram-designators:action
-;;       `((theme ,theme)))
-;;      :annotation "with-theme-details")))
-
-;; (defmethod cram-memoryaware::on-end-theme (id)
-;;   (beliefstate:stop-node id))
-
 ;; (defmethod cram-utilities::on-prepare-prolog-prove cram-beliefstate (request)
 ;;   ;; (prog1
 ;;   ;;     (beliefstate:start-node "PROLOG" `() 3)
