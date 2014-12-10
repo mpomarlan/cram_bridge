@@ -27,7 +27,7 @@
 
 (in-package :cram-beliefstate)
 
-(defvar *planlogging-namespace* "/beliefstate_ros")
+(defvar *planlogging-namespace* "/semrec_ros")
 (defvar *kinect-topic-rgb* "/kinect_head/rgb/image_color")
 (defvar *interactive-callback-fluent* (cpl:make-fluent))
 (defvar *service-access* (make-lock :name "logging-service-access-lock"))
@@ -37,12 +37,12 @@
 (defparameter *registered-interactive-callbacks* nil)
 
 
-(defun init-beliefstate ()
+(defun init-semrec ()
   (setf *registered-interactive-callbacks* nil))
 
-(roslisp-utilities:register-ros-init-function init-beliefstate)
+(roslisp-utilities:register-ros-init-function init-semrec)
 
-(defun change-planlogging-namespace(&key (namespace "beliefstate_ros") (use-roslisp-ns nil))
+(defun change-planlogging-namespace(&key (namespace "semrec_ros") (use-roslisp-ns nil))
   (if use-roslisp-ns
       (setq *planlogging-namespace* (concatenate 'string roslisp::*namespace* (string-left-trim "/" namespace)))
       (setq *planlogging-namespace* (concatenate 'string "/" (string-left-trim "/" namespace)))))
@@ -58,15 +58,15 @@
       (unless result
         (setf *logging-enabled* nil)
         (roslisp:ros-warn
-         (beliefstate)
-         "No connection to beliefstate service '~a'. Disabling logging."
+         (semrec)
+         "No connection to semrec service '~a'. Disabling logging."
          service))
       result)))
 
 (defun toggle-logging ()
   (if *logging-enabled*
-    (roslisp:ros-info (beliefstate) "Switching OFF beliefstate logging.")
-    (roslisp:ros-info (beliefstate) "Switching ON beliefstate logging."))
+    (roslisp:ros-info (semrec) "Switching OFF semrec logging.")
+    (roslisp:ros-info (semrec) "Switching ON semrec logging."))
   (setf *logging-enabled* (not *logging-enabled*)))
 
 (defun enable-logging (bool)
@@ -257,12 +257,12 @@
       (let* ((desig-id (desig-prop-value (first result) 'desig-props::id)))
         desig-id))))
 
-(defun set-metadata (&key (robot "PR2") (creator "IAI") experiment description (cram-beliefstate-version "0.4"))
+(defun set-metadata (&key (robot "PR2") (creator "IAI") experiment description (cram-semrec-version "0.4"))
   (when robot (set-experiment-meta-data "robot" robot))
   (when creator (set-experiment-meta-data "creator" creator))
   (when experiment (set-experiment-meta-data "experiment" experiment))
   (when description (set-experiment-meta-data "description" description))
-  (when cram-beliefstate-version (set-experiment-meta-data "cram-beliefstate-version" cram-beliefstate-version)))
+  (when cram-semrec-version (set-experiment-meta-data "cram-semrec-version" cram-semrec-version)))
 
 (defun equate-designators (desig-child desig-parent)
   (let* ((mem-addr-child (write-to-string
