@@ -55,6 +55,8 @@
 (defun init-robosherlock-process-module ()
   (setf *tf2* (make-instance 'cl-tf2:buffer-client)))
 
+(roslisp-utilities:register-ros-init-function init-robosherlock-process-module)
+
 (defun bound-slot-value (object slot-name)
   (when (slot-boundp object slot-name)
     (slot-value object slot-name)))
