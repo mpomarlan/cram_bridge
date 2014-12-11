@@ -408,6 +408,12 @@
 (defmethod cram-language::on-with-policy-end (id success)
   (beliefstate:stop-node id :success success))
 
+(defmethod cram-utilities::on-prepare-json-prolog-prove cram-beliefstate (request)
+  )
+
+(defmethod cram-utilities::on-finish-json-prolog-prove cram-beliefstate (id)
+  )
+
 (defmethod cram-utilities::on-prepare-prolog-prove cram-beliefstate (query binds)
   (when *enable-prolog-logging*
     (let ((id (beliefstate:start-node "PROLOG" `() 3)))
