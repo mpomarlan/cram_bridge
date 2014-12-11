@@ -36,7 +36,7 @@
 (defvar *tf2* nil)
 (defvar *ignored-bullet-objects* nil)
 
-(defgeneric call-perception-routine (designator &key minimum-color-ratio))
+(defgeneric call-perception-routine (designator))
 (defgeneric examine-perceived-object-designator
     (original-designator object-designator))
 (defgeneric perceive-with-object-designator (designator &key target-frame))
@@ -78,8 +78,7 @@ performing a `mapcar'."
                          `((desig-props::voi ,volume-of-interest))))))
     (make-designator 'action description)))
 
-(defmethod call-perception-routine ((object-designator object-designator)
-                                    &key (minimum-color-ratio 0.02))
+(defmethod call-perception-routine ((object-designator object-designator))
   (let* ((request-designator (make-uima-request-designator
                               :object-designator object-designator))
          (uima-result-designators (uima:get-uima-result request-designator)))
@@ -102,7 +101,7 @@ performing a `mapcar'."
                               `(,key
                                 ,(mapcar (lambda (resolution-property)
                                            (destructuring-bind
-                                             (key value) resolution-property
+                                               (key value) resolution-property
                                              (cond ((eql key 'dimensions-3d)
                                                     `(dimensions-3d
                                                       ,(vector
@@ -115,7 +114,7 @@ performing a `mapcar'."
                               `(,key
                                 ,(mapcar (lambda (segment-property)
                                            (destructuring-bind
-                                             (key value) segment-property
+                                               (key value) segment-property
                                              (cond ((eql key 'dimensions-2d)
                                                     `(dimensions-2d
                                                       ,(vector
