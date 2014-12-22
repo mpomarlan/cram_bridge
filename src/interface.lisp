@@ -33,7 +33,6 @@
   ((pose :reader pose :initarg :pose)
    (identifier :reader identifier :initarg :identifier)))
 
-(defvar *tf2* nil)
 (defvar *ignored-bullet-objects* nil)
 
 (defgeneric call-perception-routine (designator))
@@ -336,7 +335,8 @@ way, reference and unknown object type comparisons are avoided."
         when (and type-check-fnc subject-values)
           do (unless (find value subject-values :test type-check-fnc)
                (return nil))
-        finally (return t)))
+        finally (return t))
+  t)
 
 (defmethod filter-perceived-objects ((template-designator object-designator)
                                      (perceived-objects list))
