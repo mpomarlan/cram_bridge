@@ -91,6 +91,8 @@
    no-ik-solution
    no-collision-shapes-defined
    pose-not-transformable-into-link
+   without-collision-object
+   execute-trajectories
    ;; Display
    display-robot-state
    set-object-color)
