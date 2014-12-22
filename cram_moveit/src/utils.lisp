@@ -27,8 +27,6 @@
 
 (in-package :cram-moveit)
 
-(defvar *tf2* nil)
-
 (defun transform-stamped->msg (transform-stamped)
   (with-fields (stamp frame-id child-frame-id rotation translation) transform-stamped
     (make-message

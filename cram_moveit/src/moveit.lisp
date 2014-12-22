@@ -47,7 +47,6 @@ MoveIt! framework and registers known conditions."
         (roslisp:subscribe "/joint_states"
                            "sensor_msgs/JointState"
                            #'joint-states-callback))
-  (setf *tf2* (make-instance 'cl-tf2:buffer-client))
   (connect-action-client)
   (setf *moveit-action-access-lock*
         (make-lock :name "moveit-action-access"))
