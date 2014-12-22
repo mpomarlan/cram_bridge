@@ -254,6 +254,13 @@ bridge.")
            (moveit)
            "Removed `~a' from environment server." name))))))
 
+(defmacro without-collision-object (object-name &body body)
+  `(unwind-protect
+        (progn
+          (remove-collision-object ,object-name)
+          ,@body)
+     (add-collision-object ,object-name)))
+
 (defun clear-collision-objects ()
   (loop for col-obj in *known-collision-objects*
         do (remove-collision-object (slot-value col-obj 'name))))
@@ -337,12 +344,11 @@ bridge.")
                  :source-frame (tf:frame-id current-pose-stamped)
                  :target-frame target-link)
           (cpl:fail 'pose-not-transformable-into-link))
-        (let* ((pose-in-link (tf:transform-pose
-                              *tf*
-                              :pose (tf:copy-pose-stamped
+        (let* ((pose-in-link (cl-tf2:ensure-pose-stamped-transformed
+                              *tf2* (tf:copy-pose-stamped
                                      current-pose-stamped
                                      :stamp time)
-                              :target-frame target-link))
+                              target-link :use-current-ros-time t))
                (obj-msg-plain (create-collision-object-message
                                name pose-in-link
                                :primitive-shapes primitive-shapes
