@@ -48,7 +48,6 @@
                ;point-head-process-module
                cram-plan-failures
                cram-plan-library
-               cram-prediction
                
                ;; Communication
                actionlib
