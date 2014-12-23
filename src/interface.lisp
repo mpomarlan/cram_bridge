@@ -252,10 +252,8 @@ infered and appended to the designator's description."
 (defun remove-disappeared-objects (object-names)
   "Removes objects from the current bullet world. They are refered to
 by the `name' property specified in their designator."
-  (roslisp:ros-info (robosherlock-pm) "Removing objects: ~a~%"
-                    (length object-names))
   (dolist (object-name object-names)
-    (ros-info (robosherlock-pm) "Remove object: ~a~%" object-name)
+    (ros-info (robosherlock-pm) "Remove object: ~a" object-name)
     (crs:prolog `(and (btr:bullet-world ?w)
                       (btr:retract
                        (btr:object
@@ -266,15 +264,13 @@ by the `name' property specified in their designator."
   "Adds objects to the current bullet world. In the world, they then
 consist of boxes of dimensions as specified in the `dimensions'
 property in their designator."
-  (ros-info (robosherlock-pm) "Adding objects: ~a~%"
-                    (length objects))
   (dolist (object objects)
     (let ((pose (desig-prop-value
                  (desig-prop-value object 'at)
                  'pose))
           (dimensions (desig-prop-value object 'dimensions))
           (name (desig-prop-value object 'name)))
-      (ros-info (robosherlock-pm) "Add object: ~a~%" name)
+      (ros-info (robosherlock-pm) "Add object: ~a" name)
       (crs:prolog `(and (btr:bullet-world ?w)
                         (btr:assert
                          (btr:object
@@ -298,7 +294,7 @@ property in their designator."
                  (desig-prop-value object 'at)
                  'pose))
           (name (desig-prop-value object 'name)))
-      (ros-info (robosherlock-pm) "Update object: ~a~%" name)
+      (ros-info (robosherlock-pm) "Update object: ~a" name)
       (crs:prolog `(and (btr:bullet-world ?w)
                         (btr:assert
                          (btr:object-pose
