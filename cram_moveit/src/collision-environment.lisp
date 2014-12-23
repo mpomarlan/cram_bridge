@@ -263,7 +263,8 @@ bridge.")
 
 (defun clear-collision-objects ()
   (loop for col-obj in *known-collision-objects*
-        do (remove-collision-object (slot-value col-obj 'name))))
+        do (remove-collision-object (slot-value col-obj 'name)))
+  (setf *known-collision-objects* nil))
 
 (defun clear-collision-environment ()
   (clear-collision-objects)
