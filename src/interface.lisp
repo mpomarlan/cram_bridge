@@ -205,7 +205,7 @@ infered and appended to the designator's description."
                      (format t "Type: ~a~%" ?type)
                      ?type)))
          (typed-object-designator
-           (or (and (not type) object-designator)
+           (or (and (or (eql type '?type) (not type)) object-designator)
                (make-designator
                 'object
                 (append
@@ -255,7 +255,7 @@ by the `name' property specified in their designator."
   (roslisp:ros-info (robosherlock-pm) "Removing objects: ~a~%"
                     (length object-names))
   (dolist (object-name object-names)
-    (format t "Remove object: ~a~%" object-name)
+    (ros-info (robosherlock-pm) "Remove object: ~a~%" object-name)
     (crs:prolog `(and (btr:bullet-world ?w)
                       (btr:retract
                        (btr:object
@@ -266,7 +266,7 @@ by the `name' property specified in their designator."
   "Adds objects to the current bullet world. In the world, they then
 consist of boxes of dimensions as specified in the `dimensions'
 property in their designator."
-  (roslisp:ros-info (robosherlock-pm) "Adding objects: ~a~%"
+  (ros-info (robosherlock-pm) "Adding objects: ~a~%"
                     (length objects))
   (dolist (object objects)
     (let ((pose (desig-prop-value
@@ -274,18 +274,11 @@ property in their designator."
                  'pose))
           (dimensions (desig-prop-value object 'dimensions))
           (name (desig-prop-value object 'name)))
-      (format t "Add object: ~a~%" name)
+      (ros-info (robosherlock-pm) "Add object: ~a~%" name)
       (crs:prolog `(and (btr:bullet-world ?w)
                         (btr:assert
                          (btr:object
-                          ?w btr:box
-                          ,name ((,(tf:x (tf:origin pose))
-                                   ,(tf:y (tf:origin pose))
-                                   ,(tf:z (tf:origin pose)))
-                                 (,(tf:x (tf:orientation pose))
-                                   ,(tf:y (tf:orientation pose))
-                                   ,(tf:z (tf:orientation pose))
-                                   ,(tf:w (tf:orientation pose))))
+                          ?w btr:box ,name ,pose
                           :mass 0.1
                           :size ,(map 'list #'identity dimensions))))))
     (moveit:register-collision-object
@@ -305,18 +298,11 @@ property in their designator."
                  (desig-prop-value object 'at)
                  'pose))
           (name (desig-prop-value object 'name)))
-      (format t "Update object: ~a~%" name)
+      (ros-info (robosherlock-pm) "Update object: ~a~%" name)
       (crs:prolog `(and (btr:bullet-world ?w)
                         (btr:assert
                          (btr:object-pose
-                          ?w ,name
-                          ((,(tf:x (tf:origin pose))
-                             ,(tf:y (tf:origin pose))
-                             ,(tf:z (tf:origin pose)))
-                           (,(tf:x (tf:orientation pose))
-                             ,(tf:y (tf:orientation pose))
-                             ,(tf:z (tf:orientation pose))
-                             ,(tf:w (tf:orientation pose)))))))))
+                          ?w ,name ,pose)))))
     (moveit:register-collision-object
      object :add t
      :pose-stamped (cl-tf2:ensure-pose-stamped-transformed
