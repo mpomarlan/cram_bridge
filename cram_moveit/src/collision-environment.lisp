@@ -254,12 +254,17 @@ bridge.")
            (moveit)
            "Removed `~a' from environment server." name))))))
 
-(defmacro without-collision-object (object-name &body body)
+(defmacro without-collision-objects (object-names &body body)
   `(unwind-protect
         (progn
-          (remove-collision-object ,object-name)
+          (dolist (object-name ,object-names)
+            (remove-collision-object object-name))
           ,@body)
-     (add-collision-object ,object-name)))
+     (dolist (object-name ,object-names)
+       (add-collision-object object-name))))
+
+(defmacro without-collision-object (object-name &body body)
+  `(without-collision-objects (,object-name) ,@body))
 
 (defun clear-collision-objects ()
   (loop for col-obj in *known-collision-objects*
