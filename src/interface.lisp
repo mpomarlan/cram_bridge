@@ -127,7 +127,9 @@ performing a `mapcar'."
 
 (defmethod perceive-with-object-designator ((object-designator object-designator)
                                             &key (target-frame "map"))
-  (let* ((perception-results
+  (let* ((log-id (first (cram-language::on-prepare-request
+                         object-designator)))
+         (perception-results
            (remove-if
             #'not
             (mapcar
@@ -144,46 +146,48 @@ performing a `mapcar'."
     (labels ((sub-value (name sequence)
                (cadr (find name sequence :test (lambda (x y)
                                                  (eql x (car y)))))))
-      (mapcar-clean
-       (lambda (perception-result)
-         (let* ((new-description
-                  (remove-if (lambda (x)
-                               (find (car x) remove-properties))
-                             (description perception-result)))
-                (pose (desig-prop-value perception-result 'pose))
-                (resolution (desig-prop-value perception-result
-                                              'resolution))
-                (id (sub-value 'objectid resolution))
-                (lastseen (sub-value 'lastseen resolution))
-                (boundingbox (desig-prop-value perception-result
-                                               'boundingbox))
-                (pose-bb (sub-value 'pose boundingbox))
-                (dimensions-3d (sub-value 'dimensions-3d boundingbox))
-                (additional-properties
-                  (append
-                   `((plane-distance ,(/ (elt dimensions-3d 2) 2)))
-                   ;;`((desig-props::type desig-props::pancakemix)) ;; Hack
-                   `((at ,(make-designator
-                           'location
-                           `((pose
-                              ,(cl-tf2:ensure-pose-stamped-transformed
-                                *tf2*
-                                (cond ((find 'flat (desig-prop-values
-                                                    perception-result
-                                                    'shape))
-                                       pose)
-                                      (t pose-bb))
-                                target-frame :use-current-ros-time t))))))
-                   `((name ,(intern (concatenate 'string "OBJECT"
-                                                 (write-to-string
-                                                  (truncate id)))
-                                    'desig-props)))
-                   `((dimensions ,dimensions-3d)))))
-           (when (< lastseen 2.0d0)
-             (make-designator 'object (append new-description
-                                              additional-properties)
-                              perception-result))))
-       perception-results))))
+      (let ((results
+              (mapcar-clean
+               (lambda (perception-result)
+                 (let* ((new-description
+                          (remove-if (lambda (x)
+                                       (find (car x) remove-properties))
+                                     (description perception-result)))
+                        (pose (desig-prop-value perception-result 'pose))
+                        (resolution (desig-prop-value perception-result
+                                                      'resolution))
+                        (id (sub-value 'objectid resolution))
+                        (lastseen (sub-value 'lastseen resolution))
+                        (boundingbox (desig-prop-value perception-result
+                                                       'boundingbox))
+                        (pose-bb (sub-value 'pose boundingbox))
+                        (dimensions-3d (sub-value 'dimensions-3d boundingbox))
+                        (additional-properties
+                          (append
+                           `((plane-distance ,(/ (elt dimensions-3d 2) 2)))
+                           `((at ,(make-designator
+                                   'location
+                                   `((pose
+                                      ,(cl-tf2:ensure-pose-stamped-transformed
+                                        *tf2*
+                                        (cond ((find 'flat (desig-prop-values
+                                                            perception-result
+                                                            'shape))
+                                               pose)
+                                              (t pose-bb))
+                                        target-frame :use-current-ros-time t))))))
+                           `((name ,(intern (concatenate 'string "OBJECT"
+                                                         (write-to-string
+                                                          (truncate id)))
+                                            'desig-props)))
+                           `((dimensions ,dimensions-3d)))))
+                   (when (< lastseen 2.0d0)
+                     (make-designator 'object (append new-description
+                                                      additional-properties)
+                                      perception-result))))
+               perception-results)))
+        (cram-language::on-finish-request log-id results)
+        results))))
 
 (defmethod examine-perceived-object-designator
     ((original-designator object-designator)
