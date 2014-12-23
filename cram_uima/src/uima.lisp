@@ -101,29 +101,14 @@ for a reply on another topic."
     (cpl:setf (cpl:value *uima-result-fluent*) nil)
     (desig-int::call-designator-service
      *uima-trigger-service-topic* designator-request)))
-  ;; (roslisp:wait-for-service *uima-trigger-service-topic*)
-  ;; (roslisp:call-service
-  ;;  *uima-trigger-service-topic*
-  ;;  'designator_integration_msgs-msg::DesignatorRequest
-  ;;  :designator designator-request))
-
-(defun make-perception-request-id ()
-  (concatenate
-   'string
-   "request_"
-   (write-to-string (random 1000000))
-   "_"
-   (write-to-string (random 1000000))))
 
 (define-hook cram-language::on-prepare-request (designator-request))
 (define-hook cram-language::on-finish-request (log-id result))
 
-(defun get-uima-result (designator-request &key (max-age 3.0))
-  (let* ((log-id (first (cram-language::on-prepare-request designator-request)))
-         (result-designators
+(defun get-uima-result (designator-request &key (max-age 2.0))
+  (let* ((result-designators
            (roslisp:with-fields (designators)
-               (cond ((and nil
-                           *stored-result*
+               (cond ((and *stored-result*
                            (<= (- (roslisp:ros-time)
                                   (time-received *stored-result*))
                                max-age))
@@ -153,19 +138,10 @@ for a reply on another topic."
              (map 'list (lambda (x)
                           (desig-int::msg->designator x))
                   designators))))
-    ;(roslisp:ros-info (uima) "Post processing perception results")
-    (cram-language::on-finish-request log-id result-designators)
-    (progn
-      ;(format t "Returning~%")
-      result-designators)))
+    result-designators))
 
 (defun config-uima ()
   (cram-uima:set-comm-mode
    :topic
    :trigger-service-topic *uima-trigger-service-topic*
    :results-topic *uima-results-topic*))
-
-(defun config-naive-perception ()
-  (cram-uima:set-comm-mode
-   :service
-   :service-topic "/naive_perception"))
