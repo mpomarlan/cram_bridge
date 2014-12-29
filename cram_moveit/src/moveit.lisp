@@ -291,11 +291,6 @@ MoveIt! framework and registers known conditions."
   (execute-trajectory
    (merge-trajectories trajectories)
    :wait-for-execution wait-for-execution))
-  ;; (loop for i from 0 below (length trajectories)
-  ;;       for wait = (or (not (< i (1- (length trajectories))))
-  ;;                      wait-for-execution)
-  ;;       do (execute-trajectory (nth i trajectories)
-  ;;                              :wait-for-execution wait)))
 
 (defun trajectory-length (trajectory)
   (with-fields (joint_trajectory) trajectory
