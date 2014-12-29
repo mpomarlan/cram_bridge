@@ -264,12 +264,11 @@ bridge.")
        (add-collision-object object-name))))
 
 (defmacro without-collision-object (object-name &body body)
-  `(without-collision-objects (,object-name) ,@body))
+  `(without-collision-objects (list ,object-name) ,@body))
 
 (defun clear-collision-objects ()
   (loop for col-obj in *known-collision-objects*
-        do (remove-collision-object (slot-value col-obj 'name)))
-  (setf *known-collision-objects* nil))
+        do (remove-collision-object (slot-value col-obj 'name))))
 
 (defun clear-collision-environment ()
   (clear-collision-objects)
