@@ -140,6 +140,8 @@ for a reply on another topic."
                (map 'list (lambda (x)
                             (desig-int::msg->designator x))
                     designators)))))
+    (unless call-result
+      (roslisp:ros-error (uima) "No answer from UIMA. Is the node running?"))
     result-designators))
 
 (defun config-uima ()
