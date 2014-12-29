@@ -107,7 +107,8 @@ for a reply on another topic."
 
 (defun get-uima-result (designator-request &key (max-age 2.0))
   (let* ((call-result
-           (cond ((and *stored-result*
+           (cond ((and nil
+                       *stored-result*
                            (<= (- (roslisp:ros-time)
                                   (time-received *stored-result*))
                                max-age))
