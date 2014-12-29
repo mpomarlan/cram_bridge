@@ -106,9 +106,8 @@ for a reply on another topic."
 (define-hook cram-language::on-finish-request (log-id result))
 
 (defun get-uima-result (designator-request &key (max-age 2.0))
-  (let* ((result-designators
-           (roslisp:with-fields (designators)
-               (cond ((and *stored-result*
+  (let* ((call-result
+           (cond ((and *stored-result*
                            (<= (- (roslisp:ros-time)
                                   (time-received *stored-result*))
                                max-age))
@@ -134,10 +133,13 @@ for a reply on another topic."
                                (cpl:value *uima-result-fluent*))))
                           (:service
                            (desig-int::call-designator-service
-                            *uima-service-topic* designator-request))))))
-             (map 'list (lambda (x)
-                          (desig-int::msg->designator x))
-                  designators))))
+                            *uima-service-topic* designator-request)))))))
+         (result-designators
+           (when call-result
+             (roslisp:with-fields (designators) call-result
+               (map 'list (lambda (x)
+                            (desig-int::msg->designator x))
+                    designators)))))
     result-designators))
 
 (defun config-uima ()
