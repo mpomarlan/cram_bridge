@@ -36,6 +36,7 @@
 (defparameter *interactive-callback-subscriber* nil)
 (defparameter *registered-interactive-callbacks* nil)
 
+(defgeneric alter-node (description &key node-id mode command))
 
 (defun init-semrec ()
   (setf *registered-interactive-callbacks* nil))

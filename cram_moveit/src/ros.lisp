@@ -30,6 +30,8 @@
 (defvar *move-group-action-client* nil)
 (defvar *moveit-action-access-lock* nil)
 
+(defgeneric send-goal (client goal &key timeout))
+
 (defun connect-action-client ()
   (setf *move-group-action-client*
         (actionlib-lisp::make-action-client

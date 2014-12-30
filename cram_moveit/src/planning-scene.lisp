@@ -31,6 +31,9 @@
   ((names :reader names :initarg :names)
    (entries :reader entries :initarg :entries)))
 
+(defgeneric relative-collision-matrix (names-groups-1 names-groups-2 values &key matrix))
+(defgeneric relative-collision-matrix-msg (names-groups-1 names-groups-2 values &key matrix))
+
 (defun get-planning-scene (components)
   (call-service "/get_planning_scene"
                 'moveit_msgs-srv:GetPlanningScene
