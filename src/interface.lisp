@@ -27,6 +27,8 @@
 
 (in-package :robosherlock-process-module)
 
+(defparameter *object-reference-frame* "map")
+
 (defclass perceived-object-data
     (desig:object-designator-data
      cram-manipulation-knowledge:object-shape-data-mixin)
@@ -44,6 +46,9 @@
 (defgeneric get-volume-of-interest (object-designator))
 (defgeneric make-uima-request-designator (&key object-designator))
 (defgeneric perceive-object-designator (designator))
+
+(cut:define-hook cram-language::on-prepare-request (designator-request))
+(cut:define-hook cram-language::on-finish-request (log-id designators-result))
 
 (defun ignore-bullet-object (object-name)
   (setf *ignored-bullet-objects*
@@ -119,7 +124,7 @@
        uima-result-designators))))
 
 (defmethod perceive-with-object-designator ((object-designator object-designator)
-                                            &key (target-frame "map"))
+                                            &key (target-frame *object-reference-frame*))
   (let* ((log-id (first (cram-language::on-prepare-request
                          object-designator)))
          (perception-results
@@ -275,7 +280,7 @@ property in their designator."
      :pose-stamped (cl-tf2:ensure-pose-stamped-transformed
                     *tf2*
                     (desig-prop-value (desig-prop-value object 'at) 'pose)
-                    "/map"))))
+                    *object-reference-frame*))))
 
 (defun update-objects (objects)
   "Updates objects' poses in the current bullet world based on the
@@ -297,7 +302,7 @@ property in their designator."
      :pose-stamped (cl-tf2:ensure-pose-stamped-transformed
                     *tf2*
                     (desig-prop-value (desig-prop-value object 'at) 'pose)
-                    "/map"))))
+                    *object-reference-frame*))))
 
 (defmethod designators-match ((template object-designator)
                               (subject object-designator))
