@@ -192,10 +192,13 @@
      (object-designator object-designator))
   "Enriches a perceived object designator `object-designator' with
 additional information from the reasoning system. First, the type is
-infered (if not set already), and then additional properties are
-infered and appended to the designator's description."
+infered (if not set already either manually in the requesting
+designator, or the one returned from the perception system), and then
+additional properties are infered and appended to the designator's
+description."
   (let* ((object-description (description object-designator))
-         (type (or (desig-prop-value object-designator 'type)
+         (type (or (desig-prop-value object-designator 'desig-props:type)
+                   (desig-prop-value original-designator 'desig-props:type)
                    (cut:with-vars-bound (?type)
                        (first
                         (crs:prolog `(infer-object-property
@@ -211,23 +214,14 @@ infered and appended to the designator's description."
                             object-description)
                  `((type ,type)))
                 object-designator)))
-         (handles
-           (cut:force-ll (cut:lazy-mapcar
-                          (lambda (bdgs)
-                            (cut:with-vars-bound (?handles) bdgs
-                              (loop for handle in ?handles
-                                    collect `(desig-props::handle ,handle))))
-                          (crs:prolog `(object-handle ,type ?handles)))))
          (new-properties
-          (append
            (cut:force-ll (cut:lazy-mapcar
                           (lambda (bdgs)
                             (cut:with-vars-bound (?key ?value) bdgs
                               `(,?key ,?value)))
                           (crs:prolog `(infer-object-property
                                         ,typed-object-designator
-                                        ?key ?value))))
-           (first handles)))
+                                        ?key ?value)))))
          (refined-old
            (remove-if (lambda (x)
                         (find x new-properties
@@ -285,8 +279,6 @@ property in their designator."
 (defun update-objects (objects)
   "Updates objects' poses in the current bullet world based on the
 `name', and the `pose' properties in their respective designator."
-  (roslisp:ros-info (robosherlock-pm) "Updating objects: ~a~%"
-                    (length objects))
   (dolist (object objects)
     (let ((pose (desig-prop-value
                  (desig-prop-value object 'at)

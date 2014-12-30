@@ -32,7 +32,8 @@
   (<- (action-desig ?designator (perceive ?object-desig))
     (desig-prop ?designator (to perceive))
     (desig-prop ?designator (obj ?object-desig))
-    (obj-desig? ?object-desig))
+    (current-designator ?object-desig ?current-object-desig)
+    (obj-desig? ?current-object-desig))
   
   (<- (action-desig ?designator (perceive-scene))
     (desig-prop ?designator (to perceive))

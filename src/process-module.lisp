@@ -36,10 +36,32 @@
     `(defmethod call-action ((,action-sym (eql ',name)) &rest ,params)
        (destructuring-bind ,args ,params ,@body))))
 
+(defun newest-non-effective (designator)
+  (cond ((and designator
+              (parent designator)
+              (desig:effective designator))
+         (newest-non-effective (parent designator)))
+        (t designator)))
+
 (def-action-handler perceive (object-designator)
   (ros-info (perception) "Perceiving object.")
   (let ((results (perceive-object-designator object-designator)))
     (unless results
+      ;; NOTE(winkler): If it was already effective, rewind the
+      ;; designator to the last, non-effective one when no object
+      ;; could be found. This helps to avoid referencing object
+      ;; identifiers that were present in the environment
+      ;; representation prior to the removal of disappeared
+      ;; objects. If those IDs stay in the designator, they are being
+      ;; looked up in the environment representation (aka bullet
+      ;; world) and cause major problems when generating costmaps `(to
+      ;; see)' and `(to reach)'. IMO, this should go somewhere in the
+      ;; plan library (possibly `perceive-object all') and should not
+      ;; be part of the (interchangeable) process modules.
+      (when (desig:effective object-designator)
+        (let ((nn-eff (newest-non-effective object-designator)))
+          (make-designator
+           'object (description nn-eff) object-designator)))
       (cpl:fail 'cram-plan-failures:object-not-found
                 :object-desig object-designator))
     results))
