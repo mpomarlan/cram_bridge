@@ -47,8 +47,8 @@
 (defgeneric make-uima-request-designator (&key object-designator))
 (defgeneric perceive-object-designator (designator))
 
-(cut:define-hook cram-language::on-prepare-request (designator-request))
-(cut:define-hook cram-language::on-finish-request (log-id designators-result))
+(cut:define-hook cram-language::on-prepare-perception-request (designator-request))
+(cut:define-hook cram-language::on-finish-perception-request (log-id designators-result))
 
 (defun ignore-bullet-object (object-name)
   (setf *ignored-bullet-objects*
@@ -125,7 +125,7 @@
 
 (defmethod perceive-with-object-designator ((object-designator object-designator)
                                             &key (target-frame *object-reference-frame*))
-  (let* ((log-id (first (cram-language::on-prepare-request
+  (let* ((log-id (first (cram-language::on-prepare-perception-request
                          object-designator)))
          (perception-results
            (remove-if
@@ -184,7 +184,7 @@
                                                       additional-properties)
                                       perception-result))))
                perception-results)))
-        (cram-language::on-finish-request log-id results)
+        (cram-language::on-finish-perception-request log-id results)
         results))))
 
 (defmethod examine-perceived-object-designator
