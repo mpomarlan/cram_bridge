@@ -45,13 +45,6 @@
 (defgeneric make-uima-request-designator (&key object-designator))
 (defgeneric perceive-object-designator (designator))
 
-(defmacro mapcar-clean (function list &rest more-lists)
-  "Automatically removes all `NIL' entries from a generated list after
-performing a `mapcar'."
-  (if more-lists
-      `(remove-if #'not (mapcar ,function ,list ,more-lists))
-      `(remove-if #'not (mapcar ,function ,list))))
-
 (defun ignore-bullet-object (object-name)
   (setf *ignored-bullet-objects*
         (remove object-name *ignored-bullet-objects*))
@@ -147,7 +140,7 @@ performing a `mapcar'."
                (cadr (find name sequence :test (lambda (x y)
                                                  (eql x (car y)))))))
       (let ((results
-              (mapcar-clean
+              (cpl:mapcar-clean
                (lambda (perception-result)
                  (let* ((new-description
                           (remove-if (lambda (x)
@@ -240,7 +233,7 @@ infered and appended to the designator's description."
            (complete-description
              (let ((original-description (description original-designator)))
                (append infered-description
-                       (mapcar-clean
+                       (cpl:mapcar-clean
                         (lambda (original-property)
                           (unless (find original-property
                                         infered-description
@@ -329,7 +322,7 @@ way, reference and unknown object type comparisons are avoided."
   "Filters out all object designator instances in the
 `perceived-objects' list which descriptions don't match the properties
 defined in `template-designator'."
-  (mapcar-clean
+  (cpl:mapcar-clean
    (lambda (perceived-object)
      (when (designators-match template-designator perceived-object)
        ;; The designator matches based on its description (if
@@ -348,7 +341,7 @@ retracted from the internal representation. The parameter
   ;; beliefstate.
   (plan-knowledge:on-event (make-instance 'plan-knowledge:robot-state-changed))
   (let* ((perceived-object-designators
-           (mapcar-clean
+           (cpl:mapcar-clean
             (lambda (perceived-object)
               (unless (crs:prolog `(perceived-object-invalid
                                     ,perceived-object))
@@ -374,7 +367,7 @@ retracted from the internal representation. The parameter
          ;; bullet world, but are identified as being seen by the
          ;; perception system.
          (unknown-and-perceived
-           (mapcar-clean
+           (cpl:mapcar-clean
             (lambda (perceived-object-name)
               (when (not (find perceived-object-name all-bullet-objects))
                 perceived-object-name))
@@ -405,7 +398,7 @@ retracted from the internal representation. The parameter
              ;; bullet world, and are reported as being seen by the
              ;; perception system.
              (should-be-visible-and-perceived
-               (mapcar-clean
+               (cpl:mapcar-clean
                 (lambda (perceived-object-name)
                   (find perceived-object-name should-be-visible))
                 perceived-object-names)))
@@ -417,7 +410,7 @@ retracted from the internal representation. The parameter
               ;; bullet world, but are not reported as being seen by the
               ;; perception system.
               (should-be-visible-and-not-perceived
-                (mapcar-clean
+                (cpl:mapcar-clean
                  (lambda (should-be-visible-name)
                    (when (not (find should-be-visible-name
                                     perceived-object-names))
