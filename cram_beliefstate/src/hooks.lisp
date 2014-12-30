@@ -333,34 +333,7 @@
 (defmethod cram-language::on-finish-find-objects (id)
   (beliefstate:stop-node id))
 
-(defmethod cram-language::on-begin-belief-state-update
-    cram-beliefstate ()
-  (beliefstate:start-node "BELIEF-STATE-UPDATE" `() 2))
-
-(defmethod cram-language::on-finish-belief-state-update
-    cram-beliefstate (id)
-  (beliefstate:stop-node id))
-
-(defmethod cram-language::on-begin-object-identity-resolution
-    cram-beliefstate (object-type)
-  (let ((id (beliefstate:start-node "OBJECT-IDENTITY-RESOLUTION" `() 2)))
-    (beliefstate:add-designator-to-node
-     (make-designator
-      'cram-designators:action
-      `((object-type ,object-type)))
-     id :annotation "object-identity-resolution-details")
-    id))
-
-(defmethod cram-language::on-finish-object-identity-resolution
-    cram-beliefstate (id resolved-name)
-  (beliefstate:add-designator-to-node
-   (make-designator
-    'cram-designators:action
-    `((resolved-name ,resolved-name)))
-   id :annotation "object-identity-resolution-results")
-  (beliefstate:stop-node id))
-
-(defmethod cram-language::on-prepare-request cram-beliefstate (designator-request)
+(defmethod cram-language::on-prepare-perception-request cram-beliefstate (designator-request)
   (let ((id (beliefstate:start-node
              "UIMA-PERCEIVE"
              (cram-designators:description designator-request) 2)))
@@ -368,7 +341,7 @@
                                         id :annotation "perception-request")
     id))
 
-(defmethod cram-language::on-finish-request cram-beliefstate (id designators-result)
+(defmethod cram-language::on-finish-perception-request cram-beliefstate (id designators-result)
   (dolist (desig designators-result)
     (beliefstate:add-object-to-node
      desig id :annotation "perception-result"))
