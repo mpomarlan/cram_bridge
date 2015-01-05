@@ -284,12 +284,13 @@ MoveIt! framework and registers known conditions."
           (signal-moveit-error val))))
     t))
 
-(defun execute-trajectories (trajectories &key (wait-for-execution t))
+(defun execute-trajectories (trajectories &key (wait-for-execution t)
+                                            ignore-va)
   (ros-info (moveit) "Executing ~a trajector~a."
             (length trajectories)
             (if (= (length trajectories) 1) "y" "ies"))
   (execute-trajectory
-   (merge-trajectories trajectories)
+   (merge-trajectories trajectories :ignore-va ignore-va)
    :wait-for-execution wait-for-execution))
 
 (defun trajectory-length (trajectory)
@@ -390,7 +391,7 @@ MoveIt! framework and registers known conditions."
                               multi_dof_joint_trajectory))))))))
           trajectories))
 
-(defun merge-trajectories (trajectories)
+(defun merge-trajectories (trajectories &key ignore-va)
   (let* ((longest (longest-trajectory trajectories))
          (merged-trajectory-names
            (merge-trajectory-names trajectories))
@@ -411,12 +412,58 @@ MoveIt! framework and registers known conditions."
                   "trajectory_msgs/JointTrajectoryPoint"
                   :positions (merged-trajectory-positions
                               stretched-trajectories i)
-                  :velocities (merged-trajectory-velocities
-                               stretched-trajectories i)
-                  :accelerations (merged-trajectory-accelerations
-                                  stretched-trajectories i)
+                  :velocities
+                  (cond (ignore-va (vector))
+                        (t (merged-trajectory-velocities
+                            stretched-trajectories i)))
+                  :accelerations 
+                  (cond (ignore-va (vector))
+                        (t (merged-trajectory-accelerations
+                            stretched-trajectories i)))
                   :time_from_start (latest-time-for-trajectory-point
                                     stretched-trajectories i))))))))
+
+(defun concatenate-trajectories (trajectories &key ignore-va)
+  "Concatenates multiple trajectories into a single one, taking care
+of timing of individual points. If `ignore-va' is set, the velocity
+and acceleration fields in the final trajectory are left blank,
+leaving their values to the executing controller."
+  ;; TODO(winkler): The resulting trajectory it not *quite*
+  ;; correct. Somehow, it is a bit jiggly when executing it on the
+  ;; controller. This needs fixing.
+  (let ((time-mult 1.0))
+    (make-message
+     "moveit_msgs/RobotTrajectory"
+     :joint_trajectory
+     (make-message
+      "trajectory_msgs/JointTrajectory"
+      :joint_names (map 'vector #'identity (trajectory-names (first trajectories)))
+      :points
+      (map 'vector #'identity
+           (loop for trajectory in (map 'list #'identity trajectories)
+                 with start-time = 0
+                 with last-diff = 0
+                 append
+                 (with-fields (joint_trajectory) trajectory
+                   (with-fields (points) joint_trajectory
+                     (loop for point in (map 'list #'identity points)
+                           with last-time = 0
+                           collect
+                           (with-fields (positions velocities accelerations time_from_start)
+                               point
+                             (setf last-diff (- time_from_start last-time))
+                             (setf last-time time_from_start)
+                             (make-message
+                              "trajectory_msgs/JointTrajectoryPoint"
+                              :positions positions
+                              :velocities
+                              (cond (ignore-va (vector))
+                                    (t velocities))
+                              :accelerations
+                              (cond (ignore-va (vector))
+                                    (t accelerations))
+                              :time_from_start (* (+ time_from_start start-time) time-mult)))
+                           finally (incf start-time (+ last-time last-diff)))))))))))
 
 (defun compute-ik (link-name planning-group pose-stamped &key robot-state)
   "Computes an inverse kinematics solution (if possible) of the given

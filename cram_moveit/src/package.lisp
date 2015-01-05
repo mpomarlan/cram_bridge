@@ -65,6 +65,8 @@
    set-collision-object-pose
    compute-ik
    execute-trajectory
+   merge-trajectories
+   concatenate-trajectories
    ;; Conditions
    moveit-failure
    planning-failed
