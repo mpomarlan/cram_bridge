@@ -1,4 +1,4 @@
-;;; Copyright (c) 2013, Jan Winkler <winkler@cs.uni-bremen.de>
+;;; Copyright (c) 2014, Jan Winkler <winkler@cs.uni-bremen.de>
 ;;; All rights reserved.
 ;;; 
 ;;; Redistribution and use in source and binary forms, with or without
@@ -25,42 +25,20 @@
 ;;; ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ;;; POSSIBILITY OF SUCH DAMAGE.
 
-(defsystem cram-moveit
+(defsystem cram-fingertips
   :author "Jan Winkler <winkler@cs.uni-bremen.de>"
   :license "BSD"
-  :description "CRAM MoveIt! Interface"
+  :description "CRAM PR2 Fingertip Pressure Sensors Interface"
 
   :depends-on (cram-roslisp-common
                cram-language
                cram-reasoning
-               process-modules
                cram-utilities
-               cram-plan-knowledge
-               designators
-               designators-ros
-               actionlib-lisp
                std_msgs-msg
-               cram-plan-failures
-               moveit_msgs-msg
-               moveit_msgs-srv
                roslisp-utilities
-               cl-tf2)
+	       pr2_msgs-msg)
   :components
   ((:module "src"
     :components
     ((:file "package")
-     (:file "utils" :depends-on ("package"))
-     (:file "failures" :depends-on ("package"))
-     (:file "ros" :depends-on ("package"))
-     (:file "display" :depends-on ("package" "utils"))
-     (:file "joint-states" :depends-on ("package"))
-     (:file "planning-scene" :depends-on ("package"))
-     (:file "collision-environment" :depends-on ("package" "utils" "display"))
-     (:file "moveit" :depends-on ("package"
-                                  "failures"
-                                  "collision-environment"
-                                  "display"
-                                  "utils"
-                                  "joint-states"
-                                  "planning-scene"
-                                  "ros"))))))
+     (:file "fingertips" :depends-on ("package"))))))

@@ -1,4 +1,4 @@
-;;; Copyright (c) 2013, Jan Winkler <winkler@cs.uni-bremen.de>
+;;; Copyright (c) 2014, Jan Winkler <winkler@cs.uni-bremen.de>
 ;;; All rights reserved.
 ;;; 
 ;;; Redistribution and use in source and binary forms, with or without
@@ -27,52 +27,18 @@
 
 (in-package :cl-user)
 
-(desig-props:def-desig-package
- cram-beliefstate
- (:documentation "CRAM Belief State Interface")
- (:nicknames :beliefstate)
+(defpackage
+ cram-fingertips
+ (:documentation "CRAM PR2 Fingertip Pressure Sensor Interface")
+ (:nicknames :fingertips)
  (:use
-  #:common-lisp
+  #:cpl
   #:cram-roslisp-common
   #:cut
-  #:desig
-  #:designators-ros
   #:roslisp)
-  (:export
-   ;; Functions
-   annotate-parameter
-   annotate-parameters
-   beliefstate-init
-   start-node
-   stop-node
-   extract-dot-file
-   extract-owl-file
-   extract-files
-   set-color-usage
-   add-object-to-active-node
-   add-object-to-node
-   add-topic-image-to-active-node
-   add-failure-to-active-node
-   add-designator-to-active-node
-   add-designator-to-node
-   equate-designators
-   set-metadata 
-   change-planlogging-namespace
-   ;; Interactive objects
-   register-interactive-object
-   unregister-interactive-object
-   set-interactive-object-menu
-   set-interactive-object-pose
-   ;; Interactive callbacks
-   register-interactive-callback
-   unregister-interactive-callback
-   ;; Experiment metadata
-   begin-experiment
-   end-experiment
-   query-input
-   ;; General
-   enable-logging
-   toggle-logging
-   ;; Prediction
-   choose)
-  (:designator-properties))
+ (:export
+  ;; Functions
+  pressure
+  wait-for-pressure
+  ;; Policies
+  pressure-changed))

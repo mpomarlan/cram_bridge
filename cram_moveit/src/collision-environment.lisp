@@ -89,7 +89,11 @@ bridge.")
        :primitive-shapes (list (roslisp:make-msg
                                 "shape_msgs/SolidPrimitive"
                                 type shape
-                                dimensions dimensions))
+                                dimensions
+                                (cond ((eql shape-prop 'desig-props:round)
+                                       (vector (elt dimensions 2)
+                                               (/ (elt dimensions 1) 2)))
+                                      (t dimensions))))
        :pose-stamped pose-stamped
        :color (desig-prop-value object 'desig-props:color))
       (when add
@@ -204,6 +208,7 @@ bridge.")
             (mesh-shapes (slot-value col-obj 'mesh-shapes))
             (plane-shapes (slot-value col-obj 'plane-shapes))
             (color (slot-value col-obj 'color)))
+        (declare (ignorable color))
         (let* ((obj-msg (roslisp:modify-message-copy
                          (create-collision-object-message
                           name pose-stamped
@@ -219,18 +224,12 @@ bridge.")
                (scene-msg (roslisp:make-msg
                            "moveit_msgs/PlanningScene"
                            world world-msg
-                           object_colors (vector (make-object-color name color))
-                           is_diff t
-                           :fixed_frame_transforms
-                           (cond (fixed-map-odomcombined
-                                  (vector (transform-stamped->msg
-                                           (ensure-transform-available
-                                            "/map" "/odom_combined"))))
-                                 (t (vector))))))
+                           ;object_colors (vector (make-object-color name color))
+                           is_diff t)))
           (prog1 (roslisp:publish *planning-scene-publisher* scene-msg)
             (roslisp:ros-info
              (moveit)
-             "Added collision object `~a' to environment server." name)
+             "Added `~a' to environment server." name)
             (publish-object-colors)))))))
 
 (defun remove-collision-object (name)
@@ -253,7 +252,19 @@ bridge.")
         (prog1 (roslisp:publish *planning-scene-publisher* scene-msg)
           (roslisp:ros-info
            (moveit)
-           "Removed collision object `~a' from environment server." name))))))
+           "Removed `~a' from environment server." name))))))
+
+(defmacro without-collision-objects (object-names &body body)
+  `(unwind-protect
+        (progn
+          (dolist (object-name ,object-names)
+            (remove-collision-object object-name))
+          ,@body)
+     (dolist (object-name ,object-names)
+       (add-collision-object object-name))))
+
+(defmacro without-collision-object (object-name &body body)
+  `(without-collision-objects (list ,object-name) ,@body))
 
 (defun clear-collision-objects ()
   (loop for col-obj in *known-collision-objects*
@@ -278,9 +289,9 @@ bridge.")
                           (tf:frame-id current-pose-stamped)
                           target-link)
         (let* ((pose-in-link
-                 (ensure-pose-stamped-transformed
-                  current-pose-stamped target-link
-                  :ros-time t))
+                 (cl-tf2:ensure-pose-stamped-transformed
+                  *tf2* current-pose-stamped target-link
+                  :use-current-ros-time t))
                (obj-msg-plain (create-collision-object-message
                                name pose-in-link
                                :primitive-shapes primitive-shapes
@@ -338,12 +349,11 @@ bridge.")
                  :source-frame (tf:frame-id current-pose-stamped)
                  :target-frame target-link)
           (cpl:fail 'pose-not-transformable-into-link))
-        (let* ((pose-in-link (tf:transform-pose
-                              *tf*
-                              :pose (tf:copy-pose-stamped
+        (let* ((pose-in-link (cl-tf2:ensure-pose-stamped-transformed
+                              *tf2* (tf:copy-pose-stamped
                                      current-pose-stamped
                                      :stamp time)
-                              :target-frame target-link))
+                              target-link :use-current-ros-time t))
                (obj-msg-plain (create-collision-object-message
                                name pose-in-link
                                :primitive-shapes primitive-shapes

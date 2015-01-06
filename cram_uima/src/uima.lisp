@@ -27,14 +27,24 @@
 
 (in-package :cram-uima)
 
+(defvar *uima-node-name* "/RoboSherlock_common")
+
 (defvar *uima-client* nil)
 (defvar *uima-result-subscriber* nil)
 (defvar *uima-result-fluent* nil)
 (defvar *uima-result-msg* nil)
 (defvar *uima-comm-mode* :topic)
 (defvar *uima-service-topic* "/naive_perception")
-(defvar *uima-trigger-service-topic* "/kinect_uima_bridge/trigger_uima_pipeline")
-(defvar *uima-results-topic* "/rs_collection_reader/result_advertiser")
+(defvar *uima-trigger-service-topic*
+  (concatenate 'string *uima-node-name* "/trigger_uima_pipeline"))
+(defvar *uima-results-topic*
+  (concatenate 'string *uima-node-name* "/result_advertiser"))
+
+(defvar *stored-result* nil)
+
+(defclass robosherlock-result ()
+  ((content :reader content :initarg :content)
+   (time-received :reader time-received :initarg :time-received)))
 
 (define-condition uima-not-running () ())
 
@@ -77,7 +87,11 @@ for a reply on another topic."
   nil)
 
 (defun uima-result-callback (msg)
-  (cpl:setf (cpl:value *uima-result-fluent*) msg))
+  (cpl:setf (cpl:value *uima-result-fluent*) msg)
+  (setf *stored-result*
+        (make-instance 'robosherlock-result
+                       :content msg
+                       :time-received (roslisp:ros-time))))
 
 (defun trigger (designator-request)
   (cpl:with-failure-handling
@@ -87,70 +101,52 @@ for a reply on another topic."
     (cpl:setf (cpl:value *uima-result-fluent*) nil)
     (desig-int::call-designator-service
      *uima-trigger-service-topic* designator-request)))
-  ;; (roslisp:wait-for-service *uima-trigger-service-topic*)
-  ;; (roslisp:call-service
-  ;;  *uima-trigger-service-topic*
-  ;;  'designator_integration_msgs-msg::DesignatorRequest
-  ;;  :designator designator-request))
 
-(defun make-perception-request-id ()
-  (concatenate
-   'string
-   "request_"
-   (write-to-string (random 1000000))
-   "_"
-   (write-to-string (random 1000000))))
+(define-hook cram-language::on-prepare-request (designator-request))
+(define-hook cram-language::on-finish-request (log-id result))
 
-(define-hook on-prepare-request (designator-request))
-(define-hook on-finish-request (log-id result))
-
-(defun get-uima-result (designator-request)
-  (let ((designator-request-plus-id
-          (make-designator
-           (ecase (class-name (class-of designator-request))
-             (desig:object-designator 'cram-designators:object)
-             (desig:action-designator 'cram-designators:action)
-             (desig:location-designator 'cram-designators:location))
-           (description designator-request))))
-    (equate designator-request designator-request-plus-id)
-    (roslisp:ros-info (uima) "Waiting for perception results")
-    (let ((log-id (first (on-prepare-request
-                          designator-request-plus-id)))
-          (result-designators
-            (cpl:with-failure-handling
-                ((roslisp::ros-rpc-error (f)
-                   (declare (ignore f))
-                   (roslisp:ros-warn
-                    (uima) "Waiting for connection to RoboSherlock.")
-                   (sleep 1)
-                   (cpl:retry)))
-              (ecase *uima-comm-mode*
-                (:topic
-                 ;;(trigger designator-request-plus-id)
-                 (cpl:pursue
-                   (cpl:sleep* 5) ;; Timeout
-                   (when (cpl:wait-for *uima-result-fluent*)
-                     (roslisp:with-fields (designators)
-                         (cpl:value *uima-result-fluent*)
-                       (map 'list (lambda (x)
-                                    (desig-int::msg->designator x))
-                            designators)))))
-                (:service
-                 (desig-int::call-designator-service
-                  *uima-service-topic* designator-request-plus-id))))))
-      (roslisp:ros-info (uima) "Post processing perception results")
-      (on-finish-request log-id result-designators)
-      (progn
-        (format t "Returning~%")
-        result-designators))))
+(defun get-uima-result (designator-request &key (max-age 2.0))
+  (let* ((call-result
+           (cond ((and nil
+                       *stored-result*
+                           (<= (- (roslisp:ros-time)
+                                  (time-received *stored-result*))
+                               max-age))
+                      (roslisp:ros-info
+                       (uima) "Found valid result in storage (~as old)."
+                       (- (roslisp:ros-time) (time-received *stored-result*)))
+                      (content *stored-result*))
+                     (t
+                      (roslisp:ros-info
+                       (uima) "Waiting for perception results.")
+                      (cpl:with-failure-handling
+                          ((roslisp::ros-rpc-error (f)
+                             (declare (ignore f))
+                             (roslisp:ros-warn
+                              (uima) "Waiting for connection to RoboSherlock.")
+                             (sleep 1)
+                             (cpl:retry)))
+                        (ecase *uima-comm-mode*
+                          (:topic
+                           (cpl:pursue
+                             (cpl:sleep* 5) ;; Timeout
+                             (when (cpl:wait-for *uima-result-fluent*)
+                               (cpl:value *uima-result-fluent*))))
+                          (:service
+                           (desig-int::call-designator-service
+                            *uima-service-topic* designator-request)))))))
+         (result-designators
+           (when call-result
+             (roslisp:with-fields (designators) call-result
+               (map 'list (lambda (x)
+                            (desig-int::msg->designator x))
+                    designators)))))
+    (unless call-result
+      (roslisp:ros-error (uima) "No answer from UIMA. Is the node running?"))
+    result-designators))
 
 (defun config-uima ()
   (cram-uima:set-comm-mode
    :topic
    :trigger-service-topic *uima-trigger-service-topic*
    :results-topic *uima-results-topic*))
-
-(defun config-naive-perception ()
-  (cram-uima:set-comm-mode
-   :service
-   :service-topic "/naive_perception"))

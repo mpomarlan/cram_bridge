@@ -30,29 +30,36 @@
   :license "BSD"
   :description "CRAM Belief State Interface"
 
-  :depends-on (cram-roslisp-common
-               cram-language
-               cram-plan-library
+  :depends-on (;; Functionality
+               cram-roslisp-common
                cram-reasoning
-               process-modules
                cram-utilities
-               cram-plan-knowledge
                designators
                designators-ros
-               actionlib
-               std_msgs-msg
-               cram-plan-failures
-               designator-integration-lisp
-               designator_integration_msgs-msg
-               designator_integration_msgs-srv
+               cram-language
+               
+               ;; Old
+               cram-plan-knowledge
+               process-modules
                cram-reasoning
                cram-uima
-               pr2-manipulation-process-module
-               point-head-process-module)
+               ;robosherlock-process-module
+               ;pr2-manipulation-process-module
+               ;point-head-process-module
+               cram-plan-failures
+               cram-plan-library
+               
+               ;; Communication
+               actionlib
+               std_msgs-msg
+               designator-integration-lisp
+               designator_integration_msgs-msg
+               designator_integration_msgs-srv)
   :components
   ((:module "src"
     :components
     ((:file "package")
      (:file "beliefstate" :depends-on ("package"))
+     (:file "predict" :depends-on ("package" "beliefstate"))
      (:file "interactive-control" :depends-on ("beliefstate" "package"))
      (:file "hooks" :depends-on ("beliefstate" "package"))))))

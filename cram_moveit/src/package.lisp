@@ -65,6 +65,8 @@
    set-collision-object-pose
    compute-ik
    execute-trajectory
+   merge-trajectories
+   concatenate-trajectories
    ;; Conditions
    moveit-failure
    planning-failed
@@ -91,13 +93,13 @@
    no-ik-solution
    no-collision-shapes-defined
    pose-not-transformable-into-link
-   ;; Transformations
-   ensure-pose-stamped-transformable
-   ensure-pose-stamped-transformed
-   ensure-transform-available
+   without-collision-object
+   without-collision-objects
+   execute-trajectories
    ;; Display
    display-robot-state
    set-object-color)
+  (:import-from cram-roslisp-common *tf2*)
   (:desig-properties #:shape #:dimensions #:box #:cylinder
                      #:sphere #:cone #:round #:name #:yellow
                      #:color))
