@@ -109,32 +109,32 @@ for a reply on another topic."
   (let* ((call-result
            (cond ((and nil
                        *stored-result*
-                           (<= (- (roslisp:ros-time)
-                                  (time-received *stored-result*))
-                               max-age))
-                      (roslisp:ros-info
-                       (uima) "Found valid result in storage (~as old)."
-                       (- (roslisp:ros-time) (time-received *stored-result*)))
-                      (content *stored-result*))
-                     (t
-                      (roslisp:ros-info
-                       (uima) "Waiting for perception results.")
-                      (cpl:with-failure-handling
-                          ((roslisp::ros-rpc-error (f)
-                             (declare (ignore f))
-                             (roslisp:ros-warn
-                              (uima) "Waiting for connection to RoboSherlock.")
-                             (sleep 1)
-                             (cpl:retry)))
-                        (ecase *uima-comm-mode*
-                          (:topic
-                           (cpl:pursue
-                             (cpl:sleep* 5) ;; Timeout
-                             (when (cpl:wait-for *uima-result-fluent*)
-                               (cpl:value *uima-result-fluent*))))
-                          (:service
-                           (desig-int::call-designator-service
-                            *uima-service-topic* designator-request)))))))
+                       (<= (- (roslisp:ros-time)
+                              (time-received *stored-result*))
+                           max-age))
+                  (roslisp:ros-info
+                   (uima) "Found valid result in storage (~as old)."
+                   (- (roslisp:ros-time) (time-received *stored-result*)))
+                  (content *stored-result*))
+                 (t
+                  (roslisp:ros-info
+                   (uima) "Waiting for perception results.")
+                  (cpl:with-failure-handling
+                      ((roslisp::ros-rpc-error (f)
+                         (declare (ignore f))
+                         (roslisp:ros-warn
+                          (uima) "Waiting for connection to RoboSherlock.")
+                         (sleep 1)
+                         (cpl:retry)))
+                    (ecase *uima-comm-mode*
+                      (:topic
+                       (cpl:pursue
+                         (cpl:sleep* 5) ;; Timeout
+                         (when (cpl:wait-for *uima-result-fluent*)
+                           (cpl:value *uima-result-fluent*))))
+                      (:service
+                       (desig-int::call-designator-service
+                        *uima-service-topic* designator-request)))))))
          (result-designators
            (when call-result
              (roslisp:with-fields (designators) call-result
