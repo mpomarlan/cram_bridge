@@ -8,9 +8,6 @@ find_package(catkin REQUIRED COMPONENTS
   cram_plan_library
   designator_integration_lisp
   cram_reasoning
-  cram_uima
-  pr2_manipulation_process_module
-  point_head_process_module
 )
 
 catkin_package()

@@ -43,9 +43,6 @@
                process-modules
                cram-reasoning
                cram-uima
-               ;robosherlock-process-module
-               ;pr2-manipulation-process-module
-               ;point-head-process-module
                cram-plan-failures
                cram-plan-library
                
