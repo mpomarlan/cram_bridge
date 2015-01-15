@@ -20,6 +20,7 @@
 
   <!-- Dependencies needed after this package is compiled. -->
   <run_depend>cram_json_prolog</run_depend>
+  <run_depend>cram_fingertips</run_depend>
   <run_depend>cram_beliefstate</run_depend>
   <run_depend>cram_uima</run_depend>
   <run_depend>cram_ik_proxy</run_depend>
