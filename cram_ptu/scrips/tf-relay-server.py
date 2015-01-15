@@ -1,25 +1,19 @@
 #!/usr/bin/env python
-#apparently not needed after catkin:
-#import roslib
-#roslib.load_manifest('cram_ptu')
-
+import roslib
+roslib.load_manifest('cram_ptu')
 import rospy
 
 import actionlib
 import tf
 
-import std_msgs.msg
 import cogman_msgs.msg
 
 class TFRelayAction(object):
   # create messages that are used to publish result
-
-  # NOTE: cogman_msgs package actually does not define any msg files; there is no TFRelayResult.msg in either ias_common or iai_common
   _result   = cogman_msgs.msg.TFRelayResult()
 
   def __init__(self, name):
     self._action_name = name
-  # NOTE: cogman_msgs package actually does not define TFRelayAction
     self._as = actionlib.SimpleActionServer(self._action_name, cogman_msgs.msg.TFRelayAction, execute_cb=self.execute_cb, auto_start = False)
     self._as.start()
     self._broadcaster = tf.TransformBroadcaster()

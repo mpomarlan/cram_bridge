@@ -30,7 +30,7 @@
 
 (defmacro with-tf-broadcasting ((interface transform) &body body)
   "Executes `body' while broadcasting `transform' to TF via the tf-broadcaster of `interface'"
-  `(let ((thread (cl-tf:send-static-transforms (tf-broadcaster ,interface) ,transform)))
+  `(let ((thread (cl-tf:send-static-transform (tf-broadcaster ,interface) ,transform)))
      (unwind-protect (progn ,@body)
       (when (and thread (sb-thread:thread-alive-p thread))
         (sb-thread:terminate-thread thread)))))
