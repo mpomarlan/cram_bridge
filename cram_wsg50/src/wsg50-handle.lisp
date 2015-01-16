@@ -29,18 +29,60 @@
 (in-package :cram-wsg50)
 
 (defclass wsg50-handle ()
-  ((goal-position-pub :initarg :pub :accessor goal-position-pub
-                      :documentation "Publisher for the goal_position topic."))
+  ((namespace :initarg :namespace :reader namespace
+              :documentation "Namespace for the topics.")
+   (goal-position-pub :initarg :pub :accessor goal-position-pub
+                      :documentation "Publisher for the goal_position topic.")
+   (status-sub :initarg :sub :reader status-sub
+               :documentation "Subscriber for the status topic of the gripper.")
+   (status-fluent :reader status-fluent
+                  :documentation "Fluent holding the status of the gripper."))
   (:documentation "Handle for sending commands to the wsg50 gripper."))
+
+(defmethod status-fluent :before ((handle wsg50-handle))
+  "If the status-fluent slot is unbound it subscribes to the status topic and creates a fluent with the values of the status message."
+  (unless (slot-boundp handle 'status-fluent)
+    (let* ((fluent (cpl-impl:make-fluent))
+           (sub (subscribe (concatenate 'string (namespace handle) "/status")
+                           "iai_wsg_50_msgs/Status"
+                           (lambda (msg)
+                             (setf (cpl-impl:value fluent) 
+                                   (read-status msg))))))
+      (setf (slot-value handle 'status-sub)
+            sub)
+      (setf (slot-value handle 'status-fluent)
+            fluent))))
+
+(defun read-status (msg)
+  "Returns a plist with the names and values of the status msg."
+  `(:status ,(iai_wsg_50_msgs-msg:status msg)
+    :width ,(iai_wsg_50_msgs-msg:width msg)
+    :speed ,(iai_wsg_50_msgs-msg:speed msg)
+    :acc ,(iai_wsg_50_msgs-msg:acc msg)
+    :force ,(iai_wsg_50_msgs-msg:force msg)
+    :force_finger0 ,(iai_wsg_50_msgs-msg:force_finger0 msg)
+    :force_finger1 ,(iai_wsg_50_msgs-msg:force_finger1 msg)))
 
 (defun make-wsg50-handle (namespace)
   "Creates and returns a wsg50-handle."
-  (let ((pub (advertise (concatenate 'string namespace "goal_position")
+  (let ((pub (advertise (concatenate 'string namespace "/goal_position")
                         "iai_wsg_50_msgs/PositionCmd")))
-    (make-instance 'wsg50-handle :pub pub)))
+    (make-instance 'wsg50-handle :namespace namespace :pub pub)))
 
-(defun move-wsg50 (handle pos speed force)
-  "Moves the gripper to the given `position' in mm with `speed' in mm/s and `force'."
-  (publish-msg (goal-position-pub handle) :pos pos :speed speed :force force))
+(defun move-wsg50 (handle &rest args)
+  "Moves the gripper to the given position in mm with speed in mm/s and force in N. `args' has to be either pos, speed, force or (:pos pos :speed speed :force force)."
+  (cond
+    ((typep (first args) 'list)
+     (publish-msg (goal-position-pub handle)
+                  :pos (getf (first args) :pos)
+                  :speed (getf (first args) :speed) 
+                  :force (getf (first args) :force)))
+    ((and (typep (first args) 'number) 
+          (typep (second args) 'number)
+          (typep (third args) 'number))
+     (publish-msg (goal-position-pub handle) 
+                  :pos (first args) 
+                  :speed (second args) 
+                  :force (third args)))))
 
 
