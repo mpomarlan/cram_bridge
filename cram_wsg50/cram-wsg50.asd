@@ -32,13 +32,14 @@
   :description "Interface package of CRAM to command Schunk WSG50 Gripper."
 
   :depends-on (roslisp
-               wsg_50_common-msg
-               wsg_50_common-srv
+               iai_wsg_50_msgs-msg
+               iai_wsg_50_msgs-srv
                std_srvs-srv)
   :components
   ((:module "src"
     :components
     ((:file "package")
-     (:file "client" :depends-on ("package"))
-     (:file "parameters" :depends-on ("package"))
-     (:file "client-interface" :depends-on ("package" "client" "parameters"))))))
+     ;(:file "client" :depends-on ("package"))
+     ;(:file "parameters" :depends-on ("package"))
+     ;(:file "client-interface" :depends-on ("package" "client" "parameters"))))))
+     (:file "wsg50-handle" :depends-on ("package"))))))

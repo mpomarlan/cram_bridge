@@ -41,13 +41,13 @@
          (stop-service-name (concatenate 'string namespace "/stop"))
          (ack-service-name (concatenate 'string namespace "/ack"))
          (force-service-name (concatenate 'string namespace "/set_force"))
-         (move-client (make-service-client move-service-name "wsg_50_common/Move"))
-         (grasp-client (make-service-client grasp-service-name "wsg_50_common/Move"))
+         (move-client (make-service-client move-service-name "iai_wsg_50_msgs/Move"))
+         (grasp-client (make-service-client grasp-service-name "iai_wsg_50_msgs/Move"))
          (homing-client (make-service-client homing-service-name "std_srvs/Empty"))
-         (acc-client (make-service-client acc-service-name "wsg_50_common/Conf"))
+         (acc-client (make-service-client acc-service-name "iai_wsg_50_msgs/Conf"))
          (stop-client (make-service-client stop-service-name "std_srvs/Empty"))
          (ack-client (make-service-client ack-service-name "std_srvs/Empty"))
-         (force-client (make-service-client force-service-name "wsg_50_common/Conf")))
+         (force-client (make-service-client force-service-name "iai_wsg_50_msgs/Conf")))
     (let ((interface (make-instance 'wsg50-interface 
                                     :move-client move-client 
                                     :grasp-client grasp-client
@@ -149,7 +149,7 @@
   (declare (type wsg50-interface interface)
            (type string status-topic-name))
   (let ((subscriber 
-          (subscribe status-topic-name "wsg_50_common/Status"
+          (subscribe status-topic-name "iai_wsg_50_msgs/Status"
                      (lambda (msg)
                        (with-recursive-lock ((status-lock interface))
                          (setf (status interface) (from-msg msg))))
@@ -158,8 +158,8 @@
 
 (defun from-msg (msg)
   "Creates an instance of type 'wsg50-status', fills it with content from `msg' which is of
- type 'wsg_50_common/Status', and returns the new object."
-  (declare (type wsg_50_common-msg:Status msg))
+ type 'iai_wsg_50_msgs/Status', and returns the new object."
+  (declare (type iai_wsg_50_msgs-msg:Status msg))
   (with-fields (width acc force) msg
     (make-instance 'wsg50-status :width width :max-acc acc :max-force force)))
 
