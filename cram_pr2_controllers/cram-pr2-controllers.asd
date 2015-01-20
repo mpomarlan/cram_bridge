@@ -34,7 +34,6 @@
   :depends-on (roslisp
                actionlib
                actionlib-lisp
-               cl-robot-models
                cl-tf
                pr2_controllers_msgs-msg
                pr2_mechanism_msgs-srv

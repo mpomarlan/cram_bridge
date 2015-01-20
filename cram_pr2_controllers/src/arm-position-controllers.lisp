@@ -51,7 +51,7 @@
 
 (defun move-arm (handle goal-state execution-time)
   (declare (type pr2-arm-position-controller-handle handle)
-           (type cl-robot-models:robot-state goal-state)
+           (type list goal-state)
            (type number execution-time))
   (with-recursive-lock ((lock handle))
     (multiple-value-bind (result status)
@@ -66,24 +66,23 @@
 
 (defun make-trajectory-msg (handle goal-state execution-time)
   (declare (type pr2-arm-position-controller-handle handle)
-           (type cl-robot-models:robot-state goal-state)
+           (type list goal-state)
            (type number execution-time))
   (roslisp:make-msg
    "trajectory_msgs/JointTrajectory"
    :header (roslisp:make-msg
             "std_msgs/Header"
             :stamp (roslisp:ros-time))
-   :joint_names (coerce (joint-names handle) 'vector)
+   :joint_names (coerce (mapcar #'string (joint-names handle)) 'vector)
    :points (coerce `(,(make-trajectory-point handle goal-state execution-time)) 'vector)))
 
 (defun make-trajectory-point (handle goal-state execution-time)
   (declare (type pr2-arm-position-controller-handle handle)
-           (type cl-robot-models:robot-state goal-state)
+           (type list goal-state)
            (type number execution-time))
   (let ((goal-configuration
           (mapcar (lambda (joint)
-                    (cl-robot-models:joint-position
-                     (cl-robot-models:get-joint-state goal-state joint)))
+                    (getf (getf goal-state joint) :position))
                   (joint-names handle))))
     (roslisp:make-msg 
      "trajectory_msgs/JointTrajectoryPoint"
