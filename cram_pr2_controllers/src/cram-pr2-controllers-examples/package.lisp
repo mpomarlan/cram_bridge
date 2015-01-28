@@ -26,23 +26,9 @@
 ;;; ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ;;; POSSIBILITY OF SUCH DAMAGE.
 
-(defsystem cram-pr2-controllers
-  :author "Georg Bartels <georg.bartels@cs.uni-bremen.de>"
-  :license "BSD"
-  :description "Interface package between CRAM and standard PR2 controllers."
+(in-package :cl-user)
 
-  :depends-on (roslisp
-               actionlib-lisp
-               cl-tf
-               pr2_controllers_msgs-msg
-               pr2_mechanism_msgs-srv
-               trajectory_msgs-msg)
-  :components
-  ((:module "src"
-    :components
-    ((:module "cram-pr2-controllers"
-      :components
-      ((:file "package")
-       (:file "arm-position-controllers" :depends-on ("package"))
-       (:file "controller-manager" :depends-on ("package"))
-       (:file "point-head-controllers" :depends-on ("package"))))))))
+(defpackage :cram-pr2-controllers-examples
+  (:nicknames :pr2-controllers-examples)
+  (:use #:common-lisp #:sb-thread)
+  (:export))

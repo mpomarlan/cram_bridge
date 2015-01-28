@@ -15,20 +15,18 @@
   <build_depend>sbcl</build_depend>
   <build_depend>roslisp</build_depend>
   <build_depend>actionlib_lisp</build_depend>
-  <build_depend>cl_robot_models</build_depend>
   <build_depend>cl_tf</build_depend>
   <build_depend>pr2_mechanism_msgs</build_depend>
-  <build_depend>pr2_controller_msgs</build_depend>
+  <build_depend>pr2_controllers_msgs</build_depend>
   <build_depend>trajectory_msgs</build_depend>
 
   <!-- Dependencies needed after this package is compiled. -->
   <run_depend>sbcl</run_depend>
   <run_depend>roslisp</run_depend>
   <run_depend>actionlib_lisp</run_depend>
-  <run_depend>cl_robot_models</run_depend>
   <run_depend>cl_tf</run_depend>
   <run_depend>pr2_mechanism_msgs</run_depend>
-  <run_depend>pr2_controller_msgs</run_depend>
+  <run_depend>pr2_controllers_msgs</run_depend>
   <run_depend>trajectory_msgs</run_depend>
 
 </package>
