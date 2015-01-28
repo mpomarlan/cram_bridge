@@ -32,7 +32,6 @@
   :description "Interface package between CRAM and standard PR2 controllers."
 
   :depends-on (roslisp
-               actionlib
                actionlib-lisp
                cl-tf
                pr2_controllers_msgs-msg

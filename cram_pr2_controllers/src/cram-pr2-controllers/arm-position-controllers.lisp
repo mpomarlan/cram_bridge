@@ -29,7 +29,7 @@
 (in-package :pr2-controllers)
 
 (defclass pr2-arm-position-controller-handle ()
-  ((client :initarg :client :accessor client :type actionlib::action-client)
+  ((client :initarg :client :accessor client :type actionlib-lisp::simple-action-client)
    (lock :initform (make-mutex :name (string (gensym "PR2-ARM-POSITION-CTRL-LOCK-")))
          :accessor lock :type mutex
          :documentation "For internal use. Mutex to guard pr2 arm controller.")
@@ -45,7 +45,7 @@
            (type list joint-names))
   (make-instance
    'pr2-arm-position-controller-handle
-   :client (actionlib:make-action-client
+   :client (actionlib-lisp:make-simple-action-client
             action-name "pr2_controllers_msgs/JointTrajectoryAction")
    :joint-names joint-names))
 
@@ -55,10 +55,11 @@
            (type number execution-time))
   (with-recursive-lock ((lock handle))
     (multiple-value-bind (result status)
-        (actionlib:send-goal-and-wait 
+        (actionlib-lisp:send-goal-and-wait
          (client handle)
-         (actionlib:make-action-goal (client handle)
-           :trajectory (make-trajectory-msg handle goal-state execution-time)))
+         (actionlib-lisp:make-action-goal-msg (client handle)
+           :trajectory (make-trajectory-msg handle goal-state execution-time))
+         0 0)
       ;; TODO(Georg): think about a good low-level interface
       (declare (ignore status result)))))
 
