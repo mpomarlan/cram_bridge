@@ -1,13 +1,14 @@
 <package>
   <name>cram_wsg50</name>
-  <version>1.0.0</version>
+  <version>0.2.0</version>
   <description>
 
      CRAM interface package to command Schunk WSG50 gripper.
 
   </description>
-  <author>Georg Bartels</author>
-  <maintainer email="mustermann@fictional.de">Add Maintainer here</maintainer>
+  <author email="georg.bartels@cs.uni-bremen.de">Georg Bartels</author>
+  <author>Jannik Buckelo</author>
+  <maintainer email="georg.bartels@cs.uni-bremen.de">Georg Bartels</maintainer>
   <license>BSD</license>
 
   <!-- Dependencies which this package needs to build itself. -->
@@ -26,5 +27,3 @@
   <run_depend>std_srvs</run_depend>
 
 </package>
-
-

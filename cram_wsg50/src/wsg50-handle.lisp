@@ -48,10 +48,8 @@
                            (lambda (msg)
                              (setf (cpl-impl:value fluent) 
                                    (read-status msg))))))
-      (setf (slot-value handle 'status-sub)
-            sub)
-      (setf (slot-value handle 'status-fluent)
-            fluent))))
+      (setf (slot-value handle 'status-sub) sub)
+      (setf (slot-value handle 'status-fluent) fluent))))
 
 (defun read-status (msg)
   "Returns a plist with the names and values of the status msg."
@@ -70,7 +68,8 @@
     (make-instance 'wsg50-handle :namespace namespace :pub pub)))
 
 (defun move-wsg50 (handle &rest args)
-  "Moves the gripper to the given position in mm with speed in mm/s and force in N. `args' has to be either pos, speed, force or (:pos pos :speed speed :force force)."
+  "Moves the gripper to the given position in mm with speed in mm/s and force in N.
+ `args' has to be either pos, speed, force or (:pos pos :speed speed :force force)."
   (cond
     ((typep (first args) 'list)
      (publish-msg (goal-position-pub handle)
@@ -83,6 +82,5 @@
      (publish-msg (goal-position-pub handle) 
                   :pos (first args) 
                   :speed (second args) 
-                  :force (third args)))))
-
-
+                  :force (third args)))
+    (t (warn "Called `move-wsg50' with incorrect rest-args: ~a~%" args))))
