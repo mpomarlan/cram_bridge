@@ -30,17 +30,12 @@
   :author "Georg Bartels <georg.bartels@cs.uni-bremen.de>"
   :license "BSD"
   :description "Interface package between CRAM and standard PR2 controllers."
-
   :depends-on (roslisp
-               actionlib
-               actionlib-lisp
-               cl-tf
-               cram-pr2-controllers
-               pr2_controllers_msgs-msg
-               pr2_mechanism_msgs-srv
-               trajectory_msgs-msg)
+               cram-pr2-controllers)
   :components
   ((:module "src"
     :components
-    ((:file "package")
-     (:file "arm-position-controllers-examples" :depends-on ("package"))))))
+    ((:module "cram-pr2-controllers-examples"
+      :components
+      ((:file "package")
+       (:file "arm-position-controllers-examples" :depends-on ("package"))))))))

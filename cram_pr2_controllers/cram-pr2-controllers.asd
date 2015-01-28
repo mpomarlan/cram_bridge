@@ -41,7 +41,9 @@
   :components
   ((:module "src"
     :components
-    ((:file "package")
-     (:file "arm-position-controllers" :depends-on ("package"))
-     (:file "controller-manager" :depends-on ("package"))
-     (:file "point-head-controllers" :depends-on ("package"))))))
+    ((:module "cram-pr2-controllers"
+      :components
+      ((:file "package")
+       (:file "arm-position-controllers" :depends-on ("package"))
+       (:file "controller-manager" :depends-on ("package"))
+       (:file "point-head-controllers" :depends-on ("package"))))))))
