@@ -73,7 +73,10 @@
    :header (roslisp:make-msg
             "std_msgs/Header"
             :stamp (roslisp:ros-time))
-   :joint_names (coerce (mapcar #'string (joint-names handle)) 'vector)
+   :joint_names (coerce (mapcar 
+                         (lambda (keyword) (string-downcase (string keyword)))
+                         (joint-names handle))
+                        'vector)
    :points (coerce `(,(make-trajectory-point handle goal-state execution-time)) 'vector)))
 
 (defun make-trajectory-point (handle goal-state execution-time)

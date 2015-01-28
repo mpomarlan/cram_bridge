@@ -28,29 +28,29 @@
 
 (in-package :pr2-controllers-examples)
 
-(defparameter *joint-names* '(:|l_shoulder_pan_joint| 
-                              :|l_shoulder_lift_joint|
-                              :|l_upper_arm_roll_joint|
-                              :|l_elbow_flex_joint|
-                              :|l_forearm_roll_joint| 
-                              :|l_wrist_flex_joint|
-                              :|l_wrist_roll_joint|))
+(defparameter *joint-names* '(:l_shoulder_pan_joint 
+                              :l_shoulder_lift_joint
+                              :l_upper_arm_roll_joint
+                              :l_elbow_flex_joint
+                              :l_forearm_roll_joint
+                              :l_wrist_flex_joint
+                              :l_wrist_roll_joint))
 
-(defparameter *goal-state1* '(:|l_shoulder_pan_joint| (:position 0.0)
-                              :|l_shoulder_lift_joint| (:position 0.0)
-                              :|l_upper_arm_roll_joint| (:position 0.0)
-                              :|l_elbow_flex_joint| (:position 0.0)
-                              :|l_forearm_roll_joint| (:position 0.0)
-                              :|l_wrist_flex_joint| (:position 0.0)
-                              :|l_wrist_roll_joint| (:position 0.0)))
+(defparameter *goal-state1* '(:l_shoulder_pan_joint (:position 0.0)
+                              :l_shoulder_lift_joint (:position 0.0)
+                              :l_upper_arm_roll_joint (:position 0.0)
+                              :l_elbow_flex_joint (:position 0.0)
+                              :l_forearm_roll_joint (:position 0.0)
+                              :l_wrist_flex_joint (:position 0.0)
+                              :l_wrist_roll_joint (:position 0.0)))
 
-(defparameter *goal-state2* '(:|l_shoulder_pan_joint| (:position 0.7)
-                              :|l_shoulder_lift_joint| (:position 0.9)
-                              :|l_upper_arm_roll_joint| (:position 1.4)
-                              :|l_elbow_flex_joint| (:position 0.0)
-                              :|l_forearm_roll_joint| (:position 0.0)
-                              :|l_wrist_flex_joint| (:position 0.5)
-                              :|l_wrist_roll_joint| (:position 0.6)))
+(defparameter *goal-state2* '(:l_shoulder_pan_joint (:position 0.7)
+                              :l_shoulder_lift_joint (:position 0.9)
+                              :l_upper_arm_roll_joint (:position 1.4)
+                              :l_elbow_flex_joint (:position 0.0)
+                              :l_forearm_roll_joint (:position 0.0)
+                              :l_wrist_flex_joint (:position 0.5)
+                              :l_wrist_roll_joint (:position 0.6)))
 
 (defparameter *handle* nil)
 
