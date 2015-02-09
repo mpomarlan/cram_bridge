@@ -257,7 +257,7 @@
                          (list 'memory-address memory-address)
                          (list 'description description))
                    (when property-namespace
-                     (list 'namespace property-namespace))))))
+                     (list (list 'namespace property-namespace)))))))
     (when result
       (let* ((desig-id (desig-prop-value (first result) 'desig-props::id)))
         desig-id))))
