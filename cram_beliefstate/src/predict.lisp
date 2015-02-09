@@ -29,13 +29,14 @@
 
 (defvar *enable-prediction* nil)
 
-(defun annotate-parameters (parameters)
+(defun annotate-parameters (parameters &key namespace)
   (add-designator-to-active-node
    (make-designator 'object `(,parameters))
-   :annotation "parameter-annotation"))
+   :annotation "parameter-annotation"
+   :property-namespace namespace))
 
-(defun annotate-parameter (symbol value)
-  (annotate-parameters `((,symbol ,value))))
+(defun annotate-parameter (symbol value &key namespace)
+  (annotate-parameters `((,symbol ,value)) :namespace namespace))
 
 (defun predict (parameters)
   "Predict the outcome of the current branch."

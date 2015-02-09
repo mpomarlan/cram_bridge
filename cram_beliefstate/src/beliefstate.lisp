@@ -240,7 +240,8 @@
       (let* ((desig-id (desig-prop-value (first result) 'desig-props::id)))
         desig-id))))
 
-(defun add-designator-to-active-node (designator &key (annotation ""))
+(defun add-designator-to-active-node (designator &key (annotation "")
+                                                   property-namespace)
   (let* ((type (ecase (type-of designator)
                  (cram-designators:action-designator "ACTION")
                  (cram-designators:location-designator "LOCATION")
@@ -249,11 +250,14 @@
                           (sb-kernel:get-lisp-obj-address designator)))
          (description (description designator))
          (result (alter-node
-                  (list (list 'command 'add-designator)
-                        (list 'type type)
-                        (list 'annotation annotation)
-                        (list 'memory-address memory-address)
-                        (list 'description description)))))
+                  (append
+                   (list (list 'command 'add-designator)
+                         (list 'type type)
+                         (list 'annotation annotation)
+                         (list 'memory-address memory-address)
+                         (list 'description description))
+                   (when property-namespace
+                     (list 'namespace property-namespace))))))
     (when result
       (let* ((desig-id (desig-prop-value (first result) 'desig-props::id)))
         desig-id))))
