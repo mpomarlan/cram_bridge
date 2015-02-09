@@ -77,11 +77,7 @@ MoveIt! framework and registers known conditions."
                          (wait-for-execution t)
                          max-tilt
                          reference-frame)
-  "Calls the MoveIt! MoveGroup action. The link identified by
-  `link-name' is tried to be positioned in the pose given by
-  `pose-stamped'. Returns `T' on success and `nil' on failure, in
-  which case a failure condition is signalled, based on the error code
-  returned by the MoveIt! service (as defined in
+  "Calls the MoveIt! MoveGroup action. The link identified by `link-name' is tried to be positioned in the pose given by `pose-stamped'. Returns `T' on success and `nil' on failure, in which case a failure condition is signalled, based on the error code returned by the MoveIt! service (as defined in
   moveit_msgs/MoveItErrorCodes)."
   ;; NOTE(winkler): Since MoveIt! crashes once it receives a frame-id
   ;; which includes the "/" character at the beginning, we change the
@@ -358,38 +354,71 @@ MoveIt! framework and registers known conditions."
         into max-val
         finally (return max-val)))
 
+(defun latest-time-for-trajectory (trajectory)
+  (with-fields (joint_trajectory) trajectory
+    (with-fields (points) joint_trajectory
+      (loop for point in (map 'list #'identity points)
+            maximizing (with-fields (time_from_start) point
+                         time_from_start)
+            into max-val
+            finally (return max-val)))))
+
+(defun latest-time-for-trajectories (trajectories)
+  (loop for trajectory in trajectories
+        maximizing (latest-time-for-trajectory trajectory)
+        into max-val
+        finally (return max-val)))
+
 (defun stretch-trajectories (trajectories stretch-to-length)
-  (mapcar (lambda (trajectory)
-            (let ((len (trajectory-length trajectory)))
-              (cond ((= len stretch-to-length)
-                     trajectory)
-                    (t (with-fields (joint_trajectory
-                                     multi_dof_joint_trajectory) trajectory
-                         (let ((points (with-fields (points) joint_trajectory
-                                         points)))
-                           (with-fields (header joint_names) joint_trajectory
-                             (make-message
-                              "moveit_msgs/RobotTrajectory"
-                              :joint_trajectory
-                              (make-message
-                               "trajectory_msgs/JointTrajectory"
-                               :header header
-                               :joint_names joint_names
-                               :points
-                               (map
-                                'vector #'identity
-                                (append
-                                 (map 'list #'identity points)
-                                 (mapcar (lambda (x)
-                                           (declare (ignore x))
-                                           (elt points (1- (length points))))
-                                         (loop for i from 0 below
-                                                            (- stretch-to-length
-                                                               len)
-                                               collect i)))))
-                              :multi_dof_joint_trajectory
-                              multi_dof_joint_trajectory))))))))
-          trajectories))
+  (let ((longest-trajectory nil))
+    (loop for trajectory in trajectories
+          when (= (trajectory-length trajectory) stretch-to-length)
+            do (setf longest-trajectory trajectory))
+    (labels ((longest-trajectory-point-at-index (i)
+               (with-fields (joint_trajectory) longest-trajectory
+                 (with-fields (points) joint_trajectory
+                   (elt points i)))))
+      (mapcar (lambda (trajectory)
+                (let ((len (trajectory-length trajectory)))
+                  (with-fields (joint_trajectory
+                                multi_dof_joint_trajectory) trajectory
+                    (with-fields (points) joint_trajectory
+                      (with-fields (header joint_names) joint_trajectory
+                        (make-message
+                         "moveit_msgs/RobotTrajectory"
+                         :joint_trajectory
+                         (make-message
+                          "trajectory_msgs/JointTrajectory"
+                          :header header
+                          :joint_names joint_names
+                          :points
+                          (map
+                           'vector #'identity
+                           (append
+                            (mapcar (lambda (point i)
+                                      (roslisp:modify-message-copy
+                                       point
+                                       time_from_start
+                                       (with-fields (time_from_start)
+                                           (longest-trajectory-point-at-index i)
+                                         time_from_start)))
+                                    (map 'list #'identity points)
+                                    (loop for i from 0 below len
+                                          collect i))
+                            (mapcar (lambda (i)
+                                      (roslisp:modify-message-copy
+                                       (elt points (1- (length points)))
+                                       velocities (vector)
+                                       accelerations (vector)
+                                       time_from_start
+                                       (with-fields (time_from_start)
+                                           (longest-trajectory-point-at-index i)
+                                         time_from_start)))
+                                    (loop for i from len below stretch-to-length
+                                          collect i)))))
+                         :multi_dof_joint_trajectory
+                         multi_dof_joint_trajectory))))))
+              trajectories))))
 
 (defun merge-trajectories (trajectories &key ignore-va)
   (let* ((longest (longest-trajectory trajectories))

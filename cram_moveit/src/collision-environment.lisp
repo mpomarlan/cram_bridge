@@ -97,7 +97,7 @@ bridge.")
        :pose-stamped pose-stamped
        :color (desig-prop-value object 'desig-props:color))
       (when add
-        (add-collision-object name pose-stamped t)))))
+        (add-collision-object name pose-stamped)))))
 
 (defmethod register-collision-object ((name string)
                                       &key
@@ -196,8 +196,7 @@ bridge.")
      (b color) (elt col-vec 2)
      (a color) 1.0)))
 
-(defun add-collision-object (name &optional pose-stamped
-                                    (fixed-map-odomcombined nil))
+(defun add-collision-object (name &optional pose-stamped)
   (let* ((name (string name))
          (col-obj (named-collision-object name))
          (pose-stamped (or pose-stamped
