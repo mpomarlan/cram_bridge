@@ -358,7 +358,8 @@
       (mapcar (lambda (clause)
                 `(clause ,clause))
               clauses))
-     id :annotation "with-failure-handling-clauses")))
+     id :annotation "with-failure-handling-clauses")
+    id))
 
 (defmethod cram-language::on-with-failure-handling-handled cram-beliefstate (id)
   (catch-current-failure-with-active-node id))
