@@ -255,14 +255,10 @@
     id))
 
 (defmethod cram-language::on-grasp-decisions-complete
-    cram-beliefstate (log-id obj-name pregrasp-pose grasp-pose side object-pose)
+    cram-beliefstate (log-id grasp-description)
   (beliefstate:add-designator-to-node
    (make-designator 'cram-designators:action
-                    `((object-name ,obj-name)
-                      (pregrasp-pose ,pregrasp-pose)
-                      (grasp-pose ,grasp-pose)
-                      (side ,side)
-                      (object-pose ,object-pose)))
+                    grasp-description)
    log-id :annotation "grasp-details"))
 
 (defmethod cram-language::on-finish-grasp cram-beliefstate (log-id success)
