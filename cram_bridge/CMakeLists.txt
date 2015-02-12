@@ -1,6 +1,4 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(cram_wsg50)
-
-find_package(catkin REQUIRED)
+project(cram_bridge)
 
 catkin_package()

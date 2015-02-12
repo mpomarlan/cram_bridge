@@ -1,0 +1,29 @@
+<package>
+  <name>cram_wsg50</name>
+  <version>0.2.0</version>
+  <description>
+
+     CRAM interface package to command Schunk WSG50 gripper.
+
+  </description>
+  <author email="georg.bartels@cs.uni-bremen.de">Georg Bartels</author>
+  <author>Jannik Buckelo</author>
+  <maintainer email="georg.bartels@cs.uni-bremen.de">Georg Bartels</maintainer>
+  <license>BSD</license>
+
+  <!-- Dependencies which this package needs to build itself. -->
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <!-- Dependencies needed to compile this package. -->
+  <build_depend>sbcl</build_depend>
+  <build_depend>roslisp</build_depend>
+  <build_depend>iai_wsg_50_msgs</build_depend>
+  <build_depend>std_srvs</build_depend>
+
+  <!-- Dependencies needed after this package is compiled. -->
+  <run_depend>sbcl</run_depend>
+  <run_depend>roslisp</run_depend>
+  <run_depend>iai_wsg_50_msgs</run_depend>
+  <run_depend>std_srvs</run_depend>
+
+</package>

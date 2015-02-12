@@ -35,10 +35,7 @@
 (defparameter *default-force* 15
   "Default force (in N) for opening and closing of Schunk WSG50 gripper.")
 
-(defparameter *completely-open-width* 110
+(defparameter *wsg50-open-width* 110
   "Width (in mm) corresponding to a completely opened gripper for Schunk WSG50.")
-(defparameter *completely-closed-width* 0
+(defparameter *wsg50-closed-width* 0
   "Width (in mm) corresponding to a completely closed gripper for Schunk WSG50.")
-
-(defparameter *no-error-occured-code* 0
-  "Calls to the WSG50 gripper return error codes. This one signals success.")

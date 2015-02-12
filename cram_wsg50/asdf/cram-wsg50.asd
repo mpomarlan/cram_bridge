@@ -1,1 +1,0 @@
-../cram-wsg50.asd

@@ -31,6 +31,7 @@
 (defpackage :cram-wsg50
   (:use #:roslisp
         #:common-lisp
-        #:sb-thread)
-  (:export :make-wsg50-interface :open-gripper :close-gripper :home-gripper
-           :wsg50-command-error :width :speed :acceleration :force :text :error-code))
+        #:sb-thread)    
+  (:export :make-wsg50-handle :move-wsg50 :status-fluent
+           :*default-speed* :*default-acceleration* :*default-force*
+           :*completely-open-width* :*completely-closed-width*))

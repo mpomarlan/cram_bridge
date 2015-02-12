@@ -32,9 +32,7 @@
   :description "Interface package between CRAM and standard PR2 controllers."
 
   :depends-on (roslisp
-               actionlib
                actionlib-lisp
-               cl-robot-models
                cl-tf
                pr2_controllers_msgs-msg
                pr2_mechanism_msgs-srv
@@ -42,7 +40,9 @@
   :components
   ((:module "src"
     :components
-    ((:file "package")
-     (:file "arm-position-controllers" :depends-on ("package"))
-     (:file "controller-manager" :depends-on ("package"))
-     (:file "point-head-controllers" :depends-on ("package"))))))
+    ((:module "cram-pr2-controllers"
+      :components
+      ((:file "package")
+       (:file "arm-position-controllers" :depends-on ("package"))
+       (:file "controller-manager" :depends-on ("package"))
+       (:file "point-head-controllers" :depends-on ("package"))))))))
