@@ -39,21 +39,28 @@
 
 (defmethod send-goal (client goal &key (timeout 0.0))
   (with-lock-held (*moveit-action-access-lock*)
-    (actionlib-lisp:wait-for-server client)
-    (let* ((wait-fluent (cpl:make-fluent))
-           (goal-handle
-             (actionlib-lisp:send-goal
-              client goal
-              :transition-cb (lambda (goal-handle)
-                               (let ((status (actionlib-lisp:comm-state goal-handle)))
-                                 (when (eql status :done)
-                                   (cpl-impl:pulse wait-fluent)))))))
-      (cpl:wait-for (cpl-impl:fl-pulsed wait-fluent))
-      (let ((result (actionlib-lisp:result goal-handle)))
-        (unless result
-          (ros-error (moveit) "Empty actionlib response.")
-          (error 'actionlib:server-lost))
-        result))))
+    (cpl:with-failure-handling
+        ((actionlib:server-lost (f)
+           (declare (ignore f))
+           (sleep 3)
+           (connect-action-client)
+           (republish-collision-environment)
+           (cpl:retry)))
+      (actionlib-lisp:wait-for-server client)
+      (let* ((wait-fluent (cpl:make-fluent))
+             (goal-handle
+               (actionlib-lisp:send-goal
+                client goal
+                :transition-cb (lambda (goal-handle)
+                                 (let ((status (actionlib-lisp:comm-state goal-handle)))
+                                   (when (eql status :done)
+                                     (cpl-impl:pulse wait-fluent)))))))
+        (cpl:wait-for (cpl-impl:fl-pulsed wait-fluent))
+        (let ((result (actionlib-lisp:result goal-handle)))
+          (unless result
+            (ros-error (moveit) "Empty actionlib response.")
+            (error 'actionlib:server-lost))
+          result)))))
 
 (defmacro send-action (client &rest args)
   `(let ((goal (actionlib-lisp:make-action-goal-msg ,client ,@args)))
