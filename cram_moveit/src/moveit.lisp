@@ -76,7 +76,8 @@ MoveIt! framework and registers known conditions."
                          joint-names joint-positions
                          (wait-for-execution t)
                          max-tilt
-                         reference-frame)
+                         reference-frame
+                         raise-elbow)
   "Calls the MoveIt! MoveGroup action. The link identified by `link-name' is tried to be positioned in the pose given by `pose-stamped'. Returns `T' on success and `nil' on failure, in which case a failure condition is signalled, based on the error code returned by the MoveIt! service (as defined in
   moveit_msgs/MoveItErrorCodes)."
   ;; NOTE(winkler): Since MoveIt! crashes once it receives a frame-id
@@ -124,8 +125,8 @@ MoveIt! framework and registers known conditions."
                   (let* ((mpreq (make-message
                                  "moveit_msgs/MotionPlanRequest"
                                  :group_name planning-group
-                                 :num_planning_attempts 5
-                                 :allowed_planning_time 10.0
+                                 :num_planning_attempts 3
+                                 :allowed_planning_time 3.0
                                  :trajectory_constraints
                                  (make-trajectory-constraints
                                   :link-names link-names
@@ -136,11 +137,13 @@ MoveIt! framework and registers known conditions."
                                             (tf:orientation pose))
                                           poses-stamped))
                                  :goal_constraints
-                                 (cond ((and joint-names joint-positions)
-                                        (make-joint-goal-constraints
-                                         joint-names joint-positions))
-                                       (t (make-pose-goal-constraints
-                                           link-names poses-stamped)))))
+                                 (map 'vector #'identity
+                                      (append
+                                       (map 'list #'identity
+                                            (make-pose-goal-constraints
+                                             link-names poses-stamped
+                                             joint-names joint-positions
+                                             :raise-elbow raise-elbow))))))
                          (options
                            (make-message
                             "moveit_msgs/PlanningOptions"
@@ -264,6 +267,7 @@ MoveIt! framework and registers known conditions."
                     trajectory_start planned_trajectory))))
               (t (ros-error (moveit)
                             "Empty actionlib response.")
+                 (sleep 5) ;; Sleep here to give MoveIt! time to come up again.
                  (connect-action-client)
                  (error 'planning-failed)))))))
 
@@ -285,9 +289,12 @@ MoveIt! framework and registers known conditions."
   (ros-info (moveit) "Executing ~a trajector~a."
             (length trajectories)
             (if (= (length trajectories) 1) "y" "ies"))
-  (execute-trajectory
-   (merge-trajectories trajectories :ignore-va ignore-va)
-   :wait-for-execution wait-for-execution))
+  (let ((trajectories (cpl:mapcar-clean #'identity trajectories)))
+    (when trajectories
+      (execute-trajectory
+       (merge-trajectories trajectories
+                           :ignore-va ignore-va)
+       :wait-for-execution wait-for-execution))))
 
 (defun trajectory-length (trajectory)
   (with-fields (joint_trajectory) trajectory
@@ -589,44 +596,69 @@ as only the final configuration IK is generated."
   (vector
    (make-message
     "moveit_msgs/Constraints"
-    :joint_constraints
-    (map 'vector
-         (lambda (name position)
-           (make-message
-            "moveit_msgs/JointConstraint"
-            :joint_name name
-            :position position
-            :tolerance_above 0.01
-            :tolerance_below 0.01
-            :weight 1.0))
-         names positions))))
+    )))
 
-(defun make-pose-goal-constraints (link-names poses-stamped
-                                   &key (tolerance-radius 0.01))
+(defun make-pose-goal-constraints (link-names poses-stamped names
+                                   positions &key (tolerance-radius
+                                   0.01) raise-elbow)
   (map 'vector
        (lambda (link-name pose-stamped)
          (make-message
           "moveit_msgs/Constraints"
+          :joint_constraints
+          (map 'vector #'identity
+               (append
+                (mapcar
+                 (lambda (name position)
+                   (make-message
+                    "moveit_msgs/JointConstraint"
+                    :joint_name name
+                    :position position
+                    :tolerance_above 0.01
+                    :tolerance_below 0.01
+                    :weight 1.0))
+                 names positions)
+                (when raise-elbow
+                  (list
+                   (case raise-elbow
+                     (:left
+                      (make-message
+                       "moveit_msgs/JointConstraint"
+                       :joint_name "l_shoulder_lift_joint"
+                       :position -0.25
+                       :tolerance_above 0.25
+                       :tolerance_below 0.25
+                       :weight 1.0))
+                     (:right
+                      (make-message
+                       "moveit_msgs/JointConstraint"
+                       :joint_name "r_shoulder_lift_joint"
+                       :position -0.25
+                       :tolerance_above 0.25
+                       :tolerance_below 0.25
+                       :weight 1.0)))))))
           :position_constraints
-          (vector
-           (make-message
-            "moveit_msgs/PositionConstraint"
-            :weight 1.0
-            :link_name link-name
-            :header (make-message
-                     "std_msgs/Header"
-                     :frame_id (tf:frame-id pose-stamped)
-                     :stamp (tf:stamp pose-stamped))
-            :constraint_region
-            (make-message
-             "moveit_msgs/BoundingVolume"
-             :primitives (vector
-                          (make-message
-                           "shape_msgs/SolidPrimitive"
-                           :type (roslisp-msg-protocol:symbol-code
-                                  'shape_msgs-msg:solidprimitive :sphere)
-                           :dimensions (vector tolerance-radius)))
-             :primitive_poses (vector (tf:pose->msg pose-stamped)))))
+          (map 'vector #'identity
+               (append
+                (list
+                 (make-message
+                  "moveit_msgs/PositionConstraint"
+                  :weight 1.0
+                  :link_name link-name
+                  :header (make-message
+                           "std_msgs/Header"
+                           :frame_id (tf:frame-id pose-stamped)
+                           :stamp (tf:stamp pose-stamped))
+                  :constraint_region
+                  (make-message
+                   "moveit_msgs/BoundingVolume"
+                   :primitives (vector
+                                (make-message
+                                 "shape_msgs/SolidPrimitive"
+                                 :type (roslisp-msg-protocol:symbol-code
+                                        'shape_msgs-msg:solidprimitive :sphere)
+                                 :dimensions (vector tolerance-radius)))
+                   :primitive_poses (vector (tf:pose->msg pose-stamped)))))))
           :orientation_constraints
           (vector
            (make-message
