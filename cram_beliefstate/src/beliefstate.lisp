@@ -73,7 +73,7 @@
 (defun enable-logging (bool)
   (setf *logging-enabled* bool))
 
-(defun start-node (name log-parameters detail-level)
+(defun start-node (name &optional log-parameters (detail-level 2))
   (with-lock-held (*service-access*)
     (when (wait-for-logging "operate")
       (let* ((parameters
