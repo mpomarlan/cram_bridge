@@ -76,69 +76,119 @@
     (make-designator 'action description)))
 
 (defmethod call-perception-routine ((object-designator object-designator))
+  (sleep 0.5) ;; Give RS half a second to settle down.
   (let* ((request-designator (make-uima-request-designator
                               :object-designator object-designator))
          (uima-result-designators (uima:get-uima-result request-designator)))
     (labels ((sub-value (name sequence)
                (cadr (find name sequence :test (lambda (x y)
-                                                 (eql x (car y)))))))
-      (mapcar
-       (lambda (uima-result-designator)
-         (make-designator
-          'object
-          (remove-if
-           #'not
-           (mapcar (lambda (property)
-                     (destructuring-bind (key value) property
-                       (cond ((eql key 'color)
-                              `(,key ,value))
-                             ((eql key 'shape)
-                              `(,key ,(intern (string-upcase value))))
-                             ((eql key 'boundingbox)
-                              `(,key
-                                ,(mapcar (lambda (resolution-property)
-                                           (destructuring-bind
-                                               (key value) resolution-property
-                                             (cond ((eql key 'dimensions-3d)
-                                                    `(dimensions-3d
-                                                      ,(vector
-                                                        (sub-value 'width value)
-                                                        (sub-value 'height value)
-                                                        (sub-value 'depth value))))
-                                                   (t resolution-property))))
-                                         value)))
-                             ((eql key 'segment)
-                              `(,key
-                                ,(mapcar (lambda (segment-property)
-                                           (destructuring-bind
-                                               (key value) segment-property
-                                             (cond ((eql key 'dimensions-2d)
-                                                    `(dimensions-2d
-                                                      ,(vector
-                                                        (sub-value 'width value)
-                                                        (sub-value 'height value))))
-                                                   (t segment-property))))
-                                         value)))
-                             (t `(,key ,value)))))
-                   (description uima-result-designator))) uima-result-designator))
-       uima-result-designators))))
+                                                 (eql x (car y))))))
+             (process-object (property)
+               (destructuring-bind (key value) property
+                 (cond ((eql key 'color)
+                        `(,key ,value))
+                       ((eql key 'shape)
+                        `(,key ,(intern (string-upcase value))))
+                       ((eql key 'boundingbox)
+                        `(,key
+                          ,(mapcar
+                            (lambda (resolution-property)
+                              (destructuring-bind
+                                  (key value) resolution-property
+                                (cond ((eql key 'dimensions-3d)
+                                       `(dimensions-3d
+                                         ,(vector
+                                           (sub-value 'width value)
+                                           (sub-value 'height value)
+                                           (sub-value 'depth value))))
+                                      (t resolution-property))))
+                            value)))
+                       ((eql key 'segment)
+                        `(,key
+                          ,(mapcar (lambda (segment-property)
+                                     (destructuring-bind
+                                         (key value) segment-property
+                                       (cond ((eql key 'dimensions-2d)
+                                              `(dimensions-2d
+                                                ,(vector
+                                                  (sub-value 'width value)
+                                                  (sub-value 'height value))))
+                                             (t segment-property))))
+                                   value)))
+                       (t `(,key ,value)))))
+             (process-handle (property)
+               (destructuring-bind (key value) property
+                 (cond ((eql key 'type)
+                        `(type desig-props::semantic-handle))
+                       (t `(,key ,value))))))
+      (loop for uima-result-designator in uima-result-designators
+            as result-desig-type = (desig-prop-value uima-result-designator 'type)
+            as result-handler = (cond ((string= result-desig-type "HANDLE")
+                                       #'process-handle)
+                                      (t
+                                       #'process-object))
+            collect (make-designator
+                     'object
+                     (cpl:mapcar-clean result-handler (description uima-result-designator)))))))
+
+      ;; (mapcar
+      ;;  (lambda (uima-result-designator)
+      ;;    (make-designator
+      ;;     'object
+      ;;     (remove-if
+      ;;      #'not
+      ;;      (mapcar (lambda (property)
+      ;;                (destructuring-bind (key value) property
+      ;;                  (cond ((eql key 'color)
+      ;;                         `(,key ,value))
+      ;;                        ((eql key 'shape)
+      ;;                         `(,key ,(intern (string-upcase value))))
+      ;;                        ((eql key 'boundingbox)
+      ;;                         `(,key
+      ;;                           ,(mapcar (lambda (resolution-property)
+      ;;                                      (destructuring-bind
+      ;;                                          (key value) resolution-property
+      ;;                                        (cond ((eql key 'dimensions-3d)
+      ;;                                               `(dimensions-3d
+      ;;                                                 ,(vector
+      ;;                                                   (sub-value 'width value)
+      ;;                                                   (sub-value 'height value)
+      ;;                                                   (sub-value 'depth value))))
+      ;;                                              (t resolution-property))))
+      ;;                                    value)))
+      ;;                        ((eql key 'segment)
+      ;;                         `(,key
+      ;;                           ,(mapcar (lambda (segment-property)
+      ;;                                      (destructuring-bind
+      ;;                                          (key value) segment-property
+      ;;                                        (cond ((eql key 'dimensions-2d)
+      ;;                                               `(dimensions-2d
+      ;;                                                 ,(vector
+      ;;                                                   (sub-value 'width value)
+      ;;                                                   (sub-value 'height value))))
+      ;;                                              (t segment-property))))
+      ;;                                    value)))
+      ;;                        (t `(,key ,value)))))
+      ;;              (description uima-result-designator))) uima-result-designator))
+      ;;  uima-result-designators))))
 
 (defmethod perceive-with-object-designator ((object-designator object-designator)
                                             &key (target-frame *object-reference-frame*))
   (let* ((log-id (first (cram-language::on-prepare-perception-request
                          object-designator)))
          (perception-results
-           (remove-if
-            #'not
-            (mapcar
+            (cpl:mapcar-clean
              (lambda (perception-result)
                (cond ((desig-prop-value perception-result 'resolution)
                       perception-result)
+                     ((eql (desig-prop-value perception-result 'type)
+                           'desig-props::semantic-handle)
+                      perception-result)
                      (t (ros-warn
                          (robosherlock-pm)
-                         "Object without resolution information. Dropping.")
+                         "Non-Semantic Object without resolution information. Dropping.")
                         nil)))
-             (call-perception-routine object-designator))))
+             (call-perception-routine object-designator)))
          (remove-properties `(pose pose-on-plane bb-pose resolution
                                    boundingbox at name)))
     (labels ((sub-value (name sequence)
@@ -147,42 +197,46 @@
       (let ((results
               (cpl:mapcar-clean
                (lambda (perception-result)
-                 (let* ((new-description
-                          (remove-if (lambda (x)
-                                       (find (car x) remove-properties))
-                                     (description perception-result)))
-                        (pose (desig-prop-value perception-result 'pose))
-                        (resolution (desig-prop-value perception-result
-                                                      'resolution))
-                        (id (sub-value 'objectid resolution))
-                        (lastseen (sub-value 'lastseen resolution))
-                        (boundingbox (desig-prop-value perception-result
-                                                       'boundingbox))
-                        (pose-bb (sub-value 'pose boundingbox))
-                        (dimensions-3d (sub-value 'dimensions-3d boundingbox))
-                        (additional-properties
-                          (append
-                           `((plane-distance ,(/ (elt dimensions-3d 2) 2)))
-                           `((at ,(make-designator
-                                   'location
-                                   `((pose
-                                      ,(cl-tf2:ensure-pose-stamped-transformed
-                                        *tf2*
-                                        (cond ((find 'flat (desig-prop-values
-                                                            perception-result
-                                                            'shape))
-                                               pose)
-                                              (t pose-bb))
-                                        target-frame :use-current-ros-time t))))))
-                           `((name ,(intern (concatenate 'string "OBJECT"
-                                                         (write-to-string
-                                                          (truncate id)))
-                                            'desig-props)))
-                           `((dimensions ,dimensions-3d)))))
-                   (when (< lastseen 2.0d0)
-                     (make-designator 'object (append new-description
-                                                      additional-properties)
-                                      perception-result))))
+                 (cond ((eql (desig-prop-value perception-result 'type)
+                           'desig-props::semantic-handle)
+                        perception-result)
+                       (t
+                        (let* ((new-description
+                                 (remove-if (lambda (x)
+                                              (find (car x) remove-properties))
+                                            (description perception-result)))
+                               (pose (desig-prop-value perception-result 'pose))
+                               (resolution (desig-prop-value perception-result
+                                                             'resolution))
+                               (id (sub-value 'objectid resolution))
+                               (lastseen (sub-value 'lastseen resolution))
+                               (boundingbox (desig-prop-value perception-result
+                                                              'boundingbox))
+                               (pose-bb (sub-value 'pose boundingbox))
+                               (dimensions-3d (sub-value 'dimensions-3d boundingbox))
+                               (additional-properties
+                                 (append
+                                  `((plane-distance ,(/ (elt dimensions-3d 2) 2)))
+                                  `((at ,(make-designator
+                                          'location
+                                          `((pose
+                                             ,(cl-tf2:ensure-pose-stamped-transformed
+                                               *tf2*
+                                               (cond ((find 'flat (desig-prop-values
+                                                                   perception-result
+                                                                   'shape))
+                                                      pose)
+                                                     (t pose-bb))
+                                               target-frame :use-current-ros-time t))))))
+                                  `((name ,(intern (concatenate 'string "OBJECT"
+                                                                (write-to-string
+                                                                 (truncate id)))
+                                                   'desig-props)))
+                                  `((dimensions ,dimensions-3d)))))
+                          (when (< lastseen 2.0d0)
+                            (make-designator 'object (append new-description
+                                                             additional-properties)
+                                             perception-result))))))
                perception-results)))
         (cram-language::on-finish-perception-request log-id results)
         results))))
@@ -263,12 +317,18 @@ property in their designator."
           (dimensions (desig-prop-value object 'dimensions))
           (name (desig-prop-value object 'name)))
       (ros-info (robosherlock-pm) "Add object: ~a" name)
+      ;; (crs:prolog `(and (btr:bullet-world ?w)
+      ;;                   (btr:assert
+      ;;                    (btr:object
+      ;;                     ?w btr:box ,name ,pose
+      ;;                     :mass 0.1
+      ;;                     :size ,(map 'list #'identity dimensions)))))
       (crs:prolog `(and (btr:bullet-world ?w)
                         (btr:assert
                          (btr:object
-                          ?w btr:box ,name ,pose
+                          ?w btr::mesh ,name ,pose
                           :mass 0.1
-                          :size ,(map 'list #'identity dimensions))))))
+                          :mesh desig-props::mondamin :color (0.8 0.4 0.2))))))
     (moveit:register-collision-object
      object :add t
      :pose-stamped (cl-tf2:ensure-pose-stamped-transformed
@@ -303,16 +363,25 @@ present in the `subject' object designator. Returns `t' if all
 properties in `template' are satisfied, `NIL' otherwise. Only checks
 for: string, number, symbol. All other value types are ignored. This
 way, reference and unknown object type comparisons are avoided."
-  (loop for (key value) in (description template)
-        for type-check-fnc = (cond ((stringp value) #'string=)
-                                   ((numberp value) #'=)
-                                   ((symbolp value) #'eql))
-        for subject-values = (desig-prop-values subject key)
-        when (and type-check-fnc subject-values)
-          do (unless (find value subject-values :test type-check-fnc)
-               (return nil))
-        finally (return t))
-  t)
+  (cond ((eql (desig-prop-value subject 'type)
+                   'desig-props::semantic-handle)
+         (when (and (eql (desig-prop-value template 'type)
+                         'desig-props::semantic-handle)
+                    (string= (desig-prop-value template 'name)
+                             (desig-prop-value subject 'name)))
+           t))
+        (t
+         (loop for (key value) in (description template)
+               for type-check-fnc = (cond ((stringp value) #'string=)
+                                          ((numberp value) #'=)
+                                          ((symbolp value) #'eql))
+               for subject-values = (desig-prop-values subject key)
+               when (and type-check-fnc subject-values)
+                 do (unless (find value subject-values
+                                  :test type-check-fnc)
+                      (return nil))
+               finally (return t))
+         t))) ;; NOTE(winkler): This is a hack.
 
 (defmethod filter-perceived-objects ((template-designator object-designator)
                                      (perceived-objects list))
@@ -337,13 +406,23 @@ retracted from the internal representation. The parameter
   ;; Make sure that the current pose and everything is in the
   ;; beliefstate.
   (plan-knowledge:on-event (make-instance 'plan-knowledge:robot-state-changed))
-  (let* ((perceived-object-designators
+  (let* ((perceived-objects (perceive-with-object-designator object-designator))
+         (perceived-object-designators ;; Doesn't include semantic handles
            (cpl:mapcar-clean
             (lambda (perceived-object)
-              (unless (crs:prolog `(perceived-object-invalid
-                                    ,perceived-object))
+              (unless (eql (desig-prop-value perceived-object 'type)
+                           'desig-props::semantic-handle)
+                (unless (crs:prolog `(perceived-object-invalid
+                                      ,perceived-object))
+                  perceived-object)))
+            perceived-objects))
+         (perceived-semantic-handles ;; Only includes semantic handles
+           (cpl:mapcar-clean
+            (lambda (perceived-object)
+              (when (eql (desig-prop-value perceived-object 'type)
+                         'desig-props::semantic-handle)
                 perceived-object))
-            (perceive-with-object-designator object-designator)))
+            perceived-objects))
          (perceived-object-names
            (mapcar (lambda (perceived-object-designator)
                      (desig-prop-value perceived-object-designator 'name))
@@ -403,6 +482,7 @@ retracted from the internal representation. The parameter
         ;; in the bullet world, based on information reported by the
         ;; perception system.
         (update-objects (object-names->objects should-be-visible-and-perceived))
+        ;;(btr:simulate btr:*current-bullet-world* 10)
         (let (;; Identify all objects that should be visible from the
               ;; bullet world, but are not reported as being seen by the
               ;; perception system.
@@ -419,25 +499,28 @@ retracted from the internal representation. The parameter
           (remove-disappeared-objects should-be-visible-and-not-perceived)
           ;; Filter perceived objects based on the description of the
           ;; request (template) designator.
-          (filter-perceived-objects
-           object-designator
-           ;; Examine visible objects (new or updated) closer.
-           (mapcar (lambda (examined-object-designator)
-                     (let ((data (make-instance
-                                  'perceived-object-data
-                                  :identifier (desig-prop-value
-                                               examined-object-designator 'name)
-                                  :object-identifier (desig-prop-value
-                                                      examined-object-designator 'name)
-                                  :pose (desig-prop-value
-                                         (desig-prop-value
-                                          examined-object-designator 'desig-props::at)
-                                         'desig-props::pose))))
-                       (make-effective-designator
-                        object-designator
-                        :new-properties (description examined-object-designator)
-                        :data-object data)))
-                   (mapcar (lambda (perceived-object-designator)
-                             (examine-perceived-object-designator
-                              object-designator perceived-object-designator))
-                           perceived-object-designators))))))))
+          (append
+           (filter-perceived-objects
+            object-designator perceived-semantic-handles)
+           (filter-perceived-objects
+            object-designator
+            ;; Examine visible objects (new or updated) closer.
+            (mapcar (lambda (examined-object-designator)
+                      (let ((data (make-instance
+                                   'perceived-object-data
+                                   :identifier (desig-prop-value
+                                                examined-object-designator 'name)
+                                   :object-identifier (desig-prop-value
+                                                       examined-object-designator 'name)
+                                   :pose (desig-prop-value
+                                          (desig-prop-value
+                                           examined-object-designator 'desig-props::at)
+                                          'desig-props::pose))))
+                        (make-effective-designator
+                         object-designator
+                         :new-properties (description examined-object-designator)
+                         :data-object data)))
+                    (mapcar (lambda (perceived-object-designator)
+                              (examine-perceived-object-designator
+                               object-designator perceived-object-designator))
+                            perceived-object-designators)))))))))
