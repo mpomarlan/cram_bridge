@@ -222,9 +222,10 @@
                                           `((pose
                                              ,(cl-tf2:ensure-pose-stamped-transformed
                                                *tf2*
-                                               (cond ((find 'flat (desig-prop-values
-                                                                   perception-result
-                                                                   'shape))
+                                               (cond ((and pose
+                                                           (find 'flat (desig-prop-values
+                                                                        perception-result
+                                                                        'shape)))
                                                       pose)
                                                      (t pose-bb))
                                                target-frame :use-current-ros-time t))))))
