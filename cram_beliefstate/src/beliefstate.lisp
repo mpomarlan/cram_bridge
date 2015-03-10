@@ -167,33 +167,37 @@
         'cram-designators:action
         (list (list 'command 'start-new-experiment)))))))
 
-(defun add-object-to-active-node (designator &key (annotation ""))
+(defun add-object (designator &key (path-to-cad-model "") (annotation ""))
   (let* ((memory-address (write-to-string
                           (sb-kernel:get-lisp-obj-address designator)))
-         (description (description designator))
-         (result (alter-node
-                  (list (list 'command 'add-object)
-                        (list 'type "OBJECT")
-                        (list 'annotation annotation)
-                        (list 'memory-address memory-address)
-                        (list 'description description)))))
-    (add-designator-to-active-node designator :annotation annotation)
-    (when result
-      (desig-prop-value (first result) 'desig-props::id)))) ;; desig_id
+         (description (description designator)))
+    (alter-node
+     (list (list 'command 'add-object)
+           (list 'type "OBJECT")
+           (list 'path-to-cad-model path-to-cad-model)
+           (list 'annotation annotation)
+           (list 'memory-address memory-address)
+           (list 'description description)))))
 
-(defun add-object-to-node (designator id &key (annotation ""))
-  (let* ((memory-address (write-to-string
-                          (sb-kernel:get-lisp-obj-address designator)))
-         (description (description designator))
-         (result (alter-node
-                  (list (list 'command 'add-object)
-                        (list 'type "OBJECT")
-                        (list 'annotation annotation)
-                        (list 'memory-address memory-address)
-                        (list 'description description)))))
-    (add-designator-to-node designator id :annotation annotation)
+(defun add-object-to-active-node (designator &key (path-to-cad-model "") (annotation ""))
+  (let ((result (add-object
+                 designator
+                 :path-to-cad-model path-to-cad-model
+                 :annotation annotation)))
     (when result
-      (desig-prop-value (first result) 'desig-props::id)))) ;; desig_id
+      (add-designator-to-active-node
+       result
+       :annotation annotation)
+      (desig-prop-value (first result) 'desig-props::id))))
+
+(defun add-object-to-node (designator id &key (path-to-cad-model "") (annotation ""))
+  (let ((result (add-object
+                 designator
+                 :path-to-cad-model path-to-cad-model
+                 :annotation annotation)))
+    (when result
+      (add-designator-to-node designator id :annotation annotation)
+      (desig-prop-value (first result) 'desig-props::id))))
 
 (defun catch-current-failure-with-active-node (id)
   (alter-node (list (list 'command 'catch-failure)
@@ -337,3 +341,6 @@
                                      (t read-value))))
               (cons (first entry) read-value)))
           data-fields))
+
+(defun add-cad-model-path (file-path)
+  (annotate-parameter 
