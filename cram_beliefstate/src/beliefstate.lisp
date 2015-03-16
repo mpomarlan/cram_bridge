@@ -341,6 +341,3 @@
                                      (t read-value))))
               (cons (first entry) read-value)))
           data-fields))
-
-;(defun add-cad-model-path (file-path)
-;  (annotate-parameter 
