@@ -71,11 +71,19 @@ bridge.")
                      (desig-props:round :cylinder)
                      (desig-props:cone :cone))))
            (dimensions (or
-                        (desig-prop-value object 'desig-props:dimensions)
+                        (let ((obj-dim (desig-prop-value
+                                        object
+                                        'desig-props:dimensions)))
+                          (when obj-dim
+                            (cond ((eql shape-prop
+                                        'desig-props:cylinder)
+                                   (vector (elt obj-dim 2)
+                                           (elt obj-dim 0)))
+                                  (t obj-dim))))
                         (case shape-prop
                           (desig-props:box (vector 0.1 0.1 0.1))
                           (desig-props:sphere (vector 0.1 0.1))
-                          (desig-props:cylinder (vector 0.2 0.03))
+                          (desig-props:cylinder (vector 0.03 0.2))
                           (desig-props:round (vector 0.2 0.08))
                           (desig-props:cone (vector 0.1 0.1)))))
            (pose-stamped
