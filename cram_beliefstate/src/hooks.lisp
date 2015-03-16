@@ -256,6 +256,16 @@
 
 (defmethod cram-language::on-grasp-decisions-complete
     cram-beliefstate (log-id grasp-description)
+  (let ((grasp (find 'desig-props::grasp
+                     grasp-description :test (lambda (x y)
+                                               (eql x (car y))))))
+    (when grasp
+      (let ((arm (find 'cram-manipulation-knowledge::arm
+                       (second grasp)
+                       :test (lambda (x y)
+                               (eql x (car y))))))
+        (when arm
+          (annotate-parameter 'arm (second arm))))))
   (beliefstate:add-designator-to-node
    (make-designator 'cram-designators:action
                     grasp-description)
@@ -398,3 +408,74 @@
 (defmethod cram-utilities::on-finish-prolog-prove cram-beliefstate (id success)
   (when *enable-prolog-logging*
     (beliefstate:stop-node id :success success)))
+
+(defmethod cram-language::on-performing-object-grasp cram-beliefstate (object)
+  (when object
+    (let ((newest (newest-effective-designator object)))
+      (when newest
+        (let* ((at (desig-prop-value newest 'desig-props::at))
+               (pose (desig-prop-value at 'desig-props::pose))
+               (object-type (desig-prop-value newest 'desig-props::type)))
+          (when pose
+            (let* ((robot-pose-map
+                     (cl-tf2:ensure-pose-stamped-transformed
+                      *tf2* (tf:make-pose-stamped
+                             "base_footprint" 0.0
+                             (tf:make-identity-vector)
+                             (tf:make-identity-rotation))
+                      "map"))
+                   (object-pose-map
+                     (cl-tf2:ensure-pose-stamped-transformed
+                      *tf2* pose "map"))
+                   (distance-2d
+                     (tf:v-dist (tf:make-3d-vector
+                                 (tf:x (tf:origin robot-pose-map))
+                                 (tf:y (tf:origin robot-pose-map))
+                                 0.0)
+                                (tf:make-3d-vector
+                                 (tf:x (tf:origin object-pose-map))
+                                 (tf:y (tf:origin object-pose-map))
+                                 0.0)))
+                   (angle-difference
+                     (tf:angle-between-quaternions
+                      (tf:orientation robot-pose-map)
+                      (tf:orientation object-pose-map))))
+              (annotate-parameter 'object-type object-type)
+              (annotate-parameter 'distance-2d
+                                  distance-2d)
+              (annotate-parameter 'angle-difference-2d
+                                  angle-difference))))))))
+
+(defmethod cram-language::on-performing-object-putdown cram-beliefstate (object pose)
+  (when object
+    (let ((newest (newest-effective-designator object)))
+      (when newest
+        (let ((object-type (desig-prop-value
+                            object 'desig-props::type)))
+          (when pose
+            (let* ((robot-pose-map
+                     (cl-tf2:ensure-pose-stamped-transformed
+                      *tf2* (tf:make-pose-stamped
+                             "base_footprint" 0.0
+                             (tf:make-identity-vector)
+                             (tf:make-identity-rotation))
+                      "map"))
+                   (putdown-pose-map
+                     (cl-tf2:ensure-pose-stamped-transformed
+                      *tf2* pose "map"))
+                   (distance-2d
+                     (tf:v-dist (tf:make-3d-vector
+                                 (tf:x (tf:origin robot-pose-map))
+                                 (tf:y (tf:origin robot-pose-map))
+                                 0.0)
+                                (tf:make-3d-vector
+                                 (tf:x (tf:origin putdown-pose-map))
+                                 (tf:y (tf:origin putdown-pose-map))
+                                 0.0)))
+                   (angle-difference
+                     (tf:angle-between-quaternions
+                      (tf:orientation robot-pose-map)
+                      (tf:orientation putdown-pose-map))))
+              (annotate-parameter 'object-type object-type)
+              (annotate-parameter 'distance-2d distance-2d)
+              (annotate-parameter 'angle-difference-2d angle-difference))))))))
