@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<package>
+  <name>cram_acl</name>
+  <version>0.0.1</version>
+  <description>
+    
+    Package implementing Agent Communication Languages (ACLs) and a
+    CRAM compatibility layer
+    
+  </description>
+  
+  <maintainer email="winkler@cs.uni-bremen.de">Jan Winkler</maintainer>
+  <author email="winkler@cs.uni-bremen.de">Jan Winkler</author>
+  <license>BSD</license>
+  
+  <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>roslisp</build_depend>
+  <run_depend>roslisp</run_depend>
+</package>
