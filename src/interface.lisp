@@ -146,7 +146,7 @@
                            'desig-props::semantic-handle)
                       perception-result)
                      ((eql (desig-prop-value perception-result 'type)
-                           'desig-props::qrcode)
+                           'desig-props::armarker)
                       perception-result)
                      (t (ros-warn
                          (robosherlock-pm)
