@@ -2,7 +2,7 @@
 \mainpage
 \htmlinclude manifest.html
 
-\b uima_perception_process_module 
+\b robosherlock_process_module 
 
 <!-- 
 Provide an overview of your package.

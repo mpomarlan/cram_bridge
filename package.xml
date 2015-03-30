@@ -1,0 +1,60 @@
+<?xml version="1.0"?>
+<package>
+  <name>robosherlock_process_module</name>
+  <version>0.0.0</version>
+  <description>
+    
+    Process module for accessing capabilities and interfaces of RoboSherlock
+    
+  </description>
+  
+  <maintainer email="winkler@cs.uni-bremen.de">Jan Winkler</maintainer>
+  
+  <license>BSD</license>
+  
+  <author email="winkler@cs.uni-bremen.de">Jan Winkler</author>
+  <url type="website">http://github.com/fairlight1337/robosherlock_process_module</url>
+  
+  <buildtool_depend>catkin</buildtool_depend>
+  
+  <build_depend>roslisp</build_depend>
+  <build_depend>alexandria</build_depend>
+  <build_depend>cram_plan_failures</build_depend>
+  <build_depend>cram_process_modules</build_depend>
+  <build_depend>cram_roslisp_common</build_depend>
+  <build_depend>bullet_reasoning</build_depend>
+  <build_depend>bullet_reasoning_designators</build_depend>
+  <build_depend>cram_designators</build_depend>
+  <build_depend>cram_plan_knowledge</build_depend>
+  <build_depend>cram_manipulation_knowledge</build_depend>
+  <build_depend>cl_transforms</build_depend>
+  <build_depend>cram_projection</build_depend>
+  <build_depend>cram_roslisp_common</build_depend>
+  <build_depend>cl_semantic_map_utils</build_depend>
+  <build_depend>semantic_map_costmap</build_depend>
+  <build_depend>actionlib</build_depend>
+  <build_depend>cram_designators</build_depend>
+  <build_depend>cram_uima</build_depend>
+  <build_depend>cram_moveit</build_depend>
+  
+  <run_depend>roslisp</run_depend>
+  <run_depend>alexandria</run_depend>
+  <run_depend>cram_plan_failures</run_depend>
+  <run_depend>cram_process_modules</run_depend>
+  <run_depend>cram_roslisp_common</run_depend>
+  <run_depend>bullet_reasoning</run_depend>
+  <run_depend>bullet_reasoning_designators</run_depend>
+  <run_depend>cram_designators</run_depend>
+  <run_depend>cram_plan_knowledge</run_depend>
+  <run_depend>cram_manipulation_knowledge</run_depend>
+  <run_depend>cl_transforms</run_depend>
+  <run_depend>cram_projection</run_depend>
+  <run_depend>cram_roslisp_common</run_depend>
+  <run_depend>cl_semantic_map_utils</run_depend>
+  <run_depend>semantic_map_costmap</run_depend>
+  <run_depend>actionlib</run_depend>
+  <run_depend>cram_designators</run_depend>
+  <run_depend>cram_uima</run_depend>
+  <run_depend>cram_moveit</run_depend>
+  
+</package>
