@@ -71,11 +71,19 @@ bridge.")
                      (desig-props:round :cylinder)
                      (desig-props:cone :cone))))
            (dimensions (or
-                        (desig-prop-value object 'desig-props:dimensions)
+                        (let ((obj-dim (desig-prop-value
+                                        object
+                                        'desig-props:dimensions)))
+                          (when obj-dim
+                            (cond ((eql shape-prop
+                                        'desig-props:cylinder)
+                                   (vector (elt obj-dim 2)
+                                           (elt obj-dim 0)))
+                                  (t obj-dim))))
                         (case shape-prop
                           (desig-props:box (vector 0.1 0.1 0.1))
                           (desig-props:sphere (vector 0.1 0.1))
-                          (desig-props:cylinder (vector 0.2 0.03))
+                          (desig-props:cylinder (vector 0.03 0.2))
                           (desig-props:round (vector 0.2 0.08))
                           (desig-props:cone (vector 0.1 0.1)))))
            (pose-stamped
@@ -196,7 +204,11 @@ bridge.")
      (b color) (elt col-vec 2)
      (a color) 1.0)))
 
-(defun add-collision-object (name &optional pose-stamped)
+(defun republish-collision-environment ()
+  (loop for object in *known-collision-objects*
+        do (add-collision-object (slot-value object 'name) t)))
+
+(defun add-collision-object (name &optional pose-stamped quiet)
   (let* ((name (string name))
          (col-obj (named-collision-object name))
          (pose-stamped (or pose-stamped
@@ -226,9 +238,10 @@ bridge.")
                            ;object_colors (vector (make-object-color name color))
                            is_diff t)))
           (prog1 (roslisp:publish *planning-scene-publisher* scene-msg)
-            (roslisp:ros-info
-             (moveit)
-             "Added `~a' to environment server." name)
+            (unless quiet
+              (roslisp:ros-info
+               (moveit)
+               "Added `~a' to environment server." name))
             (publish-object-colors)))))))
 
 (defun remove-collision-object (name)
