@@ -76,7 +76,7 @@
     (make-designator 'action description)))
 
 (defmethod call-perception-routine ((object-designator object-designator))
-  (sleep 2) ;; Give RS half a second to settle down.
+  (sleep 2) ;; Give RS two seconds to settle down.
   (let* ((request-designator (make-uima-request-designator
                               :object-designator object-designator))
          (uima-result-designators (uima:get-uima-result request-designator)))
@@ -138,21 +138,21 @@
   (let* ((log-id (first (cram-language::on-prepare-perception-request
                          object-designator)))
          (perception-results
-            (cpl:mapcar-clean
-             (lambda (perception-result)
-               (cond ((desig-prop-value perception-result 'resolution)
-                      perception-result)
-                     ((eql (desig-prop-value perception-result 'type)
-                           'desig-props::semantic-handle)
-                      perception-result)
-                     ((eql (desig-prop-value perception-result 'type)
-                           'desig-props::armarker)
-                      perception-result)
-                     (t (ros-warn
-                         (robosherlock-pm)
-                         "Non-Semantic Object without resolution information. Dropping.")
-                        nil)))
-             (call-perception-routine object-designator)))
+           (cpl:mapcar-clean
+            (lambda (perception-result)
+              (cond ((desig-prop-value perception-result 'resolution)
+                     perception-result)
+                    ((eql (desig-prop-value perception-result 'type)
+                          'desig-props::semantic-handle)
+                     perception-result)
+                    ((eql (desig-prop-value perception-result 'type)
+                          'desig-props::armarker)
+                     perception-result)
+                    (t (ros-warn
+                        (robosherlock-pm)
+                        "Non-Semantic Object without resolution information. Dropping.")
+                       nil)))
+            (call-perception-routine object-designator)))
          (remove-properties `(pose pose-on-plane bb-pose resolution
                                    boundingbox at name)))
     (labels ((sub-value (name sequence)
@@ -223,13 +223,14 @@ additional properties are infered and appended to the designator's
 description."
   (let* ((object-description (description object-designator))
          (type (or (desig-prop-value object-designator 'desig-props:type)
-                   (desig-prop-value original-designator 'desig-props:type)
                    (cut:with-vars-bound (?type)
                        (first
                         (crs:prolog `(infer-object-property
-                                      ,object-designator desig-props:type ?type)))
-                     (format t "Type: ~a~%" ?type)
-                     ?type)))
+                                      ,object-designator
+                                      desig-props:type ?type)))
+                     (unless (eql ?type '?type)
+                       ?type))
+                   (desig-prop-value original-designator 'desig-props:type)))
          (typed-object-designator
            (or (and (or (eql type '?type) (not type)) object-designator)
                (make-designator
@@ -336,16 +337,16 @@ for: string, number, symbol. All other value types are ignored. This
 way, reference and unknown object type comparisons are avoided."
   (cond ((let ((type-1 (desig-prop-value template 'desig-props::type))
                (type-2 (desig-prop-value subject 'desig-props::type)))
-           ;(and type-1 type-2
-                (eql type-1 type-2)))
+           ;;(and type-1 type-2
+           (and (not (eql type-1 nil))
+                (eql type-1 type-2))))
         (t
          (cond ((eql (desig-prop-value subject 'type)
                      'desig-props::semantic-handle)
-                (when (and (eql (desig-prop-value template 'type)
-                                'desig-props::semantic-handle)
-                           (string= (desig-prop-value template 'name)
-                                    (desig-prop-value subject 'name)))
-                  t))
+                (and (eql (desig-prop-value template 'type)
+                          'desig-props::semantic-handle)
+                     (string= (desig-prop-value template 'name)
+                              (desig-prop-value subject 'name))))
                (t
                 (loop for (key value) in (description template)
                       for type-check-fnc = (cond ((stringp value)
@@ -361,7 +362,8 @@ way, reference and unknown object type comparisons are avoided."
                                          :test type-check-fnc)
                              (return nil))
                       finally (return t))
-                t))))) ;; NOTE(winkler): This is a hack.
+                ;t
+                ))))) ;; NOTE(winkler): This is a hack.
 
 (defmethod filter-perceived-objects ((template-designator object-designator)
                                      (perceived-objects list))
