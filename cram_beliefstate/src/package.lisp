@@ -73,6 +73,7 @@
    ;; General
    enable-logging
    toggle-logging
+   logging-enabled
    ;; Prediction
    choose)
   (:designator-properties))
