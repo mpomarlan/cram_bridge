@@ -64,6 +64,9 @@
          service))
       result)))
 
+(defun logging-enabled ()
+  *logging-enabled*)
+
 (defun toggle-logging ()
   (if *logging-enabled*
     (roslisp:ros-info (semrec) "Switching OFF semrec logging.")
