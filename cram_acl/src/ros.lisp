@@ -26,22 +26,42 @@
 ;;; ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ;;; POSSIBILITY OF SUCH DAMAGE.
 
-(asdf:defsystem cram-acl
-  :name "cram-acl"
-  :author "Jan Winkler <winkler@cs.uni-bremen.de>"
-  :version "0.1"
-  :maintainer "Jan Winkler <winkler@cs.uni-bremen.de>"
-  :licence "BSD"
-  :description "CRAM Agent Communication Languages Package"
-  :depends-on (roslisp)
-  :components
-  ((:module "src"
-            :components
-            ((:file "package")
-             (:file "base" :depends-on ("package"))
-             (:file "kqml" :depends-on ("package" "base"))
-             (:file "ros" :depends-on ("package" "base" "kqml"))
-             (:file "acl" :depends-on ("package"
-                                       "base"
-                                       "ros"
-                                       "kqml"))))))
+(in-package :cram-acl)
+
+;;;
+;;; Communication
+;;;
+
+(defgeneric send-acl-message (acl-message topic)
+  (:documentation "")
+  (:method ((kqml-message kqml-base) topic)
+    (let ((publisher (roslisp:advertise topic "std_msgs/String"))
+          (kqml-string (kqml->string kqml-message)))
+      (publish publisher (make-message
+                          "std_msgs/String"
+                          :data kqml-string)))))
+
+(defun next-message-on-topic (topic topic-type)
+  (let ((message-content nil))
+    (labels ((message-function (msg)
+               (setf message-content msg)))
+      (let ((subscriber (roslisp:subscribe
+                         topic topic-type
+                         #'message-function)))
+        (loop while (not message-content)
+              do (sleep 0.1))
+        (roslisp:unsubscribe subscriber)
+        message-content))))
+
+(defgeneric wait-for-kqml-message (topic acl &key receiver)
+  (:documentation "")
+  (:method (topic (acl (eql :kqml)) &key receiver)
+    (let ((return-value nil))
+      (loop while (not return-value)
+            do (let* ((message-content (next-message-on-topic topic "std_msgs/String"))
+                      (kqml (with-fields (data) message-content
+                              (string->kqml data))))
+                 (when (or (not receiver)
+                           (string= (receiver kqml) receiver))
+                   (setf return-value kqml))))
+      return-value)))
