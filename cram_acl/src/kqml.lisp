@@ -203,7 +203,7 @@
                               (slot-value kqml token))
                      (concatenate
                       'string
-                      ":" (write-to-string token) " "
+                      ":" (string-downcase (symbol-name token)) " "
                       (slot-value kqml token)))
              into final-string
            finally (return final-string))))))
