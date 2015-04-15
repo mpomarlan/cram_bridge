@@ -340,9 +340,7 @@
   (beliefstate:stop-node id))
 
 (defmethod cram-language::on-prepare-perception-request cram-beliefstate (designator-request)
-  (let ((id (beliefstate:start-node
-             "UIMA-PERCEIVE"
-             (cram-designators:description designator-request) 2)))
+  (let ((id (beliefstate:start-node "UIMA-PERCEIVE" nil)))
     (beliefstate:add-designator-to-node designator-request
                                         id :annotation "perception-request")
     id))
