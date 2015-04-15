@@ -25,6 +25,7 @@
   <build_depend>cram_plan_library</build_depend>
   <build_depend>designator_integration_lisp</build_depend>
   <build_depend>cram_reasoning</build_depend>
+  <build_depend>cram_manipulation_knowledge</build_depend>
 
   <!-- Dependencies needed after this package is compiled. -->
   <run_depend>roslisp</run_depend>
@@ -33,5 +34,6 @@
   <run_depend>cram_plan_library</run_depend>
   <run_depend>designator_integration_lisp</run_depend>
   <run_depend>cram_reasoning</run_depend>
+  <run_depend>cram_manipulation_knowledge</run_depend>
 
 </package>

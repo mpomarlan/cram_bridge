@@ -37,6 +37,7 @@
                designators
                designators-ros
                cram-language
+               cram-manipulation-knowledge
                
                ;; Old
                cram-plan-knowledge
