@@ -29,7 +29,22 @@
 
 (defvar *enable-prolog-logging* nil)
 
-(defmethod cram-language::on-open-gripper cram-beliefstate (side max-effort position)
+(defmacro def-logging-hook (name parameters &body body)
+  (let* ((has-doc (stringp (first body)))
+         (documentation (when has-doc (first body)))
+         (body (or (when has-doc (rest body)) body)))
+    `(progn
+       (ensure-generic-function ',name :lambda-list ',parameters)
+       (defmethod ,name ,parameters
+         ,(cond (documentation documentation)
+                (t (concatenate
+                    'string
+                    "Documentation of `"
+                    `,(write-to-string name)
+                    "' not specified.")))
+         ,@body))))
+
+(def-logging-hook cram-language::on-open-gripper (side max-effort position)
   (let ((id (beliefstate:start-node "OPEN-GRIPPER" `() 2)))
     (beliefstate:add-designator-to-node
      (make-designator
@@ -40,7 +55,7 @@
      id :annotation "gripper-command-details")
     (beliefstate:stop-node id)))
 
-(defmethod cram-language::on-close-gripper cram-beliefstate (side max-effort position)
+(def-logging-hook cram-language::on-close-gripper (side max-effort position)
   (let ((id (beliefstate:start-node "CLOSE-GRIPPER" `() 2)))
     (beliefstate:add-designator-to-node
      (make-designator
@@ -51,21 +66,19 @@
      id :annotation "gripper-command-details")
     (beliefstate:stop-node id)))
 
-(defmethod cram-language::on-invert-decision-tree cram-beliefstate
-    (target-result features)
+(def-logging-hook cram-language::on-invert-decision-tree (target-result features)
   (let ((result (alter-node `((features ,features)
                               (target-result ,target-result))
                             :mode :service
                             :command "invert-decision-tree")))
     result))
 
-(defmethod cram-language::on-annotate-parameters cram-beliefstate (parameters)
+(def-logging-hook cram-language::on-annotate-parameters (parameters)
   (add-designator-to-active-node
    (make-designator 'object `(,parameters))
    :annotation "parameter-annotation"))
 
-(defmethod cram-language::on-predict cram-beliefstate (active-parameters
-                                                         requested-features)
+(def-logging-hook cram-language::on-predict (active-parameters requested-features)
   (let ((result (alter-node `((active-features ,active-parameters)
                               (requested-features ,requested-features))
                             :mode :service
@@ -94,7 +107,7 @@
                           (t value)))))))
     result-hash-table))
 
-(defmethod cram-language::on-load-model cram-beliefstate (file)
+(def-logging-hook cram-language::on-load-model (file)
   "Load model for prediction."
   (alter-node `((command "load-model")
                 (type "task-tree")
@@ -102,7 +115,7 @@
               :mode :service
               :command "load-model"))
 
-(defmethod cram-language::on-load-decision-tree cram-beliefstate (file)
+(def-logging-hook cram-language::on-load-decision-tree (file)
   "Load decision tree for prediction."
   (alter-node `((command "load-model")
                 (type "decision-tree")
@@ -110,8 +123,7 @@
               :mode :service
               :command "load-model"))
 
-(defmethod cram-language::on-publishing-collision-object
-    cram-beliefstate (object obj-name)
+(def-logging-hook cram-language::on-publishing-collision-object (object obj-name)
   ;; (with-slots ((pose sem-map-coll-env::pose)
   ;;              (type sem-map-coll-env::type)
   ;;              (index sem-map-coll-env::index)
@@ -138,8 +150,7 @@
   ;;                               (parameter ,(car entry))))))))))
   )
 
-(defmethod cram-language::on-preparing-performing-action-designator
-    cram-beliefstate (designator matching-process-modules)
+(def-logging-hook cram-language::on-preparing-performing-action-designator (designator matching-process-modules)
   (let ((id (beliefstate:start-node
              "PERFORM-ACTION-DESIGNATOR"
              (list
@@ -151,27 +162,25 @@
     (beliefstate:add-designator-to-node designator id)
     id))
 
-(defmethod cram-language::on-finishing-performing-action-designator
-    cram-beliefstate (id success)
+(def-logging-hook cram-language::on-finishing-performing-action-designator (id success)
   (declare (ignore success))
   ;; NOTE(winkler): Success is not used at the moment. It would be
   ;; nice to have an additional service, saying "append data to
   ;; current task". The success would the go there.
   (beliefstate:stop-node id))
 
-(defmethod cram-language::on-with-designator
-    cram-beliefstate (designator)
+(def-logging-hook cram-language::on-with-designator (designator)
   (beliefstate:add-designator-to-active-node
    designator))
 
-(defmethod cram-language::on-preparing-named-top-level cram-beliefstate (name)
+(def-logging-hook cram-language::on-preparing-named-top-level (name)
   (let ((name (or name "ANONYMOUS-TOP-LEVEL")))
     (beliefstate:start-node name `() 1)))
 
-(defmethod cram-language::on-finishing-named-top-level cram-beliefstate (id)
+(def-logging-hook cram-language::on-finishing-named-top-level (id)
   (beliefstate:stop-node id))
 
-(defmethod cram-language::on-preparing-task-execution cram-beliefstate (name log-parameters log-pattern)
+(def-logging-hook cram-language::on-preparing-task-execution (name log-parameters log-pattern)
   (let ((id (beliefstate:start-node name log-parameters 1)))
     (let* ((param-bindings
              (rest (assoc 'cram-language-implementation::parameters
@@ -205,17 +214,17 @@
          id :annotation "task-details")))
     id))
 
-(defmethod cram-language::on-finishing-task-execution cram-beliefstate (id)
+(def-logging-hook cram-language::on-finishing-task-execution (id)
   (beliefstate:stop-node id))
 
-(defmethod cram-language::on-fail cram-beliefstate (datum)
+(def-logging-hook cram-language::on-fail (datum)
   (when (symbolp datum)
     (beliefstate:add-failure-to-active-node datum)))
 
-(defmethod cram-utilities::on-equate-designators (successor parent)
+(def-logging-hook cram-utilities::on-equate-designators (successor parent)
   (beliefstate:equate-designators successor parent))
 
-(defmethod cram-language::on-begin-execute-tag-task cram-beliefstate (task)
+(def-logging-hook cram-language::on-begin-execute-tag-task (task)
   (let ((name (slot-value task 'cpl-impl:name)))
     (let ((id (beliefstate:start-node "TAG" `() 2)))
       (beliefstate::annotate-parameter
@@ -227,11 +236,10 @@
        id :annotation "tag-details")
       id)))
 
-(defmethod cram-language::on-finish-execute-tag-task cram-beliefstate (id)
+(def-logging-hook cram-language::on-finish-execute-tag-task (id)
   (beliefstate:stop-node id))
 
-(defmethod cram-language::on-begin-move-head
-    cram-beliefstate (pose-stamped)
+(def-logging-hook cram-language::on-begin-move-head (pose-stamped)
   (let ((id (beliefstate:start-node
              "VOLUNTARY-BODY-MOVEMENT-HEAD"
              `() 2)))
@@ -242,10 +250,10 @@
      id :annotation "voluntary-movement-details")
     id))
 
-(defmethod cram-language::on-finish-move-head cram-beliefstate (id success)
+(def-logging-hook cram-language::on-finish-move-head (id success)
   (beliefstate:stop-node id :success success))
 
-(defmethod cram-language::on-begin-grasp cram-beliefstate (obj-desig)
+(def-logging-hook cram-language::on-begin-grasp (obj-desig)
   (let ((id (beliefstate:start-node "GRASP" `() 2)))
     (beliefstate:add-topic-image-to-active-node
      cram-beliefstate::*kinect-topic-rgb*)
@@ -254,16 +262,15 @@
      id :annotation "object-acted-on")
     id))
 
-(defmethod cram-language::on-grasp-decisions-complete
-    cram-beliefstate (log-id grasp-description)
+(def-logging-hook cram-language::on-grasp-decisions-complete (log-id grasp-description)
   (let ((grasp (find 'desig-props::grasp
                      grasp-description :test (lambda (x y)
                                                (eql x (car y))))))
     (when grasp
-      (let ((arm (find 'cram-manipulation-knowledge::arm
+      (let ((arm (find 'arm
                        (second grasp)
                        :test (lambda (x y)
-                               (eql x (car y))))))
+                               (string= (symbol-name x) (symbol-name (car y)))))))
         (when arm
           (annotate-parameter 'arm (second arm))))))
   (beliefstate:add-designator-to-node
@@ -271,12 +278,12 @@
                     grasp-description)
    log-id :annotation "grasp-details"))
 
-(defmethod cram-language::on-finish-grasp cram-beliefstate (log-id success)
+(def-logging-hook cram-language::on-finish-grasp (log-id success)
   (beliefstate:add-topic-image-to-active-node
    cram-beliefstate::*kinect-topic-rgb*)
   (beliefstate:stop-node log-id :success success))
 
-(defmethod cram-language::on-begin-putdown cram-beliefstate (obj-desig loc-desig)
+(def-logging-hook cram-language::on-begin-putdown (obj-desig loc-desig)
   (let ((id (beliefstate:start-node
              "PUTDOWN"
              `() 2)))
@@ -288,13 +295,12 @@
      loc-desig id :annotation "putdown-location")
     id))
 
-(defmethod cram-language::on-finish-putdown cram-beliefstate (log-id success)
+(def-logging-hook cram-language::on-finish-putdown (log-id success)
   (beliefstate:add-topic-image-to-active-node
    cram-beliefstate::*kinect-topic-rgb*)
   (beliefstate:stop-node log-id :success success))
 
-(defmethod cram-language::on-prepare-move-arm cram-beliefstate
-    (side pose-stamped planning-group ignore-collisions)
+(def-logging-hook cram-language::on-prepare-move-arm (side pose-stamped planning-group ignore-collisions)
   (let ((log-id
           (beliefstate:start-node
            "VOLUNTARY-BODY-MOVEMENT-ARMS"
@@ -311,10 +317,10 @@
      :annotation "voluntary-movement-details")
     log-id))
 
-(defmethod cram-language::on-finish-move-arm cram-beliefstate (id success)
+(def-logging-hook cram-language::on-finish-move-arm (id success)
   (beliefstate:stop-node id :success success))
 
-(defmethod cram-language::on-begin-motion-planning cram-beliefstate (link-name)
+(def-logging-hook cram-language::on-begin-motion-planning (link-name)
   (let ((id (beliefstate:start-node "MOTION-PLANNING" `() 2)))
     (beliefstate:add-designator-to-node
      (make-designator
@@ -323,36 +329,35 @@
      id :annotation "motion-planning-details")
     id))
 
-(defmethod cram-language::on-finish-motion-planning cram-beliefstate (id)
+(def-logging-hook cram-language::on-finish-motion-planning (id)
   (beliefstate:stop-node id))
 
-(defmethod cram-language::on-begin-motion-execution cram-beliefstate ()
-  (let ((id (beliefstate:start-node "MOTION-EXECUTION" `() 2)))
-    id))
+(def-logging-hook cram-language::on-begin-motion-execution ()
+  (beliefstate:start-node "MOTION-EXECUTION"))
 
-(defmethod cram-language::on-finish-motion-execution cram-beliefstate (id)
+(def-logging-hook cram-language::on-finish-motion-execution (id)
   (beliefstate:stop-node id))
 
-(defmethod cram-language::on-begin-find-objects cram-beliefstate ()
-  (beliefstate:start-node "FIND-OBJECTS" `() 2))
+(def-logging-hook cram-language::on-begin-find-objects ()
+  (beliefstate:start-node "FIND-OBJECTS"))
 
-(defmethod cram-language::on-finish-find-objects (id)
+(def-logging-hook cram-language::on-finish-find-objects (id)
   (beliefstate:stop-node id))
 
-(defmethod cram-language::on-prepare-perception-request cram-beliefstate (designator-request)
+(def-logging-hook cram-language::on-prepare-perception-request (designator-request)
   (let ((id (beliefstate:start-node "UIMA-PERCEIVE" nil)))
     (beliefstate:add-designator-to-node designator-request
                                         id :annotation "perception-request")
     id))
 
-(defmethod cram-language::on-finish-perception-request cram-beliefstate (id designators-result)
+(def-logging-hook cram-language::on-finish-perception-request (id designators-result)
   (dolist (desig designators-result)
     (beliefstate:add-object-to-node
      desig id :annotation "perception-result"))
   (beliefstate:add-topic-image-to-active-node cram-beliefstate::*kinect-topic-rgb*)
   (beliefstate:stop-node id :success (not (eql designators-result nil))))
 
-(defmethod cram-language::on-with-failure-handling-begin cram-beliefstate (clauses)
+(def-logging-hook cram-language::on-with-failure-handling-begin (clauses)
   (let ((id (beliefstate:start-node "WITH-FAILURE-HANDLING" (mapcar (lambda (clause)
                                                                       `(clause ,clause))
                                                                     clauses) 2)))
@@ -365,16 +370,16 @@
      id :annotation "with-failure-handling-clauses")
     id))
 
-(defmethod cram-language::on-with-failure-handling-handled cram-beliefstate (id)
+(def-logging-hook cram-language::on-with-failure-handling-handled (id)
   (catch-current-failure-with-active-node id))
 
-(defmethod cram-language::on-with-failure-handling-rethrown cram-beliefstate (id)
+(def-logging-hook cram-language::on-with-failure-handling-rethrown (id)
   (rethrow-current-failure-with-active-node id))
 
-(defmethod cram-language::on-with-failure-handling-end cram-beliefstate (id)
+(def-logging-hook cram-language::on-with-failure-handling-end (id)
   (beliefstate:stop-node id))
 
-(defmethod cram-language::on-with-policy-begin (name parameters)
+(def-logging-hook cram-language::on-with-policy-begin (name parameters)
   (let ((id (beliefstate:start-node "WITH-POLICY" (append `(policy ,name) parameters) 2)))
     (beliefstate:add-designator-to-node
      (make-designator
@@ -383,16 +388,16 @@
         (parameters ,parameters)))
      id :annotation "with-policy-details")))
 
-(defmethod cram-language::on-with-policy-end (id success)
+(def-logging-hook cram-language::on-with-policy-end (id success)
   (beliefstate:stop-node id :success success))
 
-(defmethod cram-utilities::on-prepare-json-prolog-prove cram-beliefstate (request)
+(def-logging-hook cram-utilities::on-prepare-json-prolog-prove (request)
   )
 
-(defmethod cram-utilities::on-finish-json-prolog-prove cram-beliefstate (id)
+(def-logging-hook cram-utilities::on-finish-json-prolog-prove (id)
   )
 
-(defmethod cram-utilities::on-prepare-prolog-prove cram-beliefstate (query binds)
+(def-logging-hook cram-utilities::on-prepare-prolog-prove (query binds)
   (when *enable-prolog-logging*
     (let ((id (beliefstate:start-node "PROLOG" `() 3)))
       (beliefstate:add-designator-to-node
@@ -403,11 +408,11 @@
         `())
        id :annotation "prolog-details"))))
 
-(defmethod cram-utilities::on-finish-prolog-prove cram-beliefstate (id success)
+(def-logging-hook cram-utilities::on-finish-prolog-prove (id success)
   (when *enable-prolog-logging*
     (beliefstate:stop-node id :success success)))
 
-(defmethod cram-language::on-performing-object-grasp cram-beliefstate (object)
+(def-logging-hook cram-language::on-performing-object-grasp (object)
   (when object
     (let ((newest (newest-effective-designator object)))
       (when newest
@@ -444,7 +449,7 @@
               (annotate-parameter 'angle-difference-2d
                                   angle-difference))))))))
 
-(defmethod cram-language::on-performing-object-putdown cram-beliefstate (object pose)
+(def-logging-hook cram-language::on-performing-object-putdown (object pose)
   (when object
     (let ((newest (newest-effective-designator object)))
       (when newest

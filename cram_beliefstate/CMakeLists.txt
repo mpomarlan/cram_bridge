@@ -4,14 +4,8 @@ project(cram_beliefstate)
 find_package(catkin REQUIRED COMPONENTS
   cram_language
   roslisp
-  actionlib
-  cram_plan_library
-  designator_integration_lisp
-  cram_reasoning
-)
+  designator_integration_lisp)
 
 catkin_package()
 include_directories(
-  ${catkin_INCLUDE_DIRS}
-)
-
+  ${catkin_INCLUDE_DIRS})
