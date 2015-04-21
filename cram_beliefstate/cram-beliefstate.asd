@@ -32,19 +32,10 @@
 
   :depends-on (;; Functionality
                cram-roslisp-common
-               cram-reasoning
                cram-utilities
                designators
                designators-ros
                cram-language
-               
-               ;; Old
-               cram-plan-knowledge
-               process-modules
-               cram-reasoning
-               cram-uima
-               cram-plan-failures
-               cram-plan-library
                
                ;; Communication
                actionlib
