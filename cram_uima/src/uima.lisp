@@ -48,15 +48,23 @@
 
 (define-condition uima-not-running () ())
 
+(defun set-uima-host (host)
+  (setf *uima-node-name* host)
+  (setf *uima-trigger-service-topic*
+        (concatenate 'string *uima-node-name*
+                     "/trigger_uima_pipeline"))
+  (setf *uima-results-topic*
+        (concatenate 'string *uima-node-name* "/result_advertiser")))
+
 (defun init-uima-bridge ()
   "Sets up the basic action client communication handles for the
 UIMA framework."
-  (config-uima)
   (setf *uima-result-fluent*
         (cpl:make-fluent
          :name 'uima-result
          :value nil
-         :allow-tracing nil)))
+         :allow-tracing nil))
+  (config-uima))
 
 (roslisp-utilities:register-ros-init-function init-uima-bridge)
 
