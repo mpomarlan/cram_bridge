@@ -67,20 +67,6 @@
                         "iai_wsg_50_msgs/PositionCmd")))
     (make-instance 'wsg50-handle :namespace namespace :pub pub)))
 
-(defun move-wsg50 (handle &rest args)
-  "Moves the gripper to the given position in mm with speed in mm/s and force in N.
- `args' has to be either pos, speed, force or (:pos pos :speed speed :force force)."
-  (cond
-    ((typep (first args) 'list)
-     (publish-msg (goal-position-pub handle)
-                  :pos (getf (first args) :pos)
-                  :speed (getf (first args) :speed) 
-                  :force (getf (first args) :force)))
-    ((and (typep (first args) 'number) 
-          (typep (second args) 'number)
-          (typep (third args) 'number))
-     (publish-msg (goal-position-pub handle) 
-                  :pos (first args) 
-                  :speed (second args) 
-                  :force (third args)))
-    (t (warn "Called `move-wsg50' with incorrect rest-args: ~a~%" args))))
+(defun move-wsg50 (handle pos speed force)
+  "Moves the gripper to the given position in mm with speed in mm/s and force in N."
+  (publish-msg (goal-position-pub handle) :pos pos :speed speed :force force))
