@@ -63,6 +63,7 @@
    detach-collision-object-from-link
    get-joint-value
    set-collision-object-pose
+   compute-fk
    compute-ik
    execute-trajectory
    merge-trajectories

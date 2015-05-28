@@ -501,6 +501,32 @@ leaving their values to the executing controller."
                               :time_from_start (* (+ time_from_start start-time) time-mult)))
                            finally (incf start-time (+ last-time last-diff)))))))))))
 
+(defun compute-fk (link-names &key robot-state)
+  "Computes the pose of named links, given robot-state. Will return
+a list of cl-transform:pose objects.
+
+Parameters:
+
+- link-names: a list of names
+- robot-state: a RobotState message.
+
+(Invokes the move_group service /compute_fk)"
+  (let* ((names (make-array (length link-names) :initial-contents link-names))
+         (result (roslisp:call-service
+                  "/compute_fk"
+                  "moveit_msgs/GetPositionFK"
+                  :fk_link_names names
+                  :robot_state (or robot-state
+                                   (make-message "moveit_msgs/RobotState")))))
+       (roslisp:with-fields (pose_stamped) result
+         (mapcar (lambda (a)
+                         (roslisp:with-fields (pose) a
+                           (roslisp:with-fields ((tx (x position)) (ty (y position)) (tz (z position)) (qw (w orientation)) (qx (x orientation)) (qy (y orientation)) (qz (z orientation))) pose
+                             (cl-transforms:make-transform
+                               (cl-transforms:make-3d-vector tx ty tz)
+                                 (cl-transforms:make-quaternion qx qy qz qw)))))
+                 (coerce pose_stamped 'list)))))
+
 (defun compute-ik (link-name planning-group pose-stamped &key robot-state)
   "Computes an inverse kinematics solution (if possible) of the given
 kinematics goal (given the link name `link-name' to position, the
