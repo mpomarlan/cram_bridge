@@ -114,7 +114,7 @@ bridge.")
                                         plane-shapes
                                         pose-stamped
                                         color)
-  (let ((name (string-upcase (string name)))
+  (let* ((name (string-upcase (string name)))
         (obj (or (named-collision-object name)
                  (let ((obj-create
                          (make-instance 'collision-object

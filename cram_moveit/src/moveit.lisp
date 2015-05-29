@@ -524,7 +524,6 @@ Parameters:
                  (coerce name-vector 'list)
                  (coerce pose-stamped-vector 'list)))))
 
-
 (defun compute-ik (link-name planning-group pose-stamped &key robot-state)
   "Computes an inverse kinematics solution (if possible) of the given
 kinematics goal (given the link name `link-name' to position, the
