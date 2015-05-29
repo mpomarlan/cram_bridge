@@ -209,7 +209,7 @@ bridge.")
         do (add-collision-object (slot-value object 'name) t)))
 
 (defun add-collision-object (name &optional pose-stamped quiet)
-  (let* ((name (string name))
+  (let* ((name (string-upcase (string name)))
          (col-obj (named-collision-object name))
          (pose-stamped (or pose-stamped
                            (collision-object-pose name))))
@@ -245,7 +245,7 @@ bridge.")
             (publish-object-colors)))))))
 
 (defun remove-collision-object (name)
-  (let* ((name (string name))
+  (let* ((name (string-upcase (string name)))
          (col-obj (named-collision-object name)))
     (when col-obj
       (let* ((obj-msg (roslisp:make-msg
@@ -289,7 +289,7 @@ bridge.")
 
 (defun attach-collision-object-to-link (name target-link
                                         &key current-pose-stamped touch-links)
-  (let* ((name (string name))
+  (let* ((name (string-upcase (string name)))
          (col-obj (named-collision-object name))
          (current-pose-stamped (or current-pose-stamped
                                    (collision-object-pose name))))
@@ -345,7 +345,7 @@ bridge.")
 
 (defun detach-collision-object-from-link (name target-link
                                           &key current-pose-stamped)
-  (let* ((name (string name))
+  (let* ((name (string-upcase (string name)))
          (col-obj (named-collision-object name))
          (current-pose-stamped (or current-pose-stamped
                                    (collision-object-pose name))))
