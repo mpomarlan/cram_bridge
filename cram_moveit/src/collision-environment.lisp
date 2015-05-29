@@ -129,7 +129,7 @@ bridge.")
       (set-collision-object-pose name pose-stamped))))
 
 (defun unregister-collision-object (name)
-  (let ((name (string name)))
+  (let ((name (string-upcase (string name))))
     (setf *known-collision-objects*
           (remove name *known-collision-objects*
                   :test (lambda (name object)
