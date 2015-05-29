@@ -503,7 +503,8 @@ leaving their values to the executing controller."
 
 (defun compute-fk (link-names &key robot-state)
   "Computes the pose of named links, given robot-state. Will return
-a list of cl-transform:pose objects.
+a list of (name pose-stamped) pairs, in which name is a string and 
+pose-stamped is a cl-tf-datatypes:pose-stamped.
 
 Parameters:
 
@@ -518,14 +519,11 @@ Parameters:
                   :fk_link_names names
                   :robot_state (or robot-state
                                    (make-message "moveit_msgs/RobotState")))))
-       (roslisp:with-fields (pose_stamped) result
-         (mapcar (lambda (a)
-                         (roslisp:with-fields (pose) a
-                           (roslisp:with-fields ((tx (x position)) (ty (y position)) (tz (z position)) (qw (w orientation)) (qx (x orientation)) (qy (y orientation)) (qz (z orientation))) pose
-                             (cl-transforms:make-transform
-                               (cl-transforms:make-3d-vector tx ty tz)
-                                 (cl-transforms:make-quaternion qx qy qz qw)))))
-                 (coerce pose_stamped 'list)))))
+       (roslisp:with-fields ((pose-stamped-vector pose_stamped) (name-vector fk_link_names)) result
+         (mapcar (lambda (a b) (list a b))
+                 (coerce name-vector 'list)
+                 (coerce pose-stamped-vector 'list)))))
+
 
 (defun compute-ik (link-name planning-group pose-stamped &key robot-state)
   "Computes an inverse kinematics solution (if possible) of the given
