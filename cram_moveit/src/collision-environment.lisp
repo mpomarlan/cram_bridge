@@ -354,13 +354,14 @@ bridge.")
             (mesh-shapes (slot-value col-obj 'mesh-shapes))
             (plane-shapes (slot-value col-obj 'plane-shapes))
             (time (roslisp:ros-time)))
-        (unless (tf:wait-for-transform
-                 *tf*
-                 :timeout 5.0
-                 :time time
-                 :source-frame (tf:frame-id current-pose-stamped)
-                 :target-frame target-link)
-          (cpl:fail 'pose-not-transformable-into-link))
+;; The lines below seem outdated. Remove?
+        ;;(unless (tf:wait-for-transform
+        ;;         *tf*
+        ;;         :timeout 5.0
+        ;;         :time time
+        ;;         :source-frame (tf:frame-id current-pose-stamped)
+        ;;         :target-frame target-link)
+        ;;  (cpl:fail 'pose-not-transformable-into-link))
         (let* ((pose-in-link (cl-tf2:ensure-pose-stamped-transformed
                               *tf2* (tf:copy-pose-stamped
                                      current-pose-stamped
