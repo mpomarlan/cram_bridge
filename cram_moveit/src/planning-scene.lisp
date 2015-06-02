@@ -42,11 +42,60 @@
                               :components components)))
 
 (defun get-planning-scene-info (&key scene-settings robot-states robot-states-attached-objects world-object-names world-object-geometry octomap transforms allowed-collision-matrix link-padding-and-scaling object-colors)
-  (let ((components (apply #'logior (mapcar (lambda (a b) (if a (roslisp-msg-protocol:symbol-code 'moveit_msgs-msg:planningscenecomponents b) 0))
+  "Function to query the state of the planning scene. What information is present depends on which &key parameters are set to non-nil.
+
+The response is a list of pairs (string object), where string names the information contained in object.
+
+A list of possible queries follows.
+
+:scene-settings T will result in (\"planning scene name\" ps-name-string) (\"robot model name\" rm-name-string) to be added to the response.
+
+:robot-states-attached-objects T will result in (\"robot state with attached objects\" robot-state-msg) to be added to the response.
+
+:robot-states T, if :robot-states-attached-objects is nil, will result in (\"robot state\" robot-state-msg) to be added to the response.
+
+If both :robot-states and :robot-states-attached-objects are T, the response is as shown for :robot-states-attached-objects T.
+
+:world-object-names T will result in (\"world object names\" list-of-strings) to be added to the response.
+
+:world-object-geometry T will result in (\"world object geometry\" vector-of-collision-object-msgs) to be added to the response.
+
+:octomap T will result in (\"octomap\" octomap-msg) to be added to the response.
+
+:transforms T will result in (\"fixed frame transforms\" vector-of-pose-stamped-msgs) to be added to the response.
+
+:allowed-collision-matrix T will result in (\"allowed collision matrix\" allowed-collision-matrix-msg) to be added to the response.
+
+:link-padding-and-scaling T will result in (\"link padding\" vector-of-link-padding-msg) (\"link scaling\" vector-of-link-scaling-msg) to be added to the response.
+
+:object-colors T will result in (\"object colors\" vector-of-object-color-msg) to be added to the response."
+  (let* ((components (apply #'logior (mapcar (lambda (a b) (if a (roslisp-msg-protocol:symbol-code 'moveit_msgs-msg:planningscenecomponents b) 0))
                                    (list scene-settings robot-states robot-states-attached-objects world-object-names world-object-geometry octomap transforms allowed-collision-matrix link-padding-and-scaling object-colors)
                                    (list :scene_settings :robot_states :robot_states_attached_objects :world_object_names 
-                                         :world_object_geometry :octomap :transforms :allowed_collision_matrix :link_padding_and_scaling :object_colors)))))
-       (get-planning-scene components)))
+                                         :world_object_geometry :octomap :transforms :allowed_collision_matrix :link_padding_and_scaling :object_colors))))
+        (result (get-planning-scene components)))
+          (roslisp:with-fields ((allowed-collision-matrix-f (allowed_collision_matrix scene)) 
+                                (fixed-frame-transforms-f (fixed_frame_transforms scene))
+                                (link-padding-f (link_padding scene))
+                                (link-scaling-f (link_scale scene))
+                                (name-f (name scene))
+                                (object-colors-f (object_colors scene))
+                                (robot-model-name-f (robot_model_name scene))
+                                (robot-state-f (robot_state scene))
+                                (collision-objects-f (collision_objects world scene))
+                                (octomap-f (octomap world scene))) result
+            (let ((retq (append (if scene-settings (list (list "planning scene name" name-f) (list "robot model name" robot-model-name-f)))
+                                (if robot-states-attached-objects (list (list "robot state with attached objects" robot-state-f) (if robot-states (list (list "robot state" robot-state-f)))))
+                                (if transforms (list (list "fixed frame transforms" fixed-frame-transforms-f)))
+                                (if allowed-collision-matrix (list (list "allowed collision matrix" allowed-collision-matrix-f)))
+                                (if link-padding-and-scaling (list (list "link padding" link-padding-f) (list "link scaling" link-scaling-f)))
+                                (if object-colors (list (list "object colors" object-colors-f)))
+                                (if octomap (list (list "octomap" octomap-f)))
+                                (if world-object-geometry (list (list "world object geometry" collision-objects-f)))
+                                (if world-object-names (list (list "world object names" (mapcar (lambda (a) 
+                                                                                                  (roslisp:with-fields ((name (id))) a name)) 
+                                                                                                (coerce collision-objects-f 'list))))))))
+              retq))))
 
 (defun get-allowed-collision-matrix ()
   (get-planning-scene
