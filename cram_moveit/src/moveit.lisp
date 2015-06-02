@@ -524,7 +524,7 @@ Parameters:
                  (coerce name-vector 'list)
                  (coerce pose-stamped-vector 'list)))))
 
-(defun compute-ik (link-name planning-group pose-stamped &key robot-state)
+(defun compute-ik (link-name planning-group pose-stamped &key robot-state (avoid-collisions T))
   "Computes an inverse kinematics solution (if possible) of the given
 kinematics goal (given the link name `link-name' to position, the
 `planning-group' to take into consideration, and the final goal pose
@@ -538,6 +538,7 @@ success, and `nil' otherwise."
                   "moveit_msgs/PositionIKRequest"
                   :group_name planning-group
                   :ik_link_names (vector link-name)
+                  :avoid_collisions (if avoid-collisions T nil)
                   :pose_stamped_vector (vector (tf:pose-stamped->msg
                                                 pose-stamped))
                   :robot_state (or robot-state
