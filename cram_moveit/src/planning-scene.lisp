@@ -64,7 +64,7 @@ If both :robot-states and :robot-states-attached-objects are T, the response is 
 
 :transforms T will result in (\"fixed frame transforms\" vector-of-pose-stamped-msgs) to be added to the response.
 
-:allowed-collision-matrix T will result in (\"allowed collision matrix\" allowed-collision-matrix-msg) to be added to the response.
+:allowed-collision-matrix T will result in (\"allowed collision matrix\" allowed-collision-matrix) to be added to the response. Note, the response does not contain a ROS message.
 
 :link-padding-and-scaling T will result in (\"link padding\" vector-of-link-padding-msg) (\"link scaling\" vector-of-link-scaling-msg) to be added to the response.
 
@@ -87,7 +87,7 @@ If both :robot-states and :robot-states-attached-objects are T, the response is 
             (let ((retq (append (if scene-settings (list (list "planning scene name" name-f) (list "robot model name" robot-model-name-f)))
                                 (if robot-states-attached-objects (list (list "robot state with attached objects" robot-state-f) (if robot-states (list (list "robot state" robot-state-f)))))
                                 (if transforms (list (list "fixed frame transforms" fixed-frame-transforms-f)))
-                                (if allowed-collision-matrix (list (list "allowed collision matrix" allowed-collision-matrix-f)))
+                                (if allowed-collision-matrix (list (list "allowed collision matrix" (collision-matrix-msg->collision-matrix allowed-collision-matrix-f))))
                                 (if link-padding-and-scaling (list (list "link padding" link-padding-f) (list "link scaling" link-scaling-f)))
                                 (if object-colors (list (list "object colors" object-colors-f)))
                                 (if octomap (list (list "octomap" octomap-f)))
@@ -97,6 +97,31 @@ If both :robot-states and :robot-states-attached-objects are T, the response is 
                                                                                                 (coerce collision-objects-f 'list))))))))
               retq))))
 
+(defun set-planning-scene-collision-matrix (matrix &optional quiet)
+  (let* ((acm-msg (collision-matrix->msg matrix))
+         (scene-msg (roslisp:make-msg "moveit_msgs/PlanningScene"
+                                      allowed_collision_matrix acm-msg
+                                      is_diff t)))
+    (prog1 (roslisp:publish *planning-scene-publisher* scene-msg)
+           (unless quiet
+             (roslisp:ros-info (moveit)
+                               "Updated allowed collision matrix in planning scene.")))))
+
+
+(defun collision-matrix-msg->collision-matrix (msg)
+  (with-fields (entry_names entry_values) msg
+    (make-instance
+     'collision-matrix
+     :names (map 'list #'identity entry_names)
+     :entries (make-array
+               `(,(length entry_values) ,(length entry_values))
+               :initial-contents
+               (map 'vector
+                    (lambda (entry-line)
+                      (with-fields (enabled) entry-line
+                        enabled))
+                    entry_values)))))
+
 (defun get-allowed-collision-matrix ()
   (get-planning-scene
    (roslisp-msg-protocol:symbol-code
@@ -104,20 +129,8 @@ If both :robot-states and :robot-states-attached-objects are T, the response is 
     :allowed_collision_matrix)))
 
 (defun msg->collision-matrix (msg)
-  (with-fields (scene) msg
-    (with-fields (allowed_collision_matrix) scene
-      (with-fields (entry_names entry_values) allowed_collision_matrix
-        (make-instance
-         'collision-matrix
-         :names (map 'list #'identity entry_names)
-         :entries (make-array
-                   `(,(length entry_values) ,(length entry_values))
-                   :initial-contents
-                   (map 'vector
-                        (lambda (entry-line)
-                          (with-fields (enabled) entry-line
-                            enabled))
-                        entry_values)))))))
+  (roslisp:with-fields ((acm (allowed_collision_matrix scene))) msg
+    (collision-matrix-msg->collision-matrix acm)))
 
 (defun get-collision-matrix-entry (matrix name-1 name-2)
   (let ((idx-1 (position name-1 (names matrix) :test #'string=))

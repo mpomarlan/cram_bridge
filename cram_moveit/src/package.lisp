@@ -45,6 +45,10 @@
   (:export
    ;; Functions
    get-planning-scene-info
+   get-collision-matrix-entry
+   set-collision-matrix-entry
+   set-planning-scene-collision-matrix
+   combine-collision-matrices
    move-link-pose
    plan-link-movement
    plan-link-movements
