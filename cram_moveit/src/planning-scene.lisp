@@ -41,6 +41,13 @@
                 (make-message "moveit_msgs/PlanningSceneComponents"
                               :components components)))
 
+(defun get-planning-scene-info (&key scene-settings robot-states robot-states-attached-objects world-object-names world-object-geometry octomap transforms allowed-collision-matrix link-padding-and-scaling object-colors)
+  (let ((components (apply #'logior (mapcar (lambda (a b) (if a (roslisp-msg-protocol:symbol-code 'moveit_msgs-msg:planningscenecomponents b) 0))
+                                   (list scene-settings robot-states robot-states-attached-objects world-object-names world-object-geometry octomap transforms allowed-collision-matrix link-padding-and-scaling object-colors)
+                                   (list :scene_settings :robot_states :robot_states_attached_objects :world_object_names 
+                                         :world_object_geometry :octomap :transforms :allowed_collision_matrix :link_padding_and_scaling :object_colors)))))
+       (get-planning-scene components)))
+
 (defun get-allowed-collision-matrix ()
   (get-planning-scene
    (roslisp-msg-protocol:symbol-code

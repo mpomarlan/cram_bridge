@@ -44,6 +44,7 @@
   #:cram-plan-failures)
   (:export
    ;; Functions
+   get-planning-scene-info
    move-link-pose
    plan-link-movement
    plan-link-movements
