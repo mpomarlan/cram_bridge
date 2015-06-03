@@ -266,6 +266,25 @@ bridge.")
            (moveit)
            "Removed `~a' from environment server." name))))))
 
+(defun clear-all-moveit-collision-objects ()
+  (let* ((obj-msg (roslisp:make-msg
+                   "moveit_msgs/CollisionObject"
+                   id ""
+                   operation (roslisp-msg-protocol:symbol-code
+                              'moveit_msgs-msg:collisionobject
+                              :remove)))
+         (world-msg (roslisp:make-msg
+                     "moveit_msgs/PlanningSceneWorld"
+                     collision_objects (vector obj-msg)))
+         (scene-msg (roslisp:make-msg
+                     "moveit_msgs/PlanningScene"
+                     world world-msg
+                     is_diff t)))
+    (prog1 (roslisp:publish *planning-scene-publisher* scene-msg)
+      (roslisp:ros-info
+       (moveit)
+       "Removed every collision object from environment server."))))
+
 (defmacro without-collision-objects (object-names &body body)
   `(unwind-protect
         (progn

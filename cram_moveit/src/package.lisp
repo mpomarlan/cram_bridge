@@ -45,6 +45,7 @@
   (:export
    ;; Functions
    check-state-validity
+   clear-all-moveit-collision-objects
    get-planning-scene-info
    get-collision-matrix-entry
    set-collision-matrix-entry
