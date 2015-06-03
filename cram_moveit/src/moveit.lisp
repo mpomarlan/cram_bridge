@@ -552,6 +552,17 @@ success, and `nil' otherwise."
         solution))))
 
 (defun check-state-validity (robot-state-msg planning-group-name constraints-msg)
+  "Uses the MoveIt! check_state_validity service to verify a given robot state.
+
+Parameters:
+
+:robot-state robot-state-msg is the state to verify
+
+:group_name group-name is the planning group to use in collision checking.
+
+:constraints constraints-msg defines other kinematic constraints on the state.
+
+Returns a list of lists: ((\"state validity" valid) (\"contacts\" contacts) (\"cost sources\" cost-sources) (\"constraint check result\" constraint-result))."
   (let* ((result (roslisp:call-service "/check_state_validity"
                                        "moveit_msgs/GetStateValidity"
                                        :robot_state robot-state-msg
@@ -561,6 +572,30 @@ success, and `nil' otherwise."
       (list (list "state validity" valid) (list "contacts" contacts) (list "cost sources" cost_sources) (list "constraint check result" constraint_result)))))
 
 (defun compute-cartesian-path (frame-name robot-state-msg group-name link-name waypoint-poses max-step jump-threshold avoid-collisions path-constraints-msg)
+  "Calls MoveIt's compute_cartesian_path to get a path from robot-state-msg that passes through the waypoints given by waypoint-poses with the link link-name.
+
+The waypoint poses are given in the frame identified by frame-name.
+
+Between two waypoints, the generated path will have the link move in a line.
+
+max-step gives the largest distance (in Cartesian space) that will be allowed between two points in the generated path.
+
+jump-threshold gives a distance in configuration (joint) space which, if exceeded between consecutive waypoints, is interpreted as a jump in the IK solution.
+If a jump happens, MoveIt! considers the path generation failed, and will return a path that ends just before the jump (see \"completion fraction\" in the
+return values)
+
+avoid-collisions determines whether obstacle collisions (apart from those in the allowed collision matrix) are tolerated. Set to T to signal collisions are
+not ok.
+
+path-constraints-msg describes any other kinematic constraints the path must satisfy.
+
+Return values:
+
+is a list of lists: ((\"start state\" start_state) (\"trajectory\" solution) (\"completion fraction\" fraction))
+
+fraction is a number between 0 and 1 which gives how much of the requested path was actually produced. If a path satisfying the constraints and not 
+colliding with unwanted obstacles is found, then the completion fraction is 1. A lesser number signals a kinematic jump or an obstacle collision."
+
     (let* ((result (roslisp:call-service "/compute_cartesian_path"
                                          "moveit_msgs/GetCartesianPath"
                                          :header (make-message "std_msgs/Header" :stamp 0 :frame_id frame-name)
