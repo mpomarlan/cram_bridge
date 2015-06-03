@@ -560,6 +560,23 @@ success, and `nil' otherwise."
     (roslisp:with-fields (valid contacts cost_sources constraint_result) result
       (list (list "state validity" valid) (list "contacts" contacts) (list "cost sources" cost_sources) (list "constraint check result" constraint_result)))))
 
+(defun compute-cartesian-path (frame-name robot-state-msg group-name link-name waypoint-poses max-step jump-threshold avoid-collisions path-constraints-msg)
+    (let* ((result (roslisp:call-service "/compute_cartesian_path"
+                                         "moveit_msgs/GetCartesianPath"
+                                         :header (make-message "std_msgs/Header" :stamp 0 :frame_id frame-name)
+                                         :start_state robot-state-msg
+                                         :group_name group-name
+                                         :link_name link-name
+                                         :waypoints waypoint-poses
+                                         :max_step max-step
+                                         :jump_threshold jump-threshold
+                                         :avoid_collisions avoid-collisions
+                                         :path_constraints path-constraints-msg)))
+    (roslisp:with-fields (start_state solution fraction (val (val error_code))) result
+      (unless (eql val (roslisp-msg-protocol:symbol-code 'moveit_msgs-msg:moveiterrorcodes :success))
+              (signal-moveit-error val))
+      (list (list "start state" start_state) (list "trajectory" solution) (list "completion fraction" fraction)))))
+
 (defun plan-link-movements (link-name planning-group poses-stamped
                             &key allowed-collision-objects
                               touch-links default-collision-entries
