@@ -41,7 +41,7 @@
                 (make-message "moveit_msgs/PlanningSceneComponents"
                               :components components)))
 
-(defun get-planning-scene-info (&key scene-settings robot-states robot-states-attached-objects world-object-names world-object-geometry octomap transforms allowed-collision-matrix link-padding-and-scaling object-colors)
+(defun get-planning-scene-info (&key scene-settings robot-state robot-state-attached-objects world-object-names world-object-geometry octomap transforms allowed-collision-matrix link-padding-and-scaling object-colors)
   "Function to query the state of the planning scene. What information is present depends on which &key parameters are set to non-nil.
 
 The response is a list of pairs (string object), where string names the information contained in object.
@@ -50,11 +50,11 @@ A list of possible queries follows.
 
 :scene-settings T will result in (\"planning scene name\" ps-name-string) (\"robot model name\" rm-name-string) to be added to the response.
 
-:robot-states-attached-objects T will result in (\"robot state with attached objects\" robot-state-msg) to be added to the response.
+:robot-state-attached-objects T will result in (\"robot state with attached objects\" robot-state-msg) to be added to the response.
 
-:robot-states T, if :robot-states-attached-objects is nil, will result in (\"robot state\" robot-state-msg) to be added to the response.
+:robot-state T, if :robot-state-attached-objects is nil, will result in (\"robot state\" robot-state-msg) to be added to the response.
 
-If both :robot-states and :robot-states-attached-objects are T, the response is as shown for :robot-states-attached-objects T.
+If both :robot-state and :robot-state-attached-objects are T, the response is as shown for :robot-state-attached-objects T.
 
 :world-object-names T will result in (\"world object names\" list-of-strings) to be added to the response.
 
@@ -70,8 +70,9 @@ If both :robot-states and :robot-states-attached-objects are T, the response is 
 
 :object-colors T will result in (\"object colors\" vector-of-object-color-msg) to be added to the response."
   (let* ((components (apply #'logior (mapcar (lambda (a b) (if a (roslisp-msg-protocol:symbol-code 'moveit_msgs-msg:planningscenecomponents b) 0))
-                                   (list scene-settings robot-states robot-states-attached-objects world-object-names world-object-geometry octomap transforms allowed-collision-matrix link-padding-and-scaling object-colors)
-                                   (list :scene_settings :robot_states :robot_states_attached_objects :world_object_names 
+                                   (list scene-settings robot-state robot-state-attached-objects world-object-names 
+                                         world-object-geometry octomap transforms allowed-collision-matrix link-padding-and-scaling object-colors)
+                                   (list :scene_settings :robot_state :robot_state_attached_objects :world_object_names 
                                          :world_object_geometry :octomap :transforms :allowed_collision_matrix :link_padding_and_scaling :object_colors))))
         (result (get-planning-scene components)))
           (roslisp:with-fields ((allowed-collision-matrix-f (allowed_collision_matrix scene)) 
@@ -85,7 +86,7 @@ If both :robot-states and :robot-states-attached-objects are T, the response is 
                                 (collision-objects-f (collision_objects world scene))
                                 (octomap-f (octomap world scene))) result
             (let ((retq (append (if scene-settings (list (list "planning scene name" name-f) (list "robot model name" robot-model-name-f)))
-                                (if robot-states-attached-objects (list (list "robot state with attached objects" robot-state-f) (if robot-states (list (list "robot state" robot-state-f)))))
+                                (if robot-state-attached-objects (list (list "robot state with attached objects" robot-state-f)) (if robot-state (list (list "robot state" robot-state-f))))
                                 (if transforms (list (list "fixed frame transforms" fixed-frame-transforms-f)))
                                 (if allowed-collision-matrix (list (list "allowed collision matrix" (collision-matrix-msg->collision-matrix allowed-collision-matrix-f))))
                                 (if link-padding-and-scaling (list (list "link padding" link-padding-f) (list "link scaling" link-scaling-f)))

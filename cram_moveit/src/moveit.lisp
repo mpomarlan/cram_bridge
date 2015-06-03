@@ -562,7 +562,7 @@ Parameters:
 
 :constraints constraints-msg defines other kinematic constraints on the state.
 
-Returns a list of lists: ((\"state validity" valid) (\"contacts\" contacts) (\"cost sources\" cost-sources) (\"constraint check result\" constraint-result))."
+Returns a list of lists: ((\"state validity\" valid) (\"contacts\" contacts) (\"cost sources\" cost-sources) (\"constraint check result\" constraint-result))."
   (let* ((result (roslisp:call-service "/check_state_validity"
                                        "moveit_msgs/GetStateValidity"
                                        :robot_state robot-state-msg
