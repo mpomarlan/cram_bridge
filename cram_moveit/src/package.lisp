@@ -44,6 +44,7 @@
   #:cram-plan-failures)
   (:export
    ;; Functions
+   check-state-validity
    get-planning-scene-info
    get-collision-matrix-entry
    set-collision-matrix-entry

@@ -551,6 +551,15 @@ success, and `nil' otherwise."
           (signal-moveit-error val))
         solution))))
 
+(defun check-state-validity (robot-state-msg planning-group-name constraints-msg)
+  (let* ((result (roslisp:call-service "/check_state_validity"
+                                       "moveit_msgs/GetStateValidity"
+                                       :robot_state robot-state-msg
+                                       :group_name planning-group-name
+                                       :constraints constraints-msg)))
+    (roslisp:with-fields (valid contacts cost_sources constraint_result) result
+      (list (list "state validity" valid) (list "contacts" contacts) (list "cost sources" cost_sources) (list "constraint check result" constraint_result)))))
+
 (defun plan-link-movements (link-name planning-group poses-stamped
                             &key allowed-collision-objects
                               touch-links default-collision-entries
