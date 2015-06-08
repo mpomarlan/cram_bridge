@@ -69,6 +69,7 @@ MoveIt! framework and registers known conditions."
 
 (defun move-link-pose (link-name planning-group pose-stamped
                        &key allowed-collision-objects
+                         (path-constraints-msg (roslisp:make-msg "moveit_msgs/Constraints"))
                          plan-only touch-links
                          ignore-collisions
                          start-state
@@ -127,6 +128,7 @@ MoveIt! framework and registers known conditions."
                                  :group_name planning-group
                                  :num_planning_attempts 3
                                  :allowed_planning_time 3.0
+                                 :path_constraints path-constraints-msg
                                  :trajectory_constraints
                                  (make-trajectory-constraints
                                   :link-names link-names
@@ -571,7 +573,15 @@ Returns a list of lists: ((\"state validity\" valid) (\"contacts\" contacts) (\"
     (roslisp:with-fields (valid contacts cost_sources constraint_result) result
       (list (list "state validity" valid) (list "contacts" contacts) (list "cost sources" cost_sources) (list "constraint check result" constraint_result)))))
 
-(defun compute-cartesian-path (frame-name robot-state-msg group-name link-name waypoint-poses max-step jump-threshold avoid-collisions path-constraints-msg)
+(defun compute-cartesian-path (frame-name 
+                               robot-state-msg 
+                               group-name 
+                               link-name 
+                               waypoint-poses 
+                               max-step 
+                               jump-threshold 
+                               avoid-collisions 
+                               &key (path-constraints-msg (roslisp:make-msg "moveit_msgs/Constraints")))
   "Calls MoveIt's compute_cartesian_path to get a path from robot-state-msg that passes through the waypoints given by waypoint-poses with the link link-name.
 
 The waypoint poses are given in the frame identified by frame-name.
@@ -612,25 +622,10 @@ colliding with unwanted obstacles is found, then the completion fraction is 1. A
               (signal-moveit-error val))
       (list (list "start state" start_state) (list "trajectory" solution) (list "completion fraction" fraction)))))
 
-(defun plan-link-movements (link-name planning-group poses-stamped
-                            &key allowed-collision-objects
-                              touch-links default-collision-entries
-                              ignore-collisions
-                              destination-validity-only
-                              max-tilt)
-  (declare (ignore default-collision-entries))
-  (every (lambda (pose-stamped)
-           (plan-link-movement
-            link-name planning-group pose-stamped
-            :allowed-collision-objects allowed-collision-objects
-            :touch-links touch-links
-            :ignore-collisions ignore-collisions
-            :destination-validity-only destination-validity-only
-            :max-tilt max-tilt))
-         poses-stamped))
-
 (defun plan-link-movement (link-name planning-group pose-stamped
                            &key allowed-collision-objects
+                             start-robot-state
+                             (path-constraints-msg (roslisp:make-msg "moveit_msgs/Constraints"))
                              touch-links
                              ignore-collisions
                              destination-validity-only
@@ -673,11 +668,54 @@ as only the final configuration IK is generated."
               planning-group pose-stamped
               :allowed-collision-objects allowed-collision-objects
               :plan-only t
+              :path-constraints-msg path-constraints-msg
+              :start-state start-robot-state
               :touch-links touch-links
               :ignore-collisions ignore-collisions
               :max-tilt max-tilt)))))
 
+(defun plan-link-movements (link-name planning-group poses-stamped
+                            &key allowed-collision-objects
+                              path-constraints-msgs
+                              touch-links default-collision-entries
+                              ignore-collisions
+                              destination-validity-only
+                              start-robot-state
+                              max-tilt)
+"Compute plans for link-name from planning-group to reach the poses
+in pose-stamped. Paths can be constrained via path-constraints-msgs
+but if these are used, then the length of the path-constraints-msgs
+list and poses-stamped must be the same."
+  (declare (ignore default-collision-entries))
+  (if path-constraints-msgs
+    (if (and (listp path-constraints-msgs) (eql (length path-constraints-msgs) (length poses-stamped)))
+      (every (lambda (pose-stamped path-constraints-msg)
+               (plan-link-movement
+                link-name planning-group pose-stamped
+                :allowed-collision-objects allowed-collision-objects
+                :touch-links touch-links
+                :path-constraints-msg path-constraints-msg
+                :start-robot-state start-robot-state
+                :ignore-collisions ignore-collisions
+                :destination-validity-only destination-validity-only
+                :max-tilt max-tilt))
+           poses-stamped path-constraints-msgs)
+      (progn (ros-warn (moveit) "cram-moveit received a call to plan-link-movements where path-constraints-msgs was non nil and had a different length than poses-stamped. Cannot match path constraints to poses.")
+             (error 'planning-failed)))
+    (every (lambda (pose-stamped)
+             (plan-link-movement
+              link-name planning-group pose-stamped
+              :allowed-collision-objects allowed-collision-objects
+              :touch-links touch-links
+              :start-robot-state start-robot-state
+              :ignore-collisions ignore-collisions
+              :destination-validity-only destination-validity-only
+              :max-tilt max-tilt))
+           poses-stamped)))
+
 (defun make-joint-goal-constraints (names positions)
+;TODO: this function isn't defined yet.
+  (declare (ignore names) (ignore positions))
   (vector
    (make-message
     "moveit_msgs/Constraints"
