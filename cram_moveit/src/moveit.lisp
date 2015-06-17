@@ -69,6 +69,7 @@ MoveIt! framework and registers known conditions."
 
 (defun move-link-pose (link-name planning-group pose-stamped
                        &key allowed-collision-objects
+                         (path-constraints-msg (roslisp:make-msg "moveit_msgs/Constraints"))
                          plan-only touch-links
                          ignore-collisions
                          start-state
@@ -127,6 +128,7 @@ MoveIt! framework and registers known conditions."
                                  :group_name planning-group
                                  :num_planning_attempts 3
                                  :allowed_planning_time 3.0
+                                 :path_constraints path-constraints-msg
                                  :trajectory_constraints
                                  (make-trajectory-constraints
                                   :link-names link-names
@@ -501,7 +503,30 @@ leaving their values to the executing controller."
                               :time_from_start (* (+ time_from_start start-time) time-mult)))
                            finally (incf start-time (+ last-time last-diff)))))))))))
 
-(defun compute-ik (link-name planning-group pose-stamped &key robot-state)
+(defun compute-fk (link-names &key robot-state)
+  "Computes the pose of named links, given robot-state. Will return
+a list of (name pose-stamped) pairs, in which name is a string and 
+pose-stamped is a cl-tf-datatypes:pose-stamped.
+
+Parameters:
+
+- link-names: a list of names
+- robot-state: a RobotState message.
+
+(Invokes the move_group service /compute_fk)"
+  (let* ((names (make-array (length link-names) :initial-contents link-names))
+         (result (roslisp:call-service
+                  "/compute_fk"
+                  "moveit_msgs/GetPositionFK"
+                  :fk_link_names names
+                  :robot_state (or robot-state
+                                   (make-message "moveit_msgs/RobotState")))))
+       (roslisp:with-fields ((pose-stamped-vector pose_stamped) (name-vector fk_link_names)) result
+         (mapcar (lambda (a b) (list a b))
+                 (coerce name-vector 'list)
+                 (coerce pose-stamped-vector 'list)))))
+
+(defun compute-ik (link-name planning-group pose-stamped &key robot-state (avoid-collisions T))
   "Computes an inverse kinematics solution (if possible) of the given
 kinematics goal (given the link name `link-name' to position, the
 `planning-group' to take into consideration, and the final goal pose
@@ -515,6 +540,7 @@ success, and `nil' otherwise."
                   "moveit_msgs/PositionIKRequest"
                   :group_name planning-group
                   :ik_link_names (vector link-name)
+                  :avoid_collisions (if avoid-collisions T nil)
                   :pose_stamped_vector (vector (tf:pose-stamped->msg
                                                 pose-stamped))
                   :robot_state (or robot-state
@@ -527,25 +553,79 @@ success, and `nil' otherwise."
           (signal-moveit-error val))
         solution))))
 
-(defun plan-link-movements (link-name planning-group poses-stamped
-                            &key allowed-collision-objects
-                              touch-links default-collision-entries
-                              ignore-collisions
-                              destination-validity-only
-                              max-tilt)
-  (declare (ignore default-collision-entries))
-  (every (lambda (pose-stamped)
-           (plan-link-movement
-            link-name planning-group pose-stamped
-            :allowed-collision-objects allowed-collision-objects
-            :touch-links touch-links
-            :ignore-collisions ignore-collisions
-            :destination-validity-only destination-validity-only
-            :max-tilt max-tilt))
-         poses-stamped))
+(defun check-state-validity (robot-state-msg planning-group-name constraints-msg)
+  "Uses the MoveIt! check_state_validity service to verify a given robot state.
+
+Parameters:
+
+:robot-state robot-state-msg is the state to verify
+
+:group_name group-name is the planning group to use in collision checking.
+
+:constraints constraints-msg defines other kinematic constraints on the state.
+
+Returns a list of lists: ((\"state validity\" valid) (\"contacts\" contacts) (\"cost sources\" cost-sources) (\"constraint check result\" constraint-result))."
+  (let* ((result (roslisp:call-service "/check_state_validity"
+                                       "moveit_msgs/GetStateValidity"
+                                       :robot_state robot-state-msg
+                                       :group_name planning-group-name
+                                       :constraints constraints-msg)))
+    (roslisp:with-fields (valid contacts cost_sources constraint_result) result
+      (list (list "state validity" valid) (list "contacts" contacts) (list "cost sources" cost_sources) (list "constraint check result" constraint_result)))))
+
+(defun compute-cartesian-path (frame-name 
+                               robot-state-msg 
+                               group-name 
+                               link-name 
+                               waypoint-poses 
+                               max-step 
+                               jump-threshold 
+                               avoid-collisions 
+                               &key (path-constraints-msg (roslisp:make-msg "moveit_msgs/Constraints")))
+  "Calls MoveIt's compute_cartesian_path to get a path from robot-state-msg that passes through the waypoints given by waypoint-poses with the link link-name.
+
+The waypoint poses are given in the frame identified by frame-name.
+
+Between two waypoints, the generated path will have the link move in a line.
+
+max-step gives the largest distance (in Cartesian space) that will be allowed between two points in the generated path.
+
+jump-threshold gives a distance in configuration (joint) space which, if exceeded between consecutive waypoints, is interpreted as a jump in the IK solution.
+If a jump happens, MoveIt! considers the path generation failed, and will return a path that ends just before the jump (see \"completion fraction\" in the
+return values)
+
+avoid-collisions determines whether obstacle collisions (apart from those in the allowed collision matrix) are tolerated. Set to T to signal collisions are
+not ok.
+
+path-constraints-msg describes any other kinematic constraints the path must satisfy.
+
+Return values:
+
+is a list of lists: ((\"start state\" start_state) (\"trajectory\" solution) (\"completion fraction\" fraction))
+
+fraction is a number between 0 and 1 which gives how much of the requested path was actually produced. If a path satisfying the constraints and not 
+colliding with unwanted obstacles is found, then the completion fraction is 1. A lesser number signals a kinematic jump or an obstacle collision."
+
+    (let* ((result (roslisp:call-service "/compute_cartesian_path"
+                                         "moveit_msgs/GetCartesianPath"
+                                         :header (make-message "std_msgs/Header" :stamp 0 :frame_id frame-name)
+                                         :start_state robot-state-msg
+                                         :group_name group-name
+                                         :link_name link-name
+                                         :waypoints waypoint-poses
+                                         :max_step max-step
+                                         :jump_threshold jump-threshold
+                                         :avoid_collisions avoid-collisions
+                                         :path_constraints path-constraints-msg)))
+    (roslisp:with-fields (start_state solution fraction (val (val error_code))) result
+      (unless (eql val (roslisp-msg-protocol:symbol-code 'moveit_msgs-msg:moveiterrorcodes :success))
+              (signal-moveit-error val))
+      (list (list "start state" start_state) (list "trajectory" solution) (list "completion fraction" fraction)))))
 
 (defun plan-link-movement (link-name planning-group pose-stamped
                            &key allowed-collision-objects
+                             start-robot-state
+                             (path-constraints-msg (roslisp:make-msg "moveit_msgs/Constraints"))
                              touch-links
                              ignore-collisions
                              destination-validity-only
@@ -588,11 +668,54 @@ as only the final configuration IK is generated."
               planning-group pose-stamped
               :allowed-collision-objects allowed-collision-objects
               :plan-only t
+              :path-constraints-msg path-constraints-msg
+              :start-state start-robot-state
               :touch-links touch-links
               :ignore-collisions ignore-collisions
               :max-tilt max-tilt)))))
 
+(defun plan-link-movements (link-name planning-group poses-stamped
+                            &key allowed-collision-objects
+                              path-constraints-msgs
+                              touch-links default-collision-entries
+                              ignore-collisions
+                              destination-validity-only
+                              start-robot-state
+                              max-tilt)
+"Compute plans for link-name from planning-group to reach the poses
+in pose-stamped. Paths can be constrained via path-constraints-msgs
+but if these are used, then the length of the path-constraints-msgs
+list and poses-stamped must be the same."
+  (declare (ignore default-collision-entries))
+  (if path-constraints-msgs
+    (if (and (listp path-constraints-msgs) (eql (length path-constraints-msgs) (length poses-stamped)))
+      (every (lambda (pose-stamped path-constraints-msg)
+               (plan-link-movement
+                link-name planning-group pose-stamped
+                :allowed-collision-objects allowed-collision-objects
+                :touch-links touch-links
+                :path-constraints-msg path-constraints-msg
+                :start-robot-state start-robot-state
+                :ignore-collisions ignore-collisions
+                :destination-validity-only destination-validity-only
+                :max-tilt max-tilt))
+           poses-stamped path-constraints-msgs)
+      (progn (ros-warn (moveit) "cram-moveit received a call to plan-link-movements where path-constraints-msgs was non nil and had a different length than poses-stamped. Cannot match path constraints to poses.")
+             (error 'planning-failed)))
+    (every (lambda (pose-stamped)
+             (plan-link-movement
+              link-name planning-group pose-stamped
+              :allowed-collision-objects allowed-collision-objects
+              :touch-links touch-links
+              :start-robot-state start-robot-state
+              :ignore-collisions ignore-collisions
+              :destination-validity-only destination-validity-only
+              :max-tilt max-tilt))
+           poses-stamped)))
+
 (defun make-joint-goal-constraints (names positions)
+;TODO: this function isn't defined yet.
+  (declare (ignore names) (ignore positions))
   (vector
    (make-message
     "moveit_msgs/Constraints"

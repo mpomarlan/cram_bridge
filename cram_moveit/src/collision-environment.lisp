@@ -114,7 +114,7 @@ bridge.")
                                         plane-shapes
                                         pose-stamped
                                         color)
-  (let ((name (string-upcase (string name)))
+  (let* ((name (string-upcase (string name)))
         (obj (or (named-collision-object name)
                  (let ((obj-create
                          (make-instance 'collision-object
@@ -129,7 +129,7 @@ bridge.")
       (set-collision-object-pose name pose-stamped))))
 
 (defun unregister-collision-object (name)
-  (let ((name (string name)))
+  (let ((name (string-upcase (string name))))
     (setf *known-collision-objects*
           (remove name *known-collision-objects*
                   :test (lambda (name object)
@@ -209,7 +209,7 @@ bridge.")
         do (add-collision-object (slot-value object 'name) t)))
 
 (defun add-collision-object (name &optional pose-stamped quiet)
-  (let* ((name (string name))
+  (let* ((name (string-upcase (string name)))
          (col-obj (named-collision-object name))
          (pose-stamped (or pose-stamped
                            (collision-object-pose name))))
@@ -245,7 +245,7 @@ bridge.")
             (publish-object-colors)))))))
 
 (defun remove-collision-object (name)
-  (let* ((name (string name))
+  (let* ((name (string-upcase (string name)))
          (col-obj (named-collision-object name)))
     (when col-obj
       (let* ((obj-msg (roslisp:make-msg
@@ -265,6 +265,25 @@ bridge.")
           (roslisp:ros-info
            (moveit)
            "Removed `~a' from environment server." name))))))
+
+(defun clear-all-moveit-collision-objects ()
+  (let* ((obj-msg (roslisp:make-msg
+                   "moveit_msgs/CollisionObject"
+                   id ""
+                   operation (roslisp-msg-protocol:symbol-code
+                              'moveit_msgs-msg:collisionobject
+                              :remove)))
+         (world-msg (roslisp:make-msg
+                     "moveit_msgs/PlanningSceneWorld"
+                     collision_objects (vector obj-msg)))
+         (scene-msg (roslisp:make-msg
+                     "moveit_msgs/PlanningScene"
+                     world world-msg
+                     is_diff t)))
+    (prog1 (roslisp:publish *planning-scene-publisher* scene-msg)
+      (roslisp:ros-info
+       (moveit)
+       "Removed every collision object from environment server."))))
 
 (defmacro without-collision-objects (object-names &body body)
   `(unwind-protect
@@ -289,7 +308,7 @@ bridge.")
 
 (defun attach-collision-object-to-link (name target-link
                                         &key current-pose-stamped touch-links)
-  (let* ((name (string name))
+  (let* ((name (string-upcase (string name)))
          (col-obj (named-collision-object name))
          (current-pose-stamped (or current-pose-stamped
                                    (collision-object-pose name))))
@@ -345,7 +364,7 @@ bridge.")
 
 (defun detach-collision-object-from-link (name target-link
                                           &key current-pose-stamped)
-  (let* ((name (string name))
+  (let* ((name (string-upcase (string name)))
          (col-obj (named-collision-object name))
          (current-pose-stamped (or current-pose-stamped
                                    (collision-object-pose name))))
@@ -354,13 +373,6 @@ bridge.")
             (mesh-shapes (slot-value col-obj 'mesh-shapes))
             (plane-shapes (slot-value col-obj 'plane-shapes))
             (time (roslisp:ros-time)))
-        (unless (tf:wait-for-transform
-                 *tf*
-                 :timeout 5.0
-                 :time time
-                 :source-frame (tf:frame-id current-pose-stamped)
-                 :target-frame target-link)
-          (cpl:fail 'pose-not-transformable-into-link))
         (let* ((pose-in-link (cl-tf2:ensure-pose-stamped-transformed
                               *tf2* (tf:copy-pose-stamped
                                      current-pose-stamped

@@ -61,7 +61,7 @@
                                 (object-name . (r g b a)) assignment
                               (make-message
                                "moveit_msgs/ObjectColor"
-                               (id) (symbol-name object-name)
+                               (id) (string-upcase (string object-name))
                                (r color) r
                                (g color) g
                                (b color) b

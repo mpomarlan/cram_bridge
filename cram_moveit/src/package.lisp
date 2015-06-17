@@ -44,6 +44,13 @@
   #:cram-plan-failures)
   (:export
    ;; Functions
+   check-state-validity
+   clear-all-moveit-collision-objects
+   get-planning-scene-info
+   get-collision-matrix-entry
+   set-collision-matrix-entry
+   set-planning-scene-collision-matrix
+   combine-collision-matrices
    move-link-pose
    plan-link-movement
    plan-link-movements
@@ -63,6 +70,7 @@
    detach-collision-object-from-link
    get-joint-value
    set-collision-object-pose
+   compute-fk
    compute-ik
    execute-trajectory
    merge-trajectories
