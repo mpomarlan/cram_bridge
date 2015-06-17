@@ -28,6 +28,7 @@
 (in-package :cram-moveit)
 
 (defvar *moveit-pose-validity-check-lock* nil)
+(defparameter *object-reference-frame* "map")
 
 (defun init-moveit-bridge ()
   "Sets up the basic action client communication handles for the
@@ -60,6 +61,31 @@ MoveIt! framework and registers known conditions."
 (cut:define-hook cram-language::on-begin-motion-execution ())
 (cut:define-hook cram-language::on-finish-motion-execution (id))
 
+(defmethod plan-knowledge:on-event ((event plan-knowledge:object-removed-event))
+  (remove-collision-object (plan-knowledge::object-name event)))
+
+(defmethod plan-knowledge:on-event ((event plan-knowledge:object-perceived-event))
+  (let ((object (plan-knowledge:object-designator event)))
+    (register-collision-object
+     object :add t
+            :pose-stamped (cl-tf2:ensure-pose-stamped-transformed
+                           cram-roslisp-common:*tf2*
+                           (desig:desig-prop-value
+                            (desig:desig-prop-value object 'at)
+                                             'pose)
+                           *object-reference-frame*))))
+
+(defmethod plan-knowledge:on-event ((event plan-knowledge:object-updated-event))
+  (let* ((object (plan-knowledge:object-designator event)))
+    (register-collision-object
+     object :add t
+            :pose-stamped
+            (cl-tf2:ensure-pose-stamped-transformed
+             cram-roslisp-common:*tf2*
+             (desig:desig-prop-value
+              (desig:desig-prop-value object 'at) 'pose)
+             *object-reference-frame*))))
+
 (defun move-joints (planning-group joint-names joint-positions
                     &key (wait-for-execution t))
   (move-link-pose nil planning-group nil
@@ -87,8 +113,8 @@ MoveIt! framework and registers known conditions."
   (cond ((and joint-names joint-positions)
          (ros-info (moveit) "Move joints"))
         (t (ros-info (moveit)
-                     "Move link: ~a (~a, ignore collisions: ~a, plan only: ~a)"
-                     link-name planning-group ignore-collisions plan-only)))
+                     "Move link: ~a (~a, ignore collisions: ~a, plan only: ~a, raise elbow: ~a)"
+                     link-name planning-group ignore-collisions plan-only raise-elbow)))
   (let* ((log-id (first (cram-language::on-begin-motion-planning link-name)))
          (planning-results
            (unwind-protect
@@ -353,7 +379,6 @@ MoveIt! framework and registers known conditions."
                                             accelerations))))
              append accelerations into merged
              finally (return merged))))
-
 (defun latest-time-for-trajectory-point (trajectories index)
   (loop for trajectory in trajectories
         maximizing (with-fields (joint_trajectory) trajectory
@@ -371,7 +396,6 @@ MoveIt! framework and registers known conditions."
                          time_from_start)
             into max-val
             finally (return max-val)))))
-
 (defun latest-time-for-trajectories (trajectories)
   (loop for trajectory in trajectories
         maximizing (latest-time-for-trajectory trajectory)
