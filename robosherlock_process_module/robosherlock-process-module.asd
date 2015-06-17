@@ -34,7 +34,6 @@
                alexandria
                process-modules
                designators
-               bullet-reasoning
                cram-plan-knowledge
                cram-projection
                cram-roslisp-common
@@ -45,7 +44,7 @@
                semantic-map-costmap
                actionlib
                cram-uima
-               cram-moveit)
+               cram-task-knowledge)
   :components
   ((:module "src"
     :components
