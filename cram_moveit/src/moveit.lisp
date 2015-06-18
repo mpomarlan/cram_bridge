@@ -62,10 +62,10 @@ MoveIt! framework and registers known conditions."
 (cut:define-hook cram-language::on-finish-motion-execution (id))
 
 (defmethod plan-knowledge:on-event ((event plan-knowledge:object-removed-event))
-  (remove-collision-object (plan-knowledge::object-name event)))
+  (remove-collision-object (plan-knowledge:event-object-name event)))
 
 (defmethod plan-knowledge:on-event ((event plan-knowledge:object-perceived-event))
-  (let ((object (plan-knowledge:object-designator event)))
+  (let ((object (plan-knowledge:event-object-designator event)))
     (register-collision-object
      object :add t
             :pose-stamped (cl-tf2:ensure-pose-stamped-transformed
@@ -76,7 +76,7 @@ MoveIt! framework and registers known conditions."
                            *object-reference-frame*))))
 
 (defmethod plan-knowledge:on-event ((event plan-knowledge:object-updated-event))
-  (let* ((object (plan-knowledge:object-designator event)))
+  (let* ((object (plan-knowledge:event-object-designator event)))
     (register-collision-object
      object :add t
             :pose-stamped
