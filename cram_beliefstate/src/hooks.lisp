@@ -482,3 +482,28 @@
               (annotate-parameter 'object-type object-type)
               (annotate-parameter 'distance-2d distance-2d)
               (annotate-parameter 'angle-difference-2d angle-difference))))))))
+
+(def-logging-hook cram-language::on-begin-speech-act (sender receiver content in-reply-to)
+  (let ((id (start-node "SPEECH-ACT")))
+    (add-designator-to-node
+     (make-designator 'action
+                      (append
+                       `((sender ,sender)
+                         (receiver ,receiver)
+                         (content ,content))
+                       (when in-reply-to
+                         `((in-reply-to ,in-reply-to)))))
+     id :annotation "speech-act-details")))
+
+(def-logging-hook cram-language::on-finish-speech-act (id)
+  (stop-node id))
+
+(def-logging-hook cram-language::on-with-container-open-begin (container-name)
+  (let ((id (start-node "WITH-CONTAINER-OPEN")))
+    (add-designator-to-node
+     (make-designator 'action `((name ,container-name))) id
+     :annotation "container-details")
+    id))
+
+(def-logging-hook cram-language::on-with-container-open-end (log-id)
+  (stop-node log-id))
