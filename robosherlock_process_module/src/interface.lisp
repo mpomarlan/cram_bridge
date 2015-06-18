@@ -205,7 +205,6 @@
         (cram-language::on-finish-perception-request log-id results)
         results))))
 
-
 (defmethod designators-match ((template object-designator)
                               (subject object-designator))
   "Checks every property of the `template' object designator to be
@@ -271,14 +270,6 @@ the original location designator's described area, if applicable."
           (t t))))
 
 (defmethod perceive-object-designator ((object-designator object-designator))
-  "Triggers operation of the external perception system to find out
-which objects are currently seen, and compares the result to the
-internal beliefstate. Poses of known and visible objects are updated
-in the beliefstate, new objects are added, and disappeared objects are
-retracted from the internal representation. The parameter
-`object-designator' describes the object to find."
-  ;; Make sure that the current pose and everything is in the
-  ;; beliefstate.
-  (plan-knowledge:on-event (make-instance 'plan-knowledge:robot-state-changed))
-  (cram-task-knowledge:objects-perceived
+  "Triggers operation of the external perception system to find out which objects are currently seen, and compares the result to the internal beliefstate. Poses of known and visible objects are updated in the beliefstate, new objects are added, and disappeared objects are retracted from the internal representation. The parameter `object-designator' describes the object to find."
+  (cram-task-knowledge:filter-perceived-objects
    (perceive-with-object-designator object-designator)))
