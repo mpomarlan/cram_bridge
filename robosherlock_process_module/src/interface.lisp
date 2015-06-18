@@ -27,24 +27,13 @@
 
 (in-package :robosherlock-process-module)
 
-(defclass perceived-object-data
-    (desig:object-designator-data
-     cram-manipulation-knowledge:object-shape-data-mixin)
-  ((pose :reader pose :initarg :pose)
-   (identifier :reader identifier :initarg :identifier)))
-
 (defvar *ignored-bullet-objects* nil)
 
 (defgeneric call-perception-routine (designator))
-(defgeneric examine-perceived-object-designator
-    (original-designator object-designator))
 (defgeneric perceive-with-object-designator (designator))
-(defgeneric designators-match (template subject))
-(defgeneric filter-perceived-objects (template-designator perceived-objects))
 (defgeneric get-volume-of-interest (object-designator))
 (defgeneric make-uima-request-designator (&key object-designator))
 (defgeneric perceive-object-designator (designator))
-(defgeneric location-valid (template object))
 
 (cut:define-hook cram-language::on-prepare-perception-request (designator-request))
 (cut:define-hook cram-language::on-finish-perception-request (log-id designators-result))
@@ -205,71 +194,8 @@
         (cram-language::on-finish-perception-request log-id results)
         results))))
 
-(defmethod designators-match ((template object-designator)
-                              (subject object-designator))
-  "Checks every property of the `template' object designator to be
-present in the `subject' object designator. Returns `t' if all
-properties in `template' are satisfied, `NIL' otherwise. Only checks
-for: string, number, symbol. All other value types are ignored. This
-way, reference and unknown object type comparisons are avoided."
-  (cond ((let ((type-1 (desig-prop-value template 'desig-props::type))
-               (type-2 (desig-prop-value subject 'desig-props::type)))
-           (and (not (eql type-1 nil))
-                (eql type-1 type-2))))
-        (t
-         (cond ((eql (desig-prop-value subject 'type)
-                     'desig-props::semantic-handle)
-                (and (eql (desig-prop-value template 'type)
-                          'desig-props::semantic-handle)
-                     (string= (desig-prop-value template 'name)
-                              (desig-prop-value subject 'name))))
-               (t
-                (loop for (key value) in (description template)
-                      for type-check-fnc = (cond ((stringp value)
-                                                  #'string=)
-                                                 ((numberp value)
-                                                  #'=)
-                                                 ((symbolp value)
-                                                  #'eql))
-                      for subject-values = (desig-prop-values
-                                            subject key)
-                      when (and type-check-fnc subject-values)
-                        do (unless (find value subject-values
-                                         :test type-check-fnc)
-                             (return nil))
-                      finally (return t))
-                ;t
-                ))))) ;; NOTE(winkler): This is a hack.
-
-(defmethod filter-perceived-objects ((template-designator object-designator)
-                                     (perceived-objects list))
-  "Filters out all object designator instances in the
-`perceived-objects' list which descriptions don't match the properties
-defined in `template-designator' or whose location doesn't fit into
-the original location designator's described area, if applicable."
-  (cpl:mapcar-clean
-   (lambda (perceived-object)
-     (when (and (designators-match template-designator perceived-object)
-                (location-valid template-designator perceived-object))
-       ;; The designator matches based on its description (if
-       ;; any). Now see if it gets accepted based on external factors.
-       perceived-object))
-   perceived-objects))
-
-(defmethod location-valid ((template object-designator)
-                           (object object-designator))
-  (let ((at-template (desig-prop-value template 'desig-props::at))
-        (at-object (desig-prop-value object 'desig-props::at)))
-    (cond (at-template
-           (let ((first-at (first-desig at-template)))
-             (cond ((desig-prop-value at-object 'desig-props::pose) t)
-                   (t (validate-location-designator-solution
-                       first-at
-                       (slot-value at-object
-                                   'desig::current-solution))))))
-          (t t))))
-
 (defmethod perceive-object-designator ((object-designator object-designator))
   "Triggers operation of the external perception system to find out which objects are currently seen, and compares the result to the internal beliefstate. Poses of known and visible objects are updated in the beliefstate, new objects are added, and disappeared objects are retracted from the internal representation. The parameter `object-designator' describes the object to find."
   (cram-task-knowledge:filter-perceived-objects
+   object-designator
    (perceive-with-object-designator object-designator)))

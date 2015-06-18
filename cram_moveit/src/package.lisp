@@ -110,4 +110,4 @@
   (:import-from cram-roslisp-common *tf2*)
   (:desig-properties #:shape #:dimensions #:box #:cylinder
                      #:sphere #:cone #:round #:name #:yellow
-                     #:color))
+                     #:color #:at))
