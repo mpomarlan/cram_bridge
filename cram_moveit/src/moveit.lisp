@@ -71,8 +71,8 @@ MoveIt! framework and registers known conditions."
             :pose-stamped (cl-tf2:ensure-pose-stamped-transformed
                            cram-roslisp-common:*tf2*
                            (desig:desig-prop-value
-                            (desig:desig-prop-value object 'at)
-                                             'pose)
+                            (desig:desig-prop-value object 'desig-props:at)
+                            'desig-props:pose)
                            *object-reference-frame*))))
 
 (defmethod plan-knowledge:on-event ((event plan-knowledge:object-updated-event))
