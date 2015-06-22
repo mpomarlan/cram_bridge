@@ -150,7 +150,8 @@ for a reply on another topic."
                             (desig-int::msg->designator x))
                     designators)))))
     (unless call-result
-      (roslisp:ros-error (uima) "No answer from UIMA. Is the node running?"))
+      (roslisp:ros-error
+       (uima) "No answer from UIMA. Is the node running?"))
     result-designators))
 
 (defun config-uima ()
@@ -158,3 +159,7 @@ for a reply on another topic."
    :topic
    :trigger-service-topic *uima-trigger-service-topic*
    :results-topic *uima-results-topic*))
+
+(defun uima-present ()
+  (roslisp:wait-for-service
+   *uima-trigger-service-topic* 0.25))
