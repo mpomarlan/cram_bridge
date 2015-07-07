@@ -115,16 +115,18 @@ bridge.")
                                         pose-stamped
                                         color)
   (let* ((name (string-upcase (string name)))
-        (obj (or (named-collision-object name)
-                 (let ((obj-create
-                         (make-instance 'collision-object
-                                        :name name
-                                        :primitive-shapes primitive-shapes
-                                        :mesh-shapes mesh-shapes
-                                        :plane-shapes plane-shapes
-                                        :color color)))
-                   (push obj-create *known-collision-objects*)
-                   obj-create))))
+         (obj (or (let ((obj (named-collision-object name)))
+                    (when obj
+                      (setf (slot-value obj 'primitive-shapes) primitive-shapes)))
+                  (let ((obj-create
+                          (make-instance 'collision-object
+                                         :name name
+                                         :primitive-shapes primitive-shapes
+                                         :mesh-shapes mesh-shapes
+                                         :plane-shapes plane-shapes
+                                         :color color)))
+                    (push obj-create *known-collision-objects*)
+                    obj-create))))
     (when (and obj pose-stamped)
       (set-collision-object-pose name pose-stamped))))
 
@@ -210,7 +212,7 @@ bridge.")
 
 (defun add-collision-object (name &optional pose-stamped quiet)
   (when name
-    (let* ((name (string name))
+    (let* ((name (string-upcase (string name)))
            (col-obj (named-collision-object name))
            (pose-stamped (or pose-stamped
                              (slot-value col-obj 'pose))))
@@ -236,7 +238,7 @@ bridge.")
                  (scene-msg (roslisp:make-msg
                              "moveit_msgs/PlanningScene"
                              world world-msg
-                                        ;object_colors (vector (make-object-color name color))
+                             ;;object_colors (vector (make-object-color name color))
                              is_diff t)))
             (prog1 (roslisp:publish *planning-scene-publisher* scene-msg)
               (unless quiet
@@ -324,6 +326,7 @@ bridge.")
                  (cl-tf2:ensure-pose-stamped-transformed
                   *tf2* current-pose-stamped target-link
                   :use-current-ros-time t))
+               (ttt (format t "!!!!!~%"))
                (obj-msg-plain (create-collision-object-message
                                name pose-in-link
                                :primitive-shapes primitive-shapes
