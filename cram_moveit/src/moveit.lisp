@@ -83,7 +83,7 @@ MoveIt! framework and registers known conditions."
             (cl-tf2:ensure-pose-stamped-transformed
              cram-roslisp-common:*tf2*
              (desig:desig-prop-value
-              (desig:desig-prop-value object 'at) 'pose)
+              (desig:desig-prop-value object 'at) 'desig-props:pose)
              *object-reference-frame*))))
 
 (defun move-joints (planning-group joint-names joint-positions
