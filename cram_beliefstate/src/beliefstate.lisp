@@ -232,6 +232,7 @@
   (let* ((type (ecase (type-of designator)
                  (cram-designators:action-designator "ACTION")
                  (cram-designators:location-designator "LOCATION")
+                 (cram-designators:human-designator "HUMAN")
                  (cram-designators:object-designator "OBJECT")))
          (memory-address (write-to-string
                           (sb-kernel:get-lisp-obj-address designator)))
@@ -252,6 +253,7 @@
   (let* ((type (ecase (type-of designator)
                  (cram-designators:action-designator "ACTION")
                  (cram-designators:location-designator "LOCATION")
+                 (cram-designators:human-designator "HUMAN")
                  (cram-designators:object-designator "OBJECT")))
          (memory-address (write-to-string
                           (sb-kernel:get-lisp-obj-address designator)))
@@ -285,11 +287,13 @@
          (type-child (ecase (type-of desig-child)
                        (cram-designators:action-designator "ACTION")
                        (cram-designators:location-designator "LOCATION")
+                       (cram-designators:human-designator "HUMAN")
                        (cram-designators:object-designator "OBJECT")))
          (desc-parent (description desig-parent))
          (type-parent (ecase (type-of desig-parent)
                         (cram-designators:action-designator "ACTION")
                         (cram-designators:location-designator "LOCATION")
+                        (cram-designators:human-designator "HUMAN")
                         (cram-designators:object-designator "OBJECT"))))
     (alter-node
      `((command equate-designators)
