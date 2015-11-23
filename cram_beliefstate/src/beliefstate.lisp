@@ -248,6 +248,33 @@
       (let* ((desig-id (desig-prop-value (first result) 'desig-props::id)))
         desig-id))))
 
+(defun resolve-designator-memory-address (designator)
+  (let ((result
+          (alter-node `((memory-address
+                         ,(write-to-string
+                           (sb-kernel:get-lisp-obj-address
+                            designator))))
+                      :mode :service
+                      :command
+                      "resolve-designator-memory-address")))
+    (when result
+      (desig-prop-value (first result) 'desig-props::id))))
+
+(defun resolve-designator-knowrob-live-id (designator-id)
+  (let ((result
+          (alter-node `((designator-id ,designator-id))
+                      :mode :service
+                      :command
+                      "resolve-designator-knowrob-live-id")))
+    (when result
+      (desig-prop-value (first result)
+                        'desig-props::knowrob-live-id))))
+
+(defun resolve-designator-knowrob-id (designator)
+  "Resolves the ID given to designators when asserted into a live KnowRob instance."
+  (resolve-designator-knowrob-live-id
+   (resolve-designator-memory-address designator)))
+
 (defun add-designator-to-active-node (designator &key (annotation "")
                                                    property-namespace)
   (let* ((type (ecase (type-of designator)
