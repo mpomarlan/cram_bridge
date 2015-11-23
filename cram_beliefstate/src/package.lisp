@@ -58,6 +58,7 @@
    equate-designators
    set-metadata 
    change-planlogging-namespace
+   resolve-designator-knowrob-id
    ;; Interactive objects
    register-interactive-object
    unregister-interactive-object
