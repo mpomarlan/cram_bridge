@@ -80,12 +80,12 @@
     (< (abs speed) (abs speed-thresh))
     (> (abs (- width start-width)) (abs width-thresh)))))
 
-(cpl:def-cram-function wait-for-status-fluent (handle timeout)
+(defun wait-for-status-fluent (handle timeout)
   (cpl:wait-for (status-fluent handle) :timeout timeout)
   (unless (cpl:value (status-fluent handle))
     (cpl:fail "Waiting for status-fluent of wsg50 timeed out.")))
 
-(cpl:def-cram-function gripper-finished-fluent (handle desired-width width-thresh speed-thresh &optional (timeout 0.5))
+(defun gripper-finished-fluent (handle desired-width width-thresh speed-thresh &optional (timeout 0.5))
   (wait-for-status-fluent handle timeout)
   (let ((start-width (getf (cpl:value (status-fluent handle)) :width)))
     (cpl:fl-funcall
@@ -96,7 +96,7 @@
         width-thresh speed-thresh))
      (status-fluent handle))))
   
-(cpl:def-cram-function move-wsg50-and-wait (handle width speed force &optional (width-thresh 5) (speed-thresh 5) (timeout 5))
+(defun move-wsg50-and-wait (handle width speed force &optional (width-thresh 5) (speed-thresh 5) (timeout 5))
   (cpl:pursue
     (cpl:wait-for
      (gripper-finished-fluent handle width width-thresh speed-thresh)
