@@ -76,7 +76,7 @@
 (defun enable-logging (bool)
   (setf *logging-enabled* bool))
 
-(defun start-node (name &optional log-parameters (detail-level 2))
+(defun start-node (name &optional log-parameters (detail-level 2) log-id)
   (with-lock-held (*service-access*)
     (when (wait-for-logging "operate")
       (let* ((parameters
@@ -85,7 +85,9 @@
                                      (list '_name name)
                                      (list '_detail-level detail-level)
                                      (list '_source 'cram)
-                                     log-parameters))))
+                                     log-parameters)
+                               (when log-id
+                                 `((_relative_context_id ,log-id))))))
              (result (first (designator-integration-lisp:call-designator-service
                              (fully-qualified-service-name "operate")
                              (cram-designators:make-designator
