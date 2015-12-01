@@ -204,6 +204,29 @@
       (add-designator-to-node designator id :annotation annotation)
       (desig-prop-value (first result) 'desig-props::id))))
 
+(defun add-human (designator &key (tf-prefix "") (srdl-component "") (property ""))
+  (let* ((memory-address (write-to-string
+                          (sb-kernel:get-lisp-obj-address designator)))
+         (description (description designator)))
+    (alter-node
+     (list (list 'command 'add-human)
+           (list 'type "HUMAN")
+           (list 'tf-prefix tf-prefix)
+           (list 'srdl-component srdl-component)
+           (list 'property property)
+           (list 'memory-address memory-address)
+           (list 'description description)))))
+
+(defun add-human-to-node (designator id &key (tf-prefix "") (srdl-component "") (property ""))
+  (let ((result (add-human
+                 designator
+                 :tf-prefix tf-prefix
+                 :srdl-component srdl-component
+                 :property property)))
+    (when result
+      (add-designator-to-node designator id :annotation property)
+      (desig-prop-value (first result) 'desig-props::id))))
+
 (defun catch-current-failure-with-active-node (id)
   (alter-node (list (list 'command 'catch-failure)
                     (list 'context-id id))))
