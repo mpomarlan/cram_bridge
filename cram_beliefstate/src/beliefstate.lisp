@@ -80,14 +80,15 @@
   (with-lock-held (*service-access*)
     (when (wait-for-logging "operate")
       (let* ((parameters
-               (mapcar (lambda (x) x)
-                       (append (list (list '_cb_type 'begin)
-                                     (list '_name name)
-                                     (list '_detail-level detail-level)
-                                     (list '_source 'cram)
-                                     log-parameters)
-                               (when log-id
-                                 `((_relative_context_id ,log-id))))))
+               (remove-if-not
+                #'identity
+                (append (list (list '_cb_type 'begin)
+                              (list '_name name)
+                              (list '_detail-level detail-level)
+                              (list '_source 'cram)
+                              log-parameters)
+                        (when log-id
+                          `((_relative_context_id ,log-id))))))
              (result (first (designator-integration-lisp:call-designator-service
                              (fully-qualified-service-name "operate")
                              (cram-designators:make-designator
@@ -95,18 +96,26 @@
                               parameters)))))
         (when result
           (desig-prop-value result 'desig-props::_id))))))
+  
 
-(defun stop-node (id &key (success t))
+(defun stop-node (id &key (success t) relative-context-id)
   (with-lock-held (*service-access*)
     (when (wait-for-logging "operate")
-      (designator-integration-lisp:call-designator-service
-       (fully-qualified-service-name "operate")
-       (cram-designators:make-designator
-        'cram-designators:action
-        (list (list '_cb_type 'end)
-              (list '_id id)
-              (list '_success (cond (success 1)
-                                    (t 0)))))))))
+      (let ((params
+              (remove-if-not
+               #'identity
+               (append
+                (list (list '_cb_type 'end)
+                      (list '_id id)
+                      (list '_success (cond (success 1)
+                                            (t 0))))
+                (when relative-context-id
+                  (list (list '_relative_context_id relative-context-id)))))))
+        (designator-integration-lisp:call-designator-service
+         (fully-qualified-service-name "operate")
+         (cram-designators:make-designator
+          'cram-designators:action
+          params))))))
 
 (defun extract-dot-file (filename &key
                                     (successes t)
