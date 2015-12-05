@@ -76,7 +76,7 @@
 (defun enable-logging (bool)
   (setf *logging-enabled* bool))
 
-(defun start-node (name &optional log-parameters (detail-level 2) log-id)
+(defun start-node (name &optional log-parameters (detail-level 2) log-id add-params)
   (with-lock-held (*service-access*)
     (when (wait-for-logging "operate")
       (let* ((parameters
@@ -88,7 +88,8 @@
                               (list '_source 'cram)
                               log-parameters)
                         (when log-id
-                          `((_relative_context_id ,log-id))))))
+                          `((_relative_context_id ,log-id)))
+                        add-params)))
              (result (first (designator-integration-lisp:call-designator-service
                              (fully-qualified-service-name "operate")
                              (cram-designators:make-designator
@@ -213,27 +214,36 @@
       (add-designator-to-node designator id :annotation annotation)
       (desig-prop-value (first result) 'desig-props::id))))
 
-(defun add-human (designator &key (tf-prefix "") (srdl-component "") (property ""))
+(defun add-human (designator &key (tf-prefix "") (srdl-component "") (property "")
+                               (relative-context-id))
   (let* ((memory-address (write-to-string
                           (sb-kernel:get-lisp-obj-address designator)))
          (description (description designator)))
     (alter-node
-     (list (list 'command 'add-human)
-           (list 'type "HUMAN")
-           (list 'tf-prefix tf-prefix)
-           (list 'srdl-component srdl-component)
-           (list 'property property)
-           (list 'memory-address memory-address)
-           (list 'description description)))))
+     (remove-if-not
+      #'identity
+      (list (list 'command 'add-human)
+            (list 'type "HUMAN")
+            (list 'tf-prefix tf-prefix)
+            (list 'srdl-component srdl-component)
+            (list 'property property)
+            (list 'memory-address memory-address)
+            (list 'description description)
+            (when relative-context-id
+              (list '_relative_context_id relative-context-id)))))))
 
-(defun add-human-to-node (designator id &key (tf-prefix "") (srdl-component "") (property ""))
+(defun add-human-to-node (designator id &key (tf-prefix "") (srdl-component "") (property "")
+                                     (relative-context-id))
   (let ((result (add-human
                  designator
                  :tf-prefix tf-prefix
                  :srdl-component srdl-component
-                 :property property)))
+                 :property property
+                 :relative-context-id relative-context-id)))
     (when result
-      (add-designator-to-node designator id :annotation property)
+      (add-designator-to-node
+       designator id :annotation property
+                     :relative-context-id relative-context-id)
       (desig-prop-value (first result) 'desig-props::id))))
 
 (defun catch-current-failure-with-active-node (id)
@@ -262,7 +272,7 @@
      (list (list 'command 'add-failure)
            (list 'condition datum-str)))))
 
-(defun add-designator-to-node (designator node-id &key (annotation ""))
+(defun add-designator-to-node (designator node-id &key (annotation "") (relative-context-id))
   (let* ((type (ecase (type-of designator)
                  (cram-designators:action-designator "ACTION")
                  (cram-designators:location-designator "LOCATION")
@@ -272,11 +282,15 @@
                           (sb-kernel:get-lisp-obj-address designator)))
          (description (description designator))
          (result (alter-node
-                  (list (list 'command 'add-designator)
-                        (list 'type type)
-                        (list 'annotation annotation)
-                        (list 'memory-address memory-address)
-                        (list 'description description))
+                  (remove-if-not
+                   #'identity
+                   (list (list 'command 'add-designator)
+                         (list 'type type)
+                         (list 'annotation annotation)
+                         (list 'memory-address memory-address)
+                         (list 'description description)
+                         (when relative-context-id
+                           (list '_relative_context_id relative-context-id))))
                   :node-id node-id)))
     (when result
       (let* ((desig-id (desig-prop-value (first result) 'desig-props::id)))
