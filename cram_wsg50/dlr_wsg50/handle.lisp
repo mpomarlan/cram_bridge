@@ -27,3 +27,104 @@
 ;;; POSSIBILITY OF SUCH DAMAGE.
 
 (in-package :cram-dlr-wsg50)
+
+(defun make-dlr-wsg50-handle (action-name &optional (timeout (default-login-timeout)))
+  (let ((client
+          (actionlib-lisp:make-simple-action-client action-name "dlr_msgs/GripperAction")))
+    (actionlib-lisp:wait-for-server client timeout)
+    client))
+
+(defun cmd-wsg50-and-wait (handle command width &key (speed (default-speed))
+                         (acceleration (default-acceleration))
+                         (force (default-force))
+                         (limit-min (default-limit-min))
+                         (limit-max (default-limit-max))
+                         (exec-timeout (default-exec-timeout))
+                         (preempt-timeout (default-preempt-timeout)))
+  ;;; Rico said that their firmware sometime gets into a state where new
+  ;;; commands need to be prepended with a STOP and an ACKNOWLEDGE. As I
+  ;;; did not understand how to detect that state, I am just unconditionally
+  ;;; sending these commands before any actual command. They should not interfere
+  ;;; with anything but make the gripper a bit slower.
+  (stop-wsg50-and-wait handle)
+  (acknowledge-wsg50-and-wait handle)
+  (cmd-wsg50-and-wait-internal
+   handle command width speed acceleration force
+   limit-min limit-max exec-timeout preempt-timeout))
+
+(defun acknowledge-wsg50-and-wait (handle &key (exec-timeout (default-acknowledge-timeout))
+                                          (preempt-timeout (default-preempt-timeout)))
+  (cmd-wsg50-and-wait-internal
+   handle :acknowledge 0 (default-speed) (default-acceleration) (default-force)
+   (default-limit-min) (default-limit-max) exec-timeout preempt-timeout))
+
+(defun stop-wsg50-and-wait (handle &key (exec-timeout (default-stop-timeout))
+                                          (preempt-timeout (default-preempt-timeout)))
+  (cmd-wsg50-and-wait-internal
+   handle :stop 0 (default-speed) (default-acceleration) (default-force)
+   (default-limit-min) (default-limit-max) exec-timeout preempt-timeout))
+                               
+
+(defun default-speed ()
+  0.2)
+
+(defun default-force ()
+  80)
+
+(defun default-acceleration ()
+  1)
+
+(defun default-limit-min ()
+  0.005)
+
+(defun default-limit-max ()
+  0.1)
+
+(defun default-exec-timeout ()
+  3)
+
+(defun default-preempt-timeout ()
+  0.5)
+
+(defun default-login-timeout ()
+  2)
+
+(defun default-acknowledge-timeout ()
+  0.5)
+
+(defun default-stop-timeout ()
+  0.5)
+
+;;;
+;;; INTERNAL AUX
+;;;
+
+(defun cmd-wsg50-and-wait-internal (handle command width speed acceleration
+                                    force limit-min limit-max exec-timeout preempt-timeout)
+  (let* ((goal (make-goal handle command width speed acceleration force limit-min limit-max)))
+    (actionlib-lisp:send-goal-and-wait handle goal exec-timeout preempt-timeout)))
+
+(defun make-goal (handle command width speed acceleration 
+                  force limit-min limit-max)
+  (declare (type keyword command))
+  (actionlib-lisp:make-action-goal-msg handle
+    :command (keyword->symbol-code command)
+    :width width
+    :speed speed
+    :acceleration acceleration
+    :force force
+    :limit_min limit-min
+    :limit_max limit-max))
+
+(defun goal-symbol-code (code)
+  (symbol-code 'dlr_msgs-msg:grippergoal code))
+
+(defun keyword->symbol-code (keyword)
+  (goal-symbol-code
+   (ecase keyword
+     (:grasp :cmd_grasp_part)
+     (:release :cmd_release_part)
+     (:move :cmd_move)
+     (:stop :cmd_stop)
+     (:home :cmd_homing)
+     (:acknowledge :cmd_ack))))

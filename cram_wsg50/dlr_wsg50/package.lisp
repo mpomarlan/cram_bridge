@@ -29,4 +29,9 @@
 (in-package :cl-user)
 
 (defpackage :cram-dlr-wsg50
-  (:use #:roslisp #:common-lisp))
+  (:use #:roslisp #:common-lisp)
+  (:export :make-dlr-wsg50-handle :cmd-wsg50-and-wait :acknowledge-wsg50-and-wait
+   :stop-wsg50-and-wait :default-speed :default-force :default-acceleration
+   :default-limit-min :default-limit-max :default-exec-timeout :default-preempt-timeout
+   :default-login-timeout :default-acknowledge-timeout :default-stop-timeout))
+           
