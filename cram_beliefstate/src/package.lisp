@@ -72,6 +72,7 @@
    begin-experiment
    end-experiment
    query-input
+   register-owl-namespace
    ;; General
    enable-logging
    toggle-logging

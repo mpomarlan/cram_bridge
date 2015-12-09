@@ -423,3 +423,9 @@
                                      (t read-value))))
               (cons (first entry) read-value)))
           data-fields))
+
+(defun register-owl-namespace (shortcut iri relative-context-id)
+  (alter-node (list (list 'command "register-owl-namespace")
+                    (list 'shortcut shortcut)
+                    (list 'iri iri))
+              :node-id relative-context-id))
