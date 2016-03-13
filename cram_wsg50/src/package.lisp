@@ -32,6 +32,7 @@
   (:use #:roslisp
         #:common-lisp
         #:sb-thread)    
-  (:export :make-wsg50-handle :move-wsg50 :status-fluent
-           :*default-speed* :*default-acceleration* :*default-force*
-           :*completely-open-width* :*completely-closed-width*))
+  (:export :make-wsg50-handle :move-wsg50 :move-wsg50-and-wait
+           :status-fluent :wait-for-status-fluent :gripper-finished-p
+           :gripper-finished-fluent :*default-speed* :*default-acceleration*
+           :*default-force* :*wsg50-open-width* :*wsg50-closed-width*))

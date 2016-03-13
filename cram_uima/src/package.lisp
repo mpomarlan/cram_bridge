@@ -46,4 +46,5 @@
    ;; Functions
    init-uima-bridge
    set-comm-mode
-   get-uima-result))
+   get-uima-result
+   uima-present))

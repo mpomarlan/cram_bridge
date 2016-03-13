@@ -25,8 +25,8 @@
   <run_depend>cram_uima</run_depend>
   <run_depend>cram_ik_proxy</run_depend>
   <run_depend>cram_moveit</run_depend>
-  <run_depend>cram_ptu</run_depend>
-  <run_depend>cram_fccl</run_depend>
+  <!--run_depend>cram_ptu</run_depend-->
+  <!--run_depend>cram_fccl</run_depend-->
   <run_depend>cram_pr2_controllers</run_depend>
   <run_depend>cram_wsg50</run_depend>
 

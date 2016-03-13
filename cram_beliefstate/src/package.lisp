@@ -51,6 +51,7 @@
    set-color-usage
    add-object-to-active-node
    add-object-to-node
+   add-human-to-node
    add-topic-image-to-active-node
    add-failure-to-active-node
    add-designator-to-active-node
@@ -58,6 +59,7 @@
    equate-designators
    set-metadata 
    change-planlogging-namespace
+   resolve-designator-knowrob-id
    ;; Interactive objects
    register-interactive-object
    unregister-interactive-object
@@ -70,6 +72,7 @@
    begin-experiment
    end-experiment
    query-input
+   register-owl-namespace
    ;; General
    enable-logging
    toggle-logging

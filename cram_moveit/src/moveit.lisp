@@ -28,6 +28,7 @@
 (in-package :cram-moveit)
 
 (defvar *moveit-pose-validity-check-lock* nil)
+(defparameter *object-reference-frame* "map")
 
 (defun init-moveit-bridge ()
   "Sets up the basic action client communication handles for the
@@ -35,7 +36,7 @@ MoveIt! framework and registers known conditions."
   (register-known-moveit-errors)
   (setf *planning-scene-publisher*
         (roslisp:advertise
-         "/planning_scene"
+         "/planning_scene";;"/move_group/monitored_planning_scene"
          "moveit_msgs/PlanningScene" :latch t))
   (setf *robot-state-display-publisher*
         (roslisp:advertise
@@ -60,6 +61,31 @@ MoveIt! framework and registers known conditions."
 (cut:define-hook cram-language::on-begin-motion-execution ())
 (cut:define-hook cram-language::on-finish-motion-execution (id))
 
+(defmethod plan-knowledge:on-event ((event plan-knowledge:object-removed-event))
+  (remove-collision-object (plan-knowledge:event-object-name event)))
+
+(defmethod plan-knowledge:on-event ((event plan-knowledge:object-perceived-event))
+  (let ((object (plan-knowledge:event-object-designator event)))
+    (register-collision-object
+     object :add t
+            :pose-stamped (cl-tf2:ensure-pose-stamped-transformed
+                           cram-roslisp-common:*tf2*
+                           (desig:desig-prop-value
+                            (desig:desig-prop-value object 'desig-props:at)
+                            'desig-props:pose)
+                           *object-reference-frame*))))
+
+(defmethod plan-knowledge:on-event ((event plan-knowledge:object-updated-event))
+  (let* ((object (plan-knowledge:event-object-designator event)))
+    (register-collision-object
+     object :add t
+            :pose-stamped
+            (cl-tf2:ensure-pose-stamped-transformed
+             cram-roslisp-common:*tf2*
+             (desig:desig-prop-value
+              (desig:desig-prop-value object 'at) 'desig-props:pose)
+             *object-reference-frame*))))
+
 (defun move-joints (planning-group joint-names joint-positions
                     &key (wait-for-execution t))
   (move-link-pose nil planning-group nil
@@ -78,7 +104,10 @@ MoveIt! framework and registers known conditions."
                          (wait-for-execution t)
                          max-tilt
                          reference-frame
-                         raise-elbow)
+                         raise-elbow
+                         additional-touch-link-groups
+                         additional-collision-objects-groups
+                         additional-values)
   "Calls the MoveIt! MoveGroup action. The link identified by `link-name' is tried to be positioned in the pose given by `pose-stamped'. Returns `T' on success and `nil' on failure, in which case a failure condition is signalled, based on the error code returned by the MoveIt! service (as defined in
   moveit_msgs/MoveItErrorCodes)."
   ;; NOTE(winkler): Since MoveIt! crashes once it receives a frame-id
@@ -87,13 +116,14 @@ MoveIt! framework and registers known conditions."
   (cond ((and joint-names joint-positions)
          (ros-info (moveit) "Move joints"))
         (t (ros-info (moveit)
-                     "Move link: ~a (~a, ignore collisions: ~a, plan only: ~a)"
-                     link-name planning-group ignore-collisions plan-only)))
+                     "Move link: ~a (~a, ignore collisions: ~a, plan only: ~a, raise elbow: ~a)"
+                     link-name planning-group ignore-collisions plan-only raise-elbow)))
   (let* ((log-id (first (cram-language::on-begin-motion-planning link-name)))
          (planning-results
            (unwind-protect
                 (let* ((start-state (or start-state
-                                        (make-message "moveit_msgs/RobotState")))
+                                        (make-message "moveit_msgs/RobotState"
+                                                      :is_diff t)))
                        (allowed-collision-objects
                          (mapcar
                           #'string
@@ -123,21 +153,23 @@ MoveIt! framework and registers known conditions."
                                       (t `(,reference-frame))))
                                (poses-stamped
                                 (list (tf:frame-id (car poses-stamped)))))))
+                  ;;(format t "Allowed collision objects: ~a~%" allowed-collision-objects)
                   (let* ((mpreq (make-message
                                  "moveit_msgs/MotionPlanRequest"
                                  :group_name planning-group
                                  :num_planning_attempts 3
-                                 :allowed_planning_time 3.0
-                                 :path_constraints path-constraints-msg
-                                 :trajectory_constraints
-                                 (make-trajectory-constraints
-                                  :link-names link-names
-                                  :reference-frames reference-frames
-                                  :max-tilts max-tilts
-                                  :reference-orientations
-                                  (mapcar (lambda (pose)
-                                            (tf:orientation pose))
-                                          poses-stamped))
+                                 :allowed_planning_time 30.0
+                                 :start_state start-state
+                                 ;; :path_constraints path-constraints-msg
+                                 ;; :trajectory_constraints
+                                 ;; (make-trajectory-constraints
+                                 ;;  :link-names link-names
+                                 ;;  :reference-frames reference-frames
+                                 ;;  :max-tilts max-tilts
+                                 ;;  :reference-orientations
+                                 ;;  (mapcar (lambda (pose)
+                                 ;;            (tf:orientation pose))
+                                 ;;          poses-stamped))
                                  :goal_constraints
                                  (map 'vector #'identity
                                       (append
@@ -155,17 +187,42 @@ MoveIt! framework and registers known conditions."
                              :is_diff t
                              :allowed_collision_matrix
                              (relative-collision-matrix-msg
-                              `(,touch-links
-                                ,collidable-objects)
-                              `(,allowed-collision-objects
-                                ,(when collidable-objects
-                                   (loop for obj in *known-collision-objects*
-                                         collect (slot-value obj 'name))))
-                              `(t t))
+                              (append
+                               `(,touch-links
+                                 ,collidable-objects)
+                               additional-touch-link-groups)
+                              (append
+                               `(,allowed-collision-objects
+                                 ,(when collidable-objects
+                                    (loop for obj in *known-collision-objects*
+                                          collect (slot-value obj 'name))))
+                               additional-collision-objects-groups)
+                              (append `(t t) additional-values))
                              :robot_state start-state)
                             :plan_only t;plan-only
                             :replan t
                             :replan_attempts 3)))
+                    (setf *collmat* (relative-collision-matrix-msg
+                              (append
+                               `(,touch-links
+                                 ,collidable-objects)
+                               additional-touch-link-groups)
+                              (append
+                               `(,allowed-collision-objects
+                                 ,(when collidable-objects
+                                    (loop for obj in *known-collision-objects*
+                                          collect (slot-value obj 'name))))
+                               additional-collision-objects-groups)
+                              (append `(t t) additional-values)))
+                    ;; (setf *collmat* (relative-collision-matrix-msg
+                    ;;           `(,touch-links
+                    ;;             ,collidable-objects)
+                    ;;           `(,allowed-collision-objects
+                    ;;             ,(when collidable-objects
+                    ;;                (loop for obj in *known-collision-objects*
+                    ;;                      collect (slot-value obj 'name))))
+                    ;;           `(t t)))
+                    ;;(roslisp:ros-info (planning request moveit) "Planning request: ~a~%Options: ~a~%" mpreq options)
                     (cpl:with-failure-handling
                         ((invalid-motion-plan (f)
                            (declare (ignore f))
@@ -353,7 +410,6 @@ MoveIt! framework and registers known conditions."
                                             accelerations))))
              append accelerations into merged
              finally (return merged))))
-
 (defun latest-time-for-trajectory-point (trajectories index)
   (loop for trajectory in trajectories
         maximizing (with-fields (joint_trajectory) trajectory
@@ -371,7 +427,6 @@ MoveIt! framework and registers known conditions."
                          time_from_start)
             into max-val
             finally (return max-val)))))
-
 (defun latest-time-for-trajectories (trajectories)
   (loop for trajectory in trajectories
         maximizing (latest-time-for-trajectory trajectory)
@@ -458,8 +513,9 @@ MoveIt! framework and registers known conditions."
                   (cond (ignore-va (vector))
                         (t (merged-trajectory-accelerations
                             stretched-trajectories i)))
-                  :time_from_start (latest-time-for-trajectory-point
-                                    stretched-trajectories i))))))))
+                  :time_from_start (+ (latest-time-for-trajectory-point
+                                       stretched-trajectories i)
+                                      1.0))))))))
 
 (defun concatenate-trajectories (trajectories &key ignore-va)
   "Concatenates multiple trajectories into a single one, taking care

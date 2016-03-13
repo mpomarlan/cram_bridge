@@ -76,16 +76,20 @@
 (defun enable-logging (bool)
   (setf *logging-enabled* bool))
 
-(defun start-node (name &optional log-parameters (detail-level 2))
+(defun start-node (name &optional log-parameters (detail-level 2) log-id add-params)
   (with-lock-held (*service-access*)
     (when (wait-for-logging "operate")
       (let* ((parameters
-               (mapcar (lambda (x) x)
-                       (append (list (list '_cb_type 'begin)
-                                     (list '_name name)
-                                     (list '_detail-level detail-level)
-                                     (list '_source 'cram)
-                                     log-parameters))))
+               (remove-if-not
+                #'identity
+                (append (list (list '_cb_type 'begin)
+                              (list '_name name)
+                              (list '_detail-level detail-level)
+                              (list '_source 'cram)
+                              log-parameters)
+                        (when log-id
+                          `((_relative_context_id ,log-id)))
+                        add-params)))
              (result (first (designator-integration-lisp:call-designator-service
                              (fully-qualified-service-name "operate")
                              (cram-designators:make-designator
@@ -93,18 +97,26 @@
                               parameters)))))
         (when result
           (desig-prop-value result 'desig-props::_id))))))
+  
 
-(defun stop-node (id &key (success t))
+(defun stop-node (id &key (success t) relative-context-id)
   (with-lock-held (*service-access*)
     (when (wait-for-logging "operate")
-      (designator-integration-lisp:call-designator-service
-       (fully-qualified-service-name "operate")
-       (cram-designators:make-designator
-        'cram-designators:action
-        (list (list '_cb_type 'end)
-              (list '_id id)
-              (list '_success (cond (success 1)
-                                    (t 0)))))))))
+      (let ((params
+              (remove-if-not
+               #'identity
+               (append
+                (list (list '_cb_type 'end)
+                      (list '_id id)
+                      (list '_success (cond (success 1)
+                                            (t 0))))
+                (when relative-context-id
+                  (list (list '_relative_context_id relative-context-id)))))))
+        (designator-integration-lisp:call-designator-service
+         (fully-qualified-service-name "operate")
+         (cram-designators:make-designator
+          'cram-designators:action
+          params))))))
 
 (defun extract-dot-file (filename &key
                                     (successes t)
@@ -202,6 +214,38 @@
       (add-designator-to-node designator id :annotation annotation)
       (desig-prop-value (first result) 'desig-props::id))))
 
+(defun add-human (designator &key (tf-prefix "") (srdl-component "") (property "")
+                               (relative-context-id))
+  (let* ((memory-address (write-to-string
+                          (sb-kernel:get-lisp-obj-address designator)))
+         (description (description designator)))
+    (alter-node
+     (remove-if-not
+      #'identity
+      (list (list 'command 'add-human)
+            (list 'type "HUMAN")
+            (list 'tf-prefix tf-prefix)
+            (list 'srdl-component srdl-component)
+            (list 'property property)
+            (list 'memory-address memory-address)
+            (list 'description description)
+            (when relative-context-id
+              (list '_relative_context_id relative-context-id)))))))
+
+(defun add-human-to-node (designator id &key (tf-prefix "") (srdl-component "") (property "")
+                                     (relative-context-id))
+  (let ((result (add-human
+                 designator
+                 :tf-prefix tf-prefix
+                 :srdl-component srdl-component
+                 :property property
+                 :relative-context-id relative-context-id)))
+    (when result
+      (add-designator-to-node
+       designator id :annotation property
+                     :relative-context-id relative-context-id)
+      (desig-prop-value (first result) 'desig-props::id))))
+
 (defun catch-current-failure-with-active-node (id)
   (alter-node (list (list 'command 'catch-failure)
                     (list 'context-id id))))
@@ -228,30 +272,63 @@
      (list (list 'command 'add-failure)
            (list 'condition datum-str)))))
 
-(defun add-designator-to-node (designator node-id &key (annotation ""))
+(defun add-designator-to-node (designator node-id &key (annotation "") (relative-context-id))
   (let* ((type (ecase (type-of designator)
                  (cram-designators:action-designator "ACTION")
                  (cram-designators:location-designator "LOCATION")
+                 (cram-designators:human-designator "HUMAN")
                  (cram-designators:object-designator "OBJECT")))
          (memory-address (write-to-string
                           (sb-kernel:get-lisp-obj-address designator)))
          (description (description designator))
          (result (alter-node
-                  (list (list 'command 'add-designator)
-                        (list 'type type)
-                        (list 'annotation annotation)
-                        (list 'memory-address memory-address)
-                        (list 'description description))
+                  (remove-if-not
+                   #'identity
+                   (list (list 'command 'add-designator)
+                         (list 'type type)
+                         (list 'annotation annotation)
+                         (list 'memory-address memory-address)
+                         (list 'description description)
+                         (when relative-context-id
+                           (list '_relative_context_id relative-context-id))))
                   :node-id node-id)))
     (when result
       (let* ((desig-id (desig-prop-value (first result) 'desig-props::id)))
         desig-id))))
+
+(defun resolve-designator-memory-address (designator)
+  (let ((result
+          (alter-node `((memory-address
+                         ,(write-to-string
+                           (sb-kernel:get-lisp-obj-address
+                            designator))))
+                      :mode :service
+                      :command
+                      "resolve-designator-memory-address")))
+    (when result
+      (desig-prop-value (first result) 'desig-props::id))))
+
+(defun resolve-designator-knowrob-live-id (designator-id)
+  (let ((result
+          (alter-node `((designator-id ,designator-id))
+                      :mode :service
+                      :command
+                      "resolve-designator-knowrob-live-id")))
+    (when result
+      (desig-prop-value (first result)
+                        'desig-props::knowrob-live-id))))
+
+(defun resolve-designator-knowrob-id (designator)
+  "Resolves the ID given to designators when asserted into a live KnowRob instance."
+  (resolve-designator-knowrob-live-id
+   (resolve-designator-memory-address designator)))
 
 (defun add-designator-to-active-node (designator &key (annotation "")
                                                    property-namespace)
   (let* ((type (ecase (type-of designator)
                  (cram-designators:action-designator "ACTION")
                  (cram-designators:location-designator "LOCATION")
+                 (cram-designators:human-designator "HUMAN")
                  (cram-designators:object-designator "OBJECT")))
          (memory-address (write-to-string
                           (sb-kernel:get-lisp-obj-address designator)))
@@ -285,11 +362,13 @@
          (type-child (ecase (type-of desig-child)
                        (cram-designators:action-designator "ACTION")
                        (cram-designators:location-designator "LOCATION")
+                       (cram-designators:human-designator "HUMAN")
                        (cram-designators:object-designator "OBJECT")))
          (desc-parent (description desig-parent))
          (type-parent (ecase (type-of desig-parent)
                         (cram-designators:action-designator "ACTION")
                         (cram-designators:location-designator "LOCATION")
+                        (cram-designators:human-designator "HUMAN")
                         (cram-designators:object-designator "OBJECT"))))
     (alter-node
      `((command equate-designators)
@@ -344,3 +423,9 @@
                                      (t read-value))))
               (cons (first entry) read-value)))
           data-fields))
+
+(defun register-owl-namespace (shortcut iri relative-context-id)
+  (alter-node (list (list 'command "register-owl-namespace")
+                    (list 'shortcut shortcut)
+                    (list 'iri iri))
+              :node-id relative-context-id))

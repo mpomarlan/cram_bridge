@@ -115,16 +115,18 @@ bridge.")
                                         pose-stamped
                                         color)
   (let* ((name (string-upcase (string name)))
-        (obj (or (named-collision-object name)
-                 (let ((obj-create
-                         (make-instance 'collision-object
-                                        :name name
-                                        :primitive-shapes primitive-shapes
-                                        :mesh-shapes mesh-shapes
-                                        :plane-shapes plane-shapes
-                                        :color color)))
-                   (push obj-create *known-collision-objects*)
-                   obj-create))))
+         (obj (or (let ((obj (named-collision-object name)))
+                    (when obj
+                      (setf (slot-value obj 'primitive-shapes) primitive-shapes)))
+                  (let ((obj-create
+                          (make-instance 'collision-object
+                                         :name name
+                                         :primitive-shapes primitive-shapes
+                                         :mesh-shapes mesh-shapes
+                                         :plane-shapes plane-shapes
+                                         :color color)))
+                    (push obj-create *known-collision-objects*)
+                    obj-create))))
     (when (and obj pose-stamped)
       (set-collision-object-pose name pose-stamped))))
 
@@ -139,7 +141,7 @@ bridge.")
   (let* ((name (string-upcase (string name)))
          (position (position name *known-collision-objects*
                              :test (lambda (name object)
-                                     (equal name (slot-value object 'name))))))
+                                     (string= name (slot-value object 'name))))))
     (when position
       (nth position *known-collision-objects*))))
 
@@ -206,43 +208,44 @@ bridge.")
 
 (defun republish-collision-environment ()
   (loop for object in *known-collision-objects*
-        do (add-collision-object (slot-value object 'name) t)))
+        do (add-collision-object (slot-value object 'name) nil t)))
 
 (defun add-collision-object (name &optional pose-stamped quiet)
-  (let* ((name (string-upcase (string name)))
-         (col-obj (named-collision-object name))
-         (pose-stamped (or pose-stamped
-                           (collision-object-pose name))))
-    (when (and col-obj pose-stamped)
-      (setf (slot-value col-obj 'pose) pose-stamped)
-      (let ((primitive-shapes (slot-value col-obj 'primitive-shapes))
-            (mesh-shapes (slot-value col-obj 'mesh-shapes))
-            (plane-shapes (slot-value col-obj 'plane-shapes))
-            (color (slot-value col-obj 'color)))
-        (declare (ignorable color))
-        (let* ((obj-msg (roslisp:modify-message-copy
-                         (create-collision-object-message
-                          name pose-stamped
-                          :primitive-shapes primitive-shapes
-                          :mesh-shapes mesh-shapes
-                          :plane-shapes plane-shapes)
-                         operation (roslisp-msg-protocol:symbol-code
-                                    'moveit_msgs-msg:collisionobject
-                                    :add)))
-               (world-msg (roslisp:make-msg
-                           "moveit_msgs/PlanningSceneWorld"
-                           collision_objects (vector obj-msg)))
-               (scene-msg (roslisp:make-msg
-                           "moveit_msgs/PlanningScene"
-                           world world-msg
-                           ;object_colors (vector (make-object-color name color))
-                           is_diff t)))
-          (prog1 (roslisp:publish *planning-scene-publisher* scene-msg)
-            (unless quiet
-              (roslisp:ros-info
-               (moveit)
-               "Added `~a' to environment server." name))
-            (publish-object-colors)))))))
+  (when name
+    (let* ((name (string-upcase (string name)))
+           (col-obj (named-collision-object name))
+           (pose-stamped (or pose-stamped
+                             (slot-value col-obj 'pose))))
+      (when (and col-obj pose-stamped)
+        (setf (slot-value col-obj 'pose) pose-stamped)
+        (let ((primitive-shapes (slot-value col-obj 'primitive-shapes))
+              (mesh-shapes (slot-value col-obj 'mesh-shapes))
+              (plane-shapes (slot-value col-obj 'plane-shapes))
+              (color (slot-value col-obj 'color)))
+          (declare (ignorable color))
+          (let* ((obj-msg (roslisp:modify-message-copy
+                           (create-collision-object-message
+                            name pose-stamped
+                            :primitive-shapes primitive-shapes
+                            :mesh-shapes mesh-shapes
+                            :plane-shapes plane-shapes)
+                           operation (roslisp-msg-protocol:symbol-code
+                                      'moveit_msgs-msg:collisionobject
+                                      :add)))
+                 (world-msg (roslisp:make-msg
+                             "moveit_msgs/PlanningSceneWorld"
+                             collision_objects (vector obj-msg)))
+                 (scene-msg (roslisp:make-msg
+                             "moveit_msgs/PlanningScene"
+                             world world-msg
+                             ;;object_colors (vector (make-object-color name color))
+                             is_diff t)))
+            (prog1 (roslisp:publish *planning-scene-publisher* scene-msg)
+              (unless quiet
+                (roslisp:ros-info
+                 (moveit)
+                 "Added `~a' to environment server." name))
+              (publish-object-colors))))))))
 
 (defun remove-collision-object (name)
   (let* ((name (string-upcase (string name)))
@@ -323,6 +326,7 @@ bridge.")
                  (cl-tf2:ensure-pose-stamped-transformed
                   *tf2* current-pose-stamped target-link
                   :use-current-ros-time t))
+               (ttt (format t "!!!!!~%"))
                (obj-msg-plain (create-collision-object-message
                                name pose-in-link
                                :primitive-shapes primitive-shapes
