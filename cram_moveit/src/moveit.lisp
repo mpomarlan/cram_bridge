@@ -678,6 +678,124 @@ colliding with unwanted obstacles is found, then the completion fraction is 1. A
               (signal-moveit-error val))
       (list (list "start state" start_state) (list "trajectory" solution) (list "completion fraction" fraction)))))
 
+
+(defun merge-joint-trajectory-point (point-a point-b)
+  (let* ((a-positions (coerce (roslisp:with-fields (positions) point-a positions) 'list))
+         (b-positions (coerce (roslisp:with-fields (positions) point-b positions) 'list))
+         (a-velocities (coerce (roslisp:with-fields (velocities) point-a velocities) 'list))
+         (b-velocities (coerce (roslisp:with-fields (velocities) point-b velocities) 'list))
+         (a-accelerations (coerce (roslisp:with-fields (accelerations) point-a accelerations) 'list))
+         (b-accelerations (coerce (roslisp:with-fields (accelerations) point-b accelerations) 'list))
+         (a-effort (coerce (roslisp:with-fields (effort) point-a effort) 'list))
+         (b-effort (coerce (roslisp:with-fields (effort) point-b effort) 'list))
+         (positions (append a-positions b-positions))
+         (velocities (append a-velocities b-velocities))
+         (accelerations (append a-accelerations b-accelerations))
+         (effort (append a-effort b-effort))
+         ;; currently assuming it is not important which time from start we extract
+         (time-from-start (roslisp:with-fields (time_from_start) point-a time_from_start)))
+    (roslisp:make-message "trajectory_msgs/JointTrajectoryPoint"
+                          :positions (coerce positions 'vector)
+                          :velocities (coerce velocities 'vector) 
+                          :accelerations (coerce accelerations 'vector)
+                          :effort (coerce effort 'vector)
+                          :time_from_start time-from-start)))
+
+(defun merge-multi-dof-joint-trajectory-point (point-a point-b)
+  (let* ((a-transforms (coerce (roslisp:with-fields (transforms) point-a transforms) 'list))
+         (b-transforms (coerce (roslisp:with-fields (transforms) point-b transforms) 'list))
+         (a-velocities (coerce (roslisp:with-fields (velocities) point-a velocities) 'list))
+         (b-velocities (coerce (roslisp:with-fields (velocities) point-b velocities) 'list))
+         (a-accelerations (coerce (roslisp:with-fields (accelerations) point-a accelerations) 'list))
+         (b-accelerations (coerce (roslisp:with-fields (accelerations) point-b accelerations) 'list))
+         (transforms (append a-transforms b-transforms))
+         (velocities (append a-velocities b-velocities))
+         (accelerations (append a-accelerations b-accelerations))
+         ;; currently assuming it is not important which time from start we extract
+         (time-from-start (roslisp:with-fields (time_from_start) point-a time_from_start)))
+    (roslisp:make-message "trajectory_msgs/MultiDOFJointTrajectoryPoint"
+                          :transforms (coerce transforms 'vector)
+                          :velocities (coerce velocities 'vector)
+                          :accelerations (coerce accelerations 'vector)
+                          :time_from_start time-from-start)))
+
+;; Surely a more basic function for this exists in lisp
+(defun rep-el (element desired-count actual-count)
+  (let* ((missing-count (- desired-count actual-count))
+         (missing-count (if (< 0 missing-count) missing-count 0))
+         (aux (iota missing-count)))
+    (mapcar (lambda (a) (declare (ignore a)) element) aux)))
+
+(defun ensure-point-count (stuff count)
+  (let* ((s-len (length stuff))
+         (last-el (car (last stuff)))
+         (extras (rep-el last-el count s-len)))
+    (append stuff extras)))
+
+(defun merge-trajectory (l-trajectory r-trajectory point-merger msg-type-name)
+  (let* ((l-points (coerce (roslisp:with-fields (points) l-trajectory points)) 'list)
+         (r-points (coerce (roslisp:with-fields (points) r-trajectory points)) 'list)
+         ;; headers should be similar here, so that we can use either
+         (header (roslisp:with-fields (header) l-trajectory header))
+         (l-joint-names (coerce (roslisp:with-fields (joint_names) l-trajectory joint_names) 'list))
+         (r-joint-names (coerce (roslisp:with-fields (joint_names) r-trajectory joint_names) 'list))
+         (points (append l-points r-points))
+         (l-len (length l-points))
+         (r-len (length r-points))
+         (max-len (if (< r-len l-len) l-len r-len))
+         (l-points (ensure-point-count l-points max-len))
+         (r-points (ensure-point-count r-points max-len))
+         (points (mapcar (lambda (a b) (apply point-merger a b)) 
+                         l-points r-points)))
+    (roslisp:make-message msg-type-name
+                          :header header
+                          :joint_names (coerce joint-names 'vector)
+                          :points (coerce points 'vector))))
+
+;; For the moment, if the cartesian path for either group is incomplete, overall completion is considered 0.
+(defun compute-two-arm-cartesian-path (frame-name
+                                       robot-state-msg 
+                                       l-group-name r-group-name
+                                       l-link-name r-link-name
+                                       l-waypoint-poses r-waypoint-poses
+                                       l-max-step r-max-step
+                                       l-jump-threshold r-jump-threshold
+                                       l-avoid-collisions r-avoid-collisions
+                                       &key (l-path-constraints-msg (roslisp:make-msg "moveit_msgs/Constraints"))
+                                            (r-path-constraints-msg (roslisp:make-msg "moveit_msgs/Constraints")))
+  "COMPUTE-TWO-ARM-CARTESIAN-PATH <arguments>
+   Computes and merges cartesian paths for two planning groups (typical use case: two arms).
+   Return value:
+   (("start state" <ROS robot state message>) ("trajectory" <ROS robot trajectory message>) ("completion fraction" <overal completion> <l-group completion> <r-group completion>))
+
+   "
+  (let* ((l-response (compute-cartesian-path frame-name robot-state-msg l-group-name l-link-name l-waypoint-poses l-max-step
+                                             l-max-step l-jump l-avoid-collisions :path-constraints-msg l-path-constraints-msg))
+         (r-response (compute-cartesian-path frame-name robot-state-msg r-group-name r-link-name r-waypoint-poses r-max-step
+                                             r-max-step r-jump r-avoid-collisions :path-constraints-msg r-path-constraints-msg))
+         (l-completion (second (third l-response)))
+         (r-completion (second (third r-response)))
+         (l-trajectory (second (second l-response)))
+         (r-trajectory (second (second r-response)))
+         (response-completion (if (and (> l-completion 0.99) (> r-completion 0.99)) 
+                                  (list 1 1 1) 
+                                  (list 0 l-completion r-completion)))
+         ;; since the calls are at the same time, we expect the start state from both cartesian path calls to be the same,
+         ;; so we can pick either
+         (start-state-msg (second (first l-response)))
+         (l-joint-trajectory (roslisp:with-fields (joint_trajectory) l-trajectory joint_trajectory))
+         (r-joint-trajectory (roslisp:with-fields (joint_trajectory) r-trajectory joint_trajectory))
+         (l-multi-dof-joint-trajectory (roslisp:with-fields (multi_dof_joint_trajectory) l-trajectory multi_dof_joint_trajectory))
+         (r-multi-dof-joint-trajectory (roslisp:with-fields (multi_dof_joint_trajectory) r-trajectory multi_dof_joint_trajectory))
+         (joint-trajectory (merge-trajectory l-joint-trajectory r-joint-trajectory #'merge-joint-trajectory-point "trajectory_msgs/JointTrajectory"))
+         (multi-dof-joint-trajectory (merge-trajectory l-multi-dof-joint-trajectory r-multi-dof-joint-trajectory #'merge-multi-dof-joint-trajectory-point "trajectory_msgs/MultiDOFJointTrajectory"))
+         (merged-trajectory (roslisp:make-message "moveit_msgs/RobotTrajectory"
+                                                  :joint_trajectory joint-trajectory
+                                                  :multi_dof_joint_trajectory multi-dof-joint-trajectory)))
+    (list (list "start state" start-state-msg) 
+          (list "trajectory" merged-trajectory) 
+          (list "completion fraction" response-completion))))
+
 (defun plan-link-movement (link-name planning-group pose-stamped
                            &key allowed-collision-objects
                              start-robot-state
